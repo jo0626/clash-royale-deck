@@ -229,34 +229,38 @@
   }
   .slot {
     background: var(--surface2); border: 1px dashed var(--border);
-    border-radius: 6px; height: 110px;
+    border-radius: 6px; height: 120px;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: flex-end;
-    padding: 0 4px 8px; gap: 0;
+    align-items: center; justify-content: flex-start;
+    padding: 6px 4px 6px; gap: 4px;
     transition: all 0.15s;
-    position: relative; overflow: hidden;
+    overflow: hidden;
     cursor: default;
   }
+  .slot-img-wrap {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 0;
+  }
   .slot-img {
-    position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    width: 72px; height: 72px; object-fit: contain;
+    width: 70px; height: 70px; object-fit: contain;
     opacity: 0.9; pointer-events: none;
     filter: saturate(1);
     transition: opacity 0.12s;
+    display: block;
   }
-  .slot.filled:hover .slot-img { opacity: 0.3; }
+  .slot.filled:hover .slot-img { opacity: 0.25; }
   .slot.filled { border-style: solid; border-color: var(--border-hi); background: var(--surface); cursor: pointer; }
   .slot-info {
     display: flex; align-items: flex-start; gap: 4px;
-    width: 100%; padding: 2px 4px 0;
-    position: relative; z-index: 2;
-    margin-top: 4px;
+    width: 100%; flex-shrink: 0;
   }
   .slot-info .cost-pip {
     width: 20px; height: 20px; font-size: 11px; flex-shrink: 0; margin-top: 1px;
   }
   .slot.slot-hero { border-color: #e8a020; background: rgba(232,160,32,0.06); }
   .slot.slot-evolved { border-color: #8b5cf6; background: rgba(139,92,246,0.06); }
+  .slot.dragging { opacity: 0.3; border-style: dashed; }
+  .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); transform: scale(1.03); }
   .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); }
   .slot-num { display: none; }
   .slot-name {
@@ -331,7 +335,7 @@
       width: 90px; height: 90px; right: auto;
       opacity: 0.9; filter: saturate(1);
     }
-    .slot.filled:hover .slot-img { opacity: 0.3; }
+    .slot.filled:hover .slot-img { opacity: 0.25; }
     .slot-info {
       display: flex; align-items: flex-start; gap: 4px;
       width: 100%; padding: 0 5px;
@@ -550,7 +554,7 @@ const CARDS = [
 ];
 // =============================================
 
-let deck = [];
+let deck = [null,null,null,null,null,null,null,null];
 let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
 let activeType = 'all';
 let activeCosts = new Set();
@@ -588,11 +592,12 @@ function init() {
   });
 
   document.getElementById('search').oninput = render;
-  document.getElementById('clearBtn').onclick = () => { deck = []; renderDeck(); render(); };
+  document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('copyBtn').onclick = copyDeck;
 
   render();
   renderDeck();
+  initTouchDnD();
 }
 
 // ひらがな→カタカナ変換（検索用）
@@ -618,7 +623,7 @@ function render() {
   const list = document.getElementById('cardList');
   list.innerHTML = '';
   filtered.forEach(c => {
-    const inDeck = deck.some(d => d.name === c.name);
+    const inDeck = deck.some(d => d && d.name === c.name);
     const faved = isFav(c.name);
     const div = document.createElement('div');
     div.className = 'card' + (inDeck ? ' in-deck' : '');
@@ -639,25 +644,131 @@ function render() {
       <div class="card-bottom">
         <div class="card-role">${c.role}</div>
       </div>`;
+    div.draggable = true;
+    div.addEventListener('dragstart', e => {
+      if (deck.some(d => d && d.name === c.name)) { e.preventDefault(); return; }
+      dragSrcCard = c;
+      dragSrcIdx = null;
+      div.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    div.addEventListener('dragend', e => { div.style.opacity = ''; dragSrcCard = null; });
     div.onclick = () => toggleDeck(c);
     list.appendChild(div);
   });
 }
 
 function addToDeck(card) {
-  if (deck.some(d => d.name === card.name)) return;
-  if (deck.length >= 8) { showToast('⚠ デッキは8枚まで'); return; }
-  if (card.hero && deck.filter(d => d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); return; }
-  if (card.evolved && deck.filter(d => d.evolved && d.name === card.name).length >= 1) { showToast('⚠ 同じカードの限界突破は1枚まで'); return; }
-  deck.push(card);
+  if (deck.some(d => d && d.name === card.name)) return;
+  const emptyIdx = deck.indexOf(null);
+  if (emptyIdx === -1) { showToast('⚠ デッキは8枚まで'); return; }
+  if (card.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); return; }
+  if (card.evolved && deck.filter(d => d && d.evolved && d.name === card.name).length >= 1) { showToast('⚠ 同じカードの限界突破は1枚まで'); return; }
+  deck[emptyIdx] = card;
   renderDeck(); render();
 }
 
 function removeFromDeck(card) {
-  const idx = deck.findIndex(d => d.name === card.name);
-  if (idx >= 0) { deck.splice(idx, 1); renderDeck(); render(); }
+  const idx = deck.findIndex(d => d && d.name === card.name);
+  if (idx >= 0) { deck[idx] = null; renderDeck(); render(); }
 }
 
+
+let dragSrcIdx = null;
+let dragSrcCard = null;
+
+function onDragStart(e) {
+  dragSrcIdx = parseInt(this.dataset.idx);
+  dragSrcCard = null;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  document.querySelectorAll('.slot').forEach(s => {
+    s.classList.remove('dragging', 'drag-over');
+  });
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  this.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  this.classList.remove('drag-over');
+  const destIdx = parseInt(this.dataset.idx);
+  if (dragSrcCard) {
+    // カード選択ゾーンからドロップ
+    const c = dragSrcCard;
+    dragSrcCard = null;
+    if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); return; }
+    if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); return; }
+    deck[destIdx] = c;
+    renderDeck(); render();
+  } else if (dragSrcIdx !== null && dragSrcIdx !== destIdx) {
+    // スロット間の入れ替え
+    const tmp = deck[destIdx];
+    deck[destIdx] = deck[dragSrcIdx];
+    deck[dragSrcIdx] = tmp;
+    dragSrcIdx = null;
+    renderDeck(); render();
+  }
+}
+
+
+// タッチD&D（モバイル）
+let touchSrcIdx = null;
+let touchClone = null;
+
+function initTouchDnD() {
+  const container = document.getElementById('deckSlots');
+  container.addEventListener('touchstart', e => {
+    const slot = e.target.closest('.slot.filled');
+    if (!slot) return;
+    touchSrcIdx = parseInt(slot.dataset.idx);
+    touchClone = slot.cloneNode(true);
+    touchClone.style.cssText = 'position:fixed;opacity:0.7;pointer-events:none;z-index:999;width:'+slot.offsetWidth+'px;';
+    document.body.appendChild(touchClone);
+  }, {passive:true});
+
+  container.addEventListener('touchmove', e => {
+    if (touchSrcIdx === null) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    touchClone.style.left = (t.clientX - touchClone.offsetWidth/2) + 'px';
+    touchClone.style.top  = (t.clientY - touchClone.offsetHeight/2) + 'px';
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('.slot');
+    if (target) target.classList.add('drag-over');
+  }, {passive:false});
+
+  container.addEventListener('touchend', e => {
+    if (touchSrcIdx === null) return;
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
+    const t = e.changedTouches[0];
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('.slot');
+    if (target) {
+      const destIdx = parseInt(target.dataset.idx);
+      if (destIdx !== touchSrcIdx) {
+        const tmp = deck[destIdx];
+        deck[destIdx] = deck[touchSrcIdx];
+        deck[touchSrcIdx] = tmp;
+        renderDeck(); render();
+      }
+    }
+    touchSrcIdx = null;
+  }, {passive:true});
+}
 function toggleDeck(card) { addToDeck(card); }
 
 const COST_COLORS = {1:'#4caf50',2:'#26c6a0',3:'#3a8ef0',4:'#e8a020',5:'#8b5cf6',6:'#e05050',7:'#c0781a',8:'#888',9:'#9090d0'};
@@ -665,33 +776,46 @@ const COST_COLORS = {1:'#4caf50',2:'#26c6a0',3:'#3a8ef0',4:'#e8a020',5:'#8b5cf6'
 function renderDeck() {
   const slots = document.getElementById('deckSlots');
   slots.innerHTML = '';
-  const sorted = [...deck].sort((a,b) => b.cost - a.cost);
   for (let i = 0; i < 8; i++) {
     const div = document.createElement('div');
-    if (i < sorted.length) {
-      const c = sorted[i];
-      div.className = 'slot filled' + (c.hero ? ' slot-hero' : c.evolved ? ' slot-evolved' : ''); div.title = 'クリックで外す';
-      const typeLabel = c.hero ? 'HERO' : c.evolved ? 'EVOL' : c.type === 'troop' ? 'UNIT' : c.type === 'spell' ? 'SPELL' : 'BLDG';
-      const color = COST_COLORS[c.cost] || '#888';
-      const slotImg = c.img ? `<img class="slot-img" src="${c.img}" alt="" loading="lazy">` : '';
+    const c = deck[i];
+    if (c) {
+      div.className = 'slot filled' + (c.hero ? ' slot-hero' : c.evolved ? ' slot-evolved' : '');
+      div.title = 'クリックで外す';
+      div.draggable = true;
+      div.dataset.idx = i;
+      const slotImg = c.img
+        ? `<div class="slot-img-wrap"><img class="slot-img" src="${c.img}" alt="" loading="lazy"></div>`
+        : `<div class="slot-img-wrap"></div>`;
       div.innerHTML = `${slotImg}
         <div class="slot-info">
           <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
           <span class="slot-name">${c.name}</span>
         </div>`;
       div.onclick = () => removeFromDeck(c);
+      div.addEventListener('dragstart', onDragStart);
+      div.addEventListener('dragend',   onDragEnd);
+      div.addEventListener('dragover',  onDragOver);
+      div.addEventListener('dragleave', onDragLeave);
+      div.addEventListener('drop',      onDrop);
     } else {
       div.className = 'slot';
+      div.dataset.idx = i;
       div.innerHTML = `<span class="slot-empty-text">+</span>`;
+      div.addEventListener('dragover',  onDragOver);
+      div.addEventListener('dragleave', onDragLeave);
+      div.addEventListener('drop',      onDrop);
     }
     slots.appendChild(div);
   }
 
-  document.getElementById('deckCount').textContent = deck.length + '/8';
-  if (deck.length > 0) {
-    const avg = (deck.reduce((s,c) => s+c.cost, 0) / deck.length);
+  document.getElementById('deckCount').textContent = deck.filter(d=>d).length + '/8';
+  if (deck.filter(d=>d).length > 0) {
+    const filled = deck.filter(d => d);
+    const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length);
     document.getElementById('avgVal').textContent = avg.toFixed(2);
-    document.getElementById('avgSub').textContent = deck.length < 8 ? '（' + deck.length + '枚）' : '';
+    const cnt = deck.filter(d=>d).length;
+    document.getElementById('avgSub').textContent = cnt < 8 ? '（' + cnt + '枚）' : '';
   } else {
     document.getElementById('avgVal').textContent = '—';
     document.getElementById('avgSub').textContent = '';
@@ -699,9 +823,9 @@ function renderDeck() {
 
   const bar = document.getElementById('costBar');
   bar.innerHTML = '';
-  if (deck.length > 0) {
+  if (deck.filter(d=>d).length > 0) {
     const counts = {};
-    deck.forEach(c => counts[c.cost] = (counts[c.cost]||0) + 1);
+    deck.filter(d=>d).forEach(c => counts[c.cost] = (counts[c.cost]||0) + 1);
     Object.entries(counts).sort((a,b) => +a[0]-+b[0]).forEach(([cost, cnt]) => {
       const seg = document.createElement('div');
       seg.className = 'bar-seg'; seg.style.flex = cnt;
@@ -714,7 +838,7 @@ function renderDeck() {
 
 function copyDeck() {
   if (deck.length === 0) { showToast('デッキが空です'); return; }
-  const sorted = [...deck].sort((a,b) => b.cost - a.cost);
+  const sorted = [...deck];
   const avg = (deck.reduce((s,c) => s+c.cost, 0) / deck.length).toFixed(2);
   const text = '【クラロワ デッキ】平均コスト ' + avg + '\n' +
     sorted.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
