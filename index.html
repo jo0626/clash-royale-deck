@@ -146,7 +146,7 @@
   .card.in-deck:hover { border-color: var(--red); background: rgba(224,80,80,0.08); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
-  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; }
+  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; padding-right: 18px; }
 
   .cost-pip {
     min-width: 20px; height: 20px; border-radius: 50%;
@@ -168,15 +168,19 @@
   .tag-building{background:rgba(232,160,32,0.15);color:#e8a020;}
   .tag-champion{background:rgba(224,80,80,0.15);color:#e05050;}
 
-  /* ハートボタン */
+  /* ハートボタン — 右上絶対配置・SVGインスタ風 */
   .fav-btn {
+    position: absolute; top: 6px; right: 6px;
     background: none; border: none; cursor: pointer;
-    font-size: 14px; padding: 2px; line-height: 1;
-    opacity: 0.25; transition: opacity 0.15s, transform 0.15s;
-    flex-shrink: 0;
+    padding: 0; line-height: 1; z-index: 2;
+    transition: transform 0.15s;
   }
-  .fav-btn:hover { opacity: 0.7; transform: scale(1.2); }
-  .fav-btn.active { opacity: 1; }
+  .fav-btn:hover { transform: scale(1.2); }
+  .fav-btn svg .heart-fill { fill: none; }
+  .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.3); stroke-width: 1.8; }
+  .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.6); }
+  .fav-btn.active svg .heart-fill { fill: #e8304a; }
+  .fav-btn.active svg .heart-stroke { stroke: #e8304a; }
 
   /* RIGHT PANEL */
   .deck-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
@@ -535,7 +539,11 @@ function render() {
     div.className = 'card' + (inDeck ? ' in-deck' : '');
     const tagClass = c.champion ? 'tag-champion' : 'tag-' + c.type;
     const tagText = c.champion ? 'チャンピオン' : c.type === 'troop' ? 'ユニット' : c.type === 'spell' ? '呪文' : '建物';
+    const heartSvg = `<svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
     div.innerHTML = `
+      <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">${heartSvg}</button>
       <div class="card-top">
         <div class="card-name">${c.name}</div>
         <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
@@ -543,7 +551,6 @@ function render() {
       <span class="type-tag ${tagClass}">${tagText}</span>
       <div class="card-bottom">
         <div class="card-role">${c.role}</div>
-        <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">❤️</button>
       </div>`;
     div.onclick = () => toggleDeck(c);
     list.appendChild(div);
