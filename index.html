@@ -146,7 +146,7 @@
   .card.in-deck:hover { border-color: var(--red); background: rgba(224,80,80,0.08); }
 
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
-  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; padding-right: 18px; }
+  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; padding-right: 24px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
   .cost-pip {
     min-width: 20px; height: 20px; border-radius: 50%;
@@ -170,15 +170,15 @@
 
   /* ハートボタン — 右上絶対配置・SVGインスタ風 */
   .fav-btn {
-    position: absolute; top: 6px; right: 6px;
+    position: absolute; top: 5px; right: 5px;
     background: none; border: none; cursor: pointer;
-    padding: 0; line-height: 1; z-index: 2;
+    padding: 2px; line-height: 1; z-index: 2;
     transition: transform 0.15s;
   }
-  .fav-btn:hover { transform: scale(1.2); }
+  .fav-btn:hover { transform: scale(1.15); }
   .fav-btn svg .heart-fill { fill: none; }
-  .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.3); stroke-width: 1.8; }
-  .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.6); }
+  .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
+  .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
   .fav-btn.active svg .heart-fill { fill: #e8304a; }
   .fav-btn.active svg .heart-stroke { stroke: #e8304a; }
 
@@ -234,15 +234,15 @@
 
   /* MOBILE */
   @media (max-width: 720px) {
-    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; overscroll-behavior-y: none; }
     header { flex-shrink: 0; padding: 8px 12px; }
     .logo { font-size: 17px; }
     .logo span { display: none; }
 
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; }
 
-    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); }
-    .left { flex: 1; overflow: hidden; }
+    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
     .deck-header { padding: 8px 12px 6px; }
     .deck-title { font-size: 14px; }
@@ -272,7 +272,7 @@
     .type-tabs { gap: 2px; }
     .ttab { padding: 4px 7px; font-size: 11px; }
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 5px; padding: 8px 10px; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
     .card { padding: 6px 7px; }
     .card-name { font-size: 10px; }
     .card-role { font-size: 9px; }
@@ -539,14 +539,14 @@ function render() {
     div.className = 'card' + (inDeck ? ' in-deck' : '');
     const tagClass = c.champion ? 'tag-champion' : 'tag-' + c.type;
     const tagText = c.champion ? 'チャンピオン' : c.type === 'troop' ? 'ユニット' : c.type === 'spell' ? '呪文' : '建物';
-    const heartSvg = `<svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    const heartSvg = `<svg width="20" height="19" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/>
     </svg>`;
     div.innerHTML = `
       <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">${heartSvg}</button>
       <div class="card-top">
-        <div class="card-name">${c.name}</div>
         <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
+        <div class="card-name">${c.name}</div>
       </div>
       <span class="type-tag ${tagClass}">${tagText}</span>
       <div class="card-bottom">
