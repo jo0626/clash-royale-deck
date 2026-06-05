@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>CR Deck Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -159,7 +159,7 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 8px; padding: 10px 10px 12px; cursor: pointer;
     transition: all 0.12s; user-select: none; -webkit-user-select: none; position: relative;
-    overflow: hidden; min-height: 90px;
+    overflow: hidden; min-height: 100px;
     -webkit-touch-callout: none;
   }
   .card-img {
@@ -201,7 +201,7 @@
   .pip-9{background:#1a1a2a;color:#9090d0;}
 
   .card-bottom { display: flex; align-items: center; justify-content: space-between; }
-  .card-role { font-size: 9px; color: var(--text-muted); flex: 1; padding-right: 52px; }
+  .card-role { font-size: 9px; color: var(--text-muted); flex: 1; padding-right: 76px; line-height: 1.4; position: relative; z-index: 1; word-break: break-all; }
 
   .type-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-bottom: 3px; max-width: calc(100% - 52px); }
   .tag-troop{background:rgba(58,142,240,0.15);color:#3a8ef0;}
@@ -285,17 +285,49 @@
   .slot-info .cost-pip {
     width: 20px; height: 20px; font-size: 11px; flex-shrink: 0; margin-top: 1px;
   }
-  .slot.slot-hero { border-color: #e8a020; background: rgba(232,160,32,0.06); }
-  .slot.slot-evolved { border-color: #8b5cf6; background: rgba(139,92,246,0.06); }
+  /* 特殊スロット：本家風の立体・豪華デザイン */
+  .slot.slot-evolved {
+    border: 2px solid transparent;
+    background:
+      radial-gradient(ellipse at 50% 30%, #332158 0%, #221540 55%, #18102e 100%) padding-box,
+      linear-gradient(165deg, #c4b5fd 0%, #7c3aed 45%, #3b2a6e 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -10px 18px rgba(139,92,246,0.22), 0 0 12px rgba(139,92,246,0.30);
+  }
+  .slot.slot-hero {
+    border: 2px solid transparent;
+    background:
+      radial-gradient(ellipse at 50% 30%, #4a3410 0%, #33240c 55%, #221806 100%) padding-box,
+      linear-gradient(165deg, #ffe08a 0%, #e8a020 45%, #8a5c08 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -10px 18px rgba(232,160,32,0.20), 0 0 12px rgba(232,160,32,0.30);
+  }
   .slot.slot-wild {
-    border-color: rgba(255,255,255,0.22);
-    background: linear-gradient(90deg, rgba(139,92,246,0.10) 0%, rgba(139,92,246,0.10) 50%, rgba(232,160,32,0.10) 50%, rgba(232,160,32,0.10) 100%);
+    border: 2px solid transparent;
+    background:
+      linear-gradient(90deg, #221540 0%, #221540 50%, #33240c 50%, #33240c 100%) padding-box,
+      linear-gradient(90deg, #a78bfa 0%, #7c3aed 48%, #e8a020 52%, #ffd27a 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset -8px -8px 16px rgba(232,160,32,0.14), inset 8px -8px 16px rgba(139,92,246,0.16), 0 0 12px rgba(190,130,120,0.25);
   }
   .slot-empty-center { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
-  .slot-empty-icon { width: 32px; height: 32px; transform: rotate(45deg); border-radius: 7px; opacity: 0.45; display: block; }
-  .diamond-evolved { background: #8b5cf6; }
-  .diamond-hero { background: #e8a020; }
-  .diamond-wild { background: linear-gradient(45deg, #8b5cf6 50%, #e8a020 50%); }
+  /* 宝石風◇アイコン */
+  .slot-empty-icon { width: 36px; height: 36px; transform: rotate(45deg); border-radius: 8px; display: block; position: relative; }
+  .slot-empty-icon::after {
+    content: ''; position: absolute; inset: 4px 4px 50% 50%;
+    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);
+    pointer-events: none;
+  }
+  .diamond-evolved {
+    background: linear-gradient(135deg, #ddd1ff 0%, #8b5cf6 48%, #4c1d95 100%);
+    box-shadow: 0 0 18px rgba(139,92,246,0.65), inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -4px 6px rgba(20,5,60,0.55);
+  }
+  .diamond-hero {
+    background: linear-gradient(135deg, #fff0c2 0%, #e8a020 48%, #7a5005 100%);
+    box-shadow: 0 0 18px rgba(232,160,32,0.65), inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -4px 6px rgba(70,40,0,0.55);
+  }
+  .diamond-wild {
+    background: linear-gradient(45deg, #ddd1ff 0%, #8b5cf6 30%, #4c1d95 49.5%, #7a5005 50.5%, #e8a020 70%, #fff0c2 100%);
+    box-shadow: 0 0 18px rgba(190,130,120,0.6), inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -4px 6px rgba(30,10,30,0.55);
+  }
   /* チャンピオン入れ替えダイアログ */
   .swap-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
   .swap-box { background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 16px; width: min(340px, 92vw); }
@@ -363,7 +395,8 @@
 
   /* MOBILE */
   @media (max-width: 720px) {
-    body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
+    /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定 */
+    body { display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
     /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
     header { display: none; }
 
@@ -427,9 +460,10 @@
     .ttab { padding: 4px 7px; font-size: 11px; }
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
     .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
-    .card { padding: 9px 8px 11px; min-height: 82px; }
+    .card { padding: 9px 8px 11px; min-height: 94px; }
+    .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
-    .card-role { font-size: 9px; }
+    .card-role { font-size: 9px; padding-right: 64px; }
     .cost-pip { width: 18px; height: 18px; font-size: 10px; }
   }
 </style>
@@ -602,7 +636,7 @@ const CARDS = [
   {name:"リトルプリンス", champion:true, yomi:"リトルプリンス リトプリ LP", cost:3, type:"troop", role:"チャンピオン・盾持ち", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/little-prince.png"},
   {name:"モンク", champion:true, yomi:"モンク もんく", cost:5, type:"troop", role:"チャンピオン・攻防一体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/monk.png"},
   {name:"ゴブリンシュタイン", champion:true, yomi:"ゴブリンシュタイン ゴブリンスタイン ゴブシュタ", cost:5, type:"troop", role:"チャンピオン・博士＋モンスター", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblinstein.png"},
-  {name:"ボスバンディット", champion:true, yomi:"ボスバンディット ボスバン", cost:6, type:"troop", role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"},
+  {name:"ボスアサシン", champion:true, yomi:"ボスアサシン ボスバンディット ボスバン", cost:6, type:"troop", role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"},
   {name:"アーチャークイーン", champion:true, yomi:"アーチャークイーン AQ アチャクイ クイーン",    cost:5, type:"troop",    role:"チャンピオン・高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archer-queen.png"},
   {name:"ゴブリンマシン", yomi:"ゴブリンマシン ゴブマシン マシン",    cost:5, type:"troop",    role:"ロケット移動砲台", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-machine.png"},
   {name:"スケルトンラッシュ", yomi:"スケルトンラッシュ グレイブヤード グレヤ 墓場",    cost:5, type:"spell",    role:"スケルトン大量召喚", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/graveyard.png"},
@@ -1238,6 +1272,14 @@ function showToast(msg) {
 }
 
 init();
+
+// iOS対策：ページ自体がパンして上部（平均コスト）が隠れたら即座に戻す
+if (window.matchMedia('(max-width: 720px)').matches) {
+  window.addEventListener('scroll', () => {
+    if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+  }, { passive: true });
+  window.addEventListener('pageshow', () => window.scrollTo(0, 0));
+}
 </script>
 </body>
 </html>
