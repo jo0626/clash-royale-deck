@@ -493,12 +493,8 @@
     color: #ffffff;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
   }
-  /* PC版：card側フッターも表示・固定 */
-  .footer-card { display: block; flex-shrink: 0; }
-  /* モバイル版：deck側フッターは非表示 */
-  @media (max-width: 720px) {
-    .footer-deck { display: none; }
-    .footer-card { display: block; }
+
+
   }
 </style>
 
@@ -555,9 +551,6 @@
       <button class="btn btn-primary" id="copyBtn">📋 テキストコピー</button>
       <button class="btn btn-ghost" id="clearBtn">クリア</button>
     </div>
-    <div class="footer-signature footer-deck">
-      <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
-    </div>
   </div>
 
   <!-- LEFT: card list -->
@@ -585,16 +578,11 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
-    <div class="footer-signature footer-card">
-      <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
-    </div>
   </div>
 </div>
 
 
-<div class=footer-signature>
-  <span class=by-text>By</span> <span class=creator-name>rea-fi-lia</span>
-</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1356,5 +1344,9 @@ if (window.matchMedia('(max-width: 720px)').matches) {
   window.addEventListener('pageshow', () => window.scrollTo(0, 0));
 }
 </script>
+
+<div class="footer-signature">
+  <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+</div>
 </body>
 </html>
