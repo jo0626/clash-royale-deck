@@ -506,13 +506,19 @@ function init() {
   renderDeck();
 }
 
+// ひらがな→カタカナ変換（検索用）
+function toKatakana(str) {
+  return str.replace(/[ぁ-ゖ]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+}
+
 function getFiltered() {
-  const q = document.getElementById('search').value.toLowerCase();
+  const raw = document.getElementById('search').value;
+  const q = toKatakana(raw.toLowerCase());
   return CARDS.filter(c => {
     if (activeType === 'fav' && !isFav(c.name)) return false;
     if (activeType !== 'all' && activeType !== 'fav' && c.type !== activeType) return false;
     if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
-    if (q && !c.name.toLowerCase().includes(q)) return false;
+    if (q && !toKatakana(c.name.toLowerCase()).includes(q)) return false;
     return true;
   });
 }
