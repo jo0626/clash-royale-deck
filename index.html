@@ -769,38 +769,79 @@ function moveGhost(ghost, x, y) {
   ghost.style.top  = (y - h/2 - 20) + 'px';
 }
 
+let longPressTimer = null;
+let touchStartX = 0;
+let touchStartY = 0;
+const LONG_PRESS_MS = 300;
+const DRAG_THRESHOLD = 8;
+let isDragging = false;
+
+function startDrag(srcCard, srcIdx, imgSrc, name, cost, x, y, srcEl) {
+  isDragging = true;
+  touchSrcCard = srcCard;
+  touchSrcIdx = srcIdx;
+  // ゴーストを作成して body に追加してから位置を設定
+  touchClone = createGhost(imgSrc, name, cost, 90);
+  // 次フレームで offsetWidth が確定してから位置設定
+  requestAnimationFrame(() => {
+    moveGhost(touchClone, x, y);
+  });
+  if (srcEl) srcEl.style.opacity = '0.3';
+}
+
+function cancelDrag() {
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
+  isDragging = false;
+  touchSrcCard = null;
+  touchSrcIdx = null;
+  if (touchClone) { touchClone.remove(); touchClone = null; }
+  document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
+  document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
+}
+
 function initTouchDnD() {
-  // カード選択ゾーンのタッチD&D
+  // カード選択ゾーン
   document.getElementById('cardList').addEventListener('touchstart', e => {
     const card = e.target.closest('.card');
     if (!card || card.classList.contains('in-deck')) return;
     const cardName = card.querySelector('.card-name').textContent.trim();
-    touchSrcCard = CARDS.find(c => c.name === cardName);
-    if (!touchSrcCard) return;
-    touchSrcIdx = null;
+    const srcCard = CARDS.find(c => c.name === cardName);
+    if (!srcCard) return;
     const t = e.touches[0];
-    touchClone = createGhost(touchSrcCard.img, touchSrcCard.name, touchSrcCard.cost, 90);
-    moveGhost(touchClone, t.clientX, t.clientY);
-    card.style.opacity = '0.3';
+    touchStartX = t.clientX; touchStartY = t.clientY;
+    longPressTimer = setTimeout(() => {
+      startDrag(srcCard, null, srcCard.img, srcCard.name, srcCard.cost, touchStartX, touchStartY, card);
+    }, LONG_PRESS_MS);
   }, {passive:true});
 
-  // デッキスロットのタッチD&D
+  // デッキスロット
   document.getElementById('deckSlots').addEventListener('touchstart', e => {
     const slot = e.target.closest('.slot.filled');
     if (!slot) return;
-    touchSrcIdx = parseInt(slot.dataset.idx);
-    touchSrcCard = null;
-    const c = deck[touchSrcIdx];
+    const idx = parseInt(slot.dataset.idx);
+    const c = deck[idx];
+    if (!c) return;
     const t = e.touches[0];
-    touchClone = createGhost(c ? c.img : null, c ? c.name : '', c ? c.cost : '', 90);
-    moveGhost(touchClone, t.clientX, t.clientY);
-    slot.style.opacity = '0.3';
+    touchStartX = t.clientX; touchStartY = t.clientY;
+    longPressTimer = setTimeout(() => {
+      startDrag(null, idx, c.img, c.name, c.cost, touchStartX, touchStartY, slot);
+    }, LONG_PRESS_MS);
   }, {passive:true});
 
   document.addEventListener('touchmove', e => {
-    if (touchSrcIdx === null && !touchSrcCard) return;
-    e.preventDefault();
     const t = e.touches[0];
+    // 長押し前に大きく動いたらキャンセル（スクロール優先）
+    if (!isDragging) {
+      const dx = Math.abs(t.clientX - touchStartX);
+      const dy = Math.abs(t.clientY - touchStartY);
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      return;
+    }
+    e.preventDefault();
     if (touchClone) moveGhost(touchClone, t.clientX, t.clientY);
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
     const el = document.elementFromPoint(t.clientX, t.clientY);
@@ -809,32 +850,35 @@ function initTouchDnD() {
   }, {passive:false});
 
   document.addEventListener('touchend', e => {
-    if (touchSrcIdx === null && !touchSrcCard) return;
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    if (!isDragging) return;
+    const t = e.changedTouches[0];
     if (touchClone) { touchClone.remove(); touchClone = null; }
     document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
     document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
-    const t = e.changedTouches[0];
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
     if (target) {
       const destIdx = parseInt(target.dataset.idx);
       if (touchSrcCard) {
-        // カード選択→スロットへ
         const c = touchSrcCard;
         if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); }
         else if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); }
         else { deck[destIdx] = c; renderDeck(); render(); }
       } else if (touchSrcIdx !== null && destIdx !== touchSrcIdx) {
-        // スロット→スロット入れ替え
         const tmp = deck[destIdx];
         deck[destIdx] = deck[touchSrcIdx];
         deck[touchSrcIdx] = tmp;
         renderDeck(); render();
       }
     }
-    touchSrcIdx = null;
+    isDragging = false;
     touchSrcCard = null;
+    touchSrcIdx = null;
   }, {passive:true});
+
+  document.addEventListener('touchcancel', cancelDrag, {passive:true});
 }
 function toggleDeck(card) { addToDeck(card); }
 
