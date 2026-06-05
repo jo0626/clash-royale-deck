@@ -404,7 +404,7 @@
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
-    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; display: flex; flex-direction: column; }
+    .left { flex: 1; overflow: visible; display: flex; flex-direction: column; min-height: 0; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
@@ -460,7 +460,7 @@
     .type-tabs { gap: 2px; }
     .ttab { padding: 4px 7px; font-size: 11px; }
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; flex: 1; overflow-y: auto; min-height: 0; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
     .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
