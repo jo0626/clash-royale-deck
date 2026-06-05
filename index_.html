@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>CR Deck Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07);
+    --border-hi: rgba(255,255,255,0.15);
+    --text: #e8eaf0;
+    --text-muted: #6b7080;
+    --text-dim: #3a3f50;
+    --accent: #e8a020;
+    --accent2: #c0781a;
+    --red: #e05050;
+    --font-head: 'Rajdhani', sans-serif;
+    --font-body: 'Noto Sans JP', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; touch-action: manipulation; } /* ダブルタップ拡大無効（ピンチ拡大は可） */
+  body { touch-action: manipulation; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--text-muted); font-size: 12px; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; display: block; margin-top: -4px; }
+
+  .app {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    height: calc(100vh - 54px);
+    overflow: hidden;
+  }
+
+  .left {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .right {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .controls {
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .controls-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .search-wrap { position: relative; flex: 1; min-width: 140px; }
+  .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+  .search-clear {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 14px; line-height: 1;
+    padding: 2px 4px; border-radius: 4px;
+    opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  }
+  .search-clear.visible { opacity: 0.6; pointer-events: auto; }
+  @media (hover: hover) { .search-clear:hover { opacity: 1; color: var(--text); } }
+  input[type=text].has-value { padding-right: 28px; }
+  input[type=text] {
+    width: 100%; padding: 7px 10px 7px 30px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: var(--font-body);
+    font-size: 16px; outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+
+  .type-tabs { display: flex; gap: 2px; }
+  .ttab {
+    padding: 5px 10px; font-size: 12px; font-family: var(--font-body);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); border-radius: 4px; cursor: pointer; transition: all 0.1s; white-space: nowrap;
+  }
+  .ttab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  /* お気に入りタブ（インスタ風SVGハート・オンオフトグル） */
+  .ttab[data-type="fav"] { display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; }
+  .ttab[data-type="fav"] svg { display: block; }
+  .ttab[data-type="fav"] svg .heart-fill { fill: none; }
+  .ttab[data-type="fav"] svg .heart-stroke { stroke: rgba(255,255,255,0.45); stroke-width: 1.8; }
+  .ttab[data-type="fav"].active { background: rgba(232,48,74,0.14); border-color: #e8304a; }
+  .ttab[data-type="fav"].active svg .heart-fill { fill: #e8304a; }
+  .ttab[data-type="fav"].active svg .heart-stroke { stroke: #e8304a; }
+
+  .cost-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+  .cfbtn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.1s;
+  }
+  @media (hover: hover) {
+    .cfbtn:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+    .ttab:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+  }
+  .cfbtn.active { color: #000; font-weight: 700; }
+  .cfbtn[data-c="1"].active { background:#4caf50; border-color:#4caf50; }
+  .cfbtn[data-c="2"].active { background:#26c6a0; border-color:#26c6a0; }
+  .cfbtn[data-c="3"].active { background:#3a8ef0; border-color:#3a8ef0; }
+  .cfbtn[data-c="4"].active { background:#e8a020; border-color:#e8a020; }
+  .cfbtn[data-c="5"].active { background:#8b5cf6; border-color:#8b5cf6; }
+  .cfbtn[data-c="6"].active { background:#e05050; border-color:#e05050; }
+  .cfbtn[data-c="7"].active { background:#c0781a; border-color:#c0781a; }
+  .cfbtn[data-c="8"].active { background:#888; border-color:#888; }
+  .cfbtn[data-c="9"].active { background:#e8eaf0; border-color:#e8eaf0; color:#000; }
+
+  .count-info { font-size: 11px; color: var(--text-muted); }
+
+  /* card list */
+  .card-list {
+    overflow-y: auto; flex: 1; padding: 10px 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px; align-content: start;
+  }
+  .card-list::-webkit-scrollbar { width: 4px; }
+  .card-list::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 10px 12px; cursor: pointer;
+    transition: all 0.12s; user-select: none; -webkit-user-select: none; position: relative;
+    overflow: hidden; min-height: 100px;
+    -webkit-touch-callout: none;
+  }
+  .card-img {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 88px; height: 88px;
+    object-fit: contain;
+    opacity: 0.8;
+    pointer-events: none;
+    transition: opacity 0.12s;
+    filter: saturate(0.6);
+  }
+  @media (hover: hover) {
+    .card:hover .card-img { opacity: 0.9; }
+    .card:hover { border-color: var(--border-hi); background: var(--surface2); transform: translateY(-1px); }
+  }
+  .card.in-deck .card-img { opacity: 0.85; filter: saturate(1); }
+  .card.in-deck {
+    border-color: var(--border);
+    background: var(--surface);
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .card.in-deck .fav-btn { pointer-events: auto; cursor: pointer; }
+  .card.in-deck .card-img { filter: saturate(0) brightness(0.7); opacity: 0.4; }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; padding-right: 58px; word-break: break-all; }
+
+  .cost-pip {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .pip-1{background:#1a3d1a;color:#4caf50;} .pip-2{background:#0d2e28;color:#26c6a0;}
+  .pip-3{background:#0d1e3d;color:#3a8ef0;} .pip-4{background:#3d2a00;color:#e8a020;}
+  .pip-5{background:#200d3d;color:#8b5cf6;} .pip-6{background:#3d0d0d;color:#e05050;}
+  .pip-7{background:#2a1500;color:#c0781a;} .pip-8{background:#1a1a1a;color:#888;}
+  .pip-9{background:#1a1a2a;color:#9090d0;}
+
+  .card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .card-role { font-size: 9px; color: var(--text-muted); flex: 1; padding-right: 76px; line-height: 1.4; position: relative; z-index: 1; word-break: break-all; }
+
+  .type-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-bottom: 3px; max-width: calc(100% - 52px); }
+  .tag-troop{background:rgba(58,142,240,0.15);color:#3a8ef0;}
+  .tag-spell{background:rgba(139,92,246,0.15);color:#8b5cf6;}
+  .tag-building{background:rgba(232,160,32,0.15);color:#e8a020;}
+  .tag-champion{background:rgba(224,80,80,0.15);color:#e05050;}
+  .tag-hero{background:rgba(232,160,32,0.2);color:#e8a020;border:1px solid rgba(232,160,32,0.4);}
+
+  /* ハートボタン — 右上絶対配置・SVGインスタ風 */
+  .fav-btn {
+    position: absolute; top: 5px; right: 5px;
+    background: none; border: none; cursor: pointer;
+    padding: 2px; line-height: 1; z-index: 2;
+    transition: transform 0.15s;
+  }
+  .fav-btn svg .heart-fill { fill: none; }
+  .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
+  @media (hover: hover) {
+    .fav-btn:hover { transform: scale(1.15); }
+    .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
+  }
+  .fav-btn.active svg .heart-fill { fill: #e8304a; }
+  .fav-btn.active svg .heart-stroke { stroke: #e8304a; }
+
+  /* RIGHT PANEL */
+  .deck-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+  .deck-title {
+    font-family: var(--font-head); font-size: 18px; font-weight: 700;
+    letter-spacing: 1px; color: var(--text); text-transform: uppercase;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .deck-count { font-size: 13px; font-weight: 400; color: var(--text-muted); font-family: var(--font-body); }
+  .avg-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+  .avg-label { font-size: 11px; color: var(--text-muted); }
+  .avg-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
+  .avg-sub { font-size: 11px; color: var(--text-muted); }
+
+  .cost-bar { display: flex; gap: 2px; margin-top: 8px; height: 4px; border-radius: 2px; overflow: hidden; }
+  .bar-seg { height: 100%; transition: flex 0.3s; }
+
+  .deck-slots {
+    overflow-y: auto; padding: 10px 12px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, auto);
+    gap: 6px;
+    align-content: start;
+    min-height: 0;
+  }
+  .slot {
+    background: var(--surface2); border: 1px dashed var(--border);
+    border-radius: 6px; height: 160px;
+    min-width: 0; max-width: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 6px 4px 6px; gap: 4px;
+    transition: all 0.15s;
+    overflow: visible;
+    cursor: default;
+    user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    position: relative;
+  }
+  .slot-img-wrap {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 0;
+  }
+  .slot-img {
+    width: 86px; height: 86px; max-width: 100%; object-fit: contain;
+    opacity: 0.9; pointer-events: none;
+    filter: saturate(1);
+    transition: opacity 0.12s;
+    display: block;
+  }
+  @media (hover: hover) { .slot.filled:hover .slot-img { opacity: 0.25; } }
+  .slot.filled { border-style: solid; border-color: var(--border-hi); background: var(--surface); cursor: pointer; }
+  .slot-info {
+    display: flex; align-items: flex-start; gap: 4px;
+    width: 100%; flex-shrink: 0;
+  }
+  .slot-info .cost-pip {
+    width: 20px; height: 20px; font-size: 11px; flex-shrink: 0; margin-top: 1px;
+  }
+  /* 特殊スロット：本家風の立体・豪華デザイン */
+  .slot.slot-evolved {
+    border: 2px solid transparent;
+    background:
+      radial-gradient(ellipse at 50% 30%, #332158 0%, #221540 55%, #18102e 100%) padding-box,
+      linear-gradient(165deg, #c4b5fd 0%, #7c3aed 45%, #3b2a6e 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), inset 0 -10px 18px rgba(139,92,246,0.22), 0 0 12px rgba(139,92,246,0.30);
+  }
+  .slot.slot-hero {
+    border: 2px solid transparent;
+    background:
+      radial-gradient(ellipse at 50% 30%, #4a3410 0%, #33240c 55%, #221806 100%) padding-box,
+      linear-gradient(165deg, #ffe08a 0%, #e8a020 45%, #8a5c08 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16), inset 0 -10px 18px rgba(232,160,32,0.20), 0 0 12px rgba(232,160,32,0.30);
+  }
+  .slot.slot-wild {
+    border: 2px solid transparent;
+    background:
+      linear-gradient(90deg, #221540 0%, #221540 50%, #33240c 50%, #33240c 100%) padding-box,
+      linear-gradient(90deg, #a78bfa 0%, #7c3aed 48%, #e8a020 52%, #ffd27a 100%) border-box;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), inset -8px -8px 16px rgba(232,160,32,0.14), inset 8px -8px 16px rgba(139,92,246,0.16), 0 0 12px rgba(190,130,120,0.25);
+  }
+  .slot-empty-center { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+  /* 宝石風◇アイコン */
+  .slot-empty-icon { width: 36px; height: 36px; transform: rotate(45deg); border-radius: 8px; display: block; position: relative; }
+  .slot-empty-icon::after {
+    content: ''; position: absolute; inset: 4px 4px 50% 50%;
+    border-radius: 4px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0) 70%);
+    pointer-events: none;
+  }
+  .diamond-evolved {
+    background: linear-gradient(135deg, #ddd1ff 0%, #8b5cf6 48%, #4c1d95 100%);
+    box-shadow: 0 0 18px rgba(139,92,246,0.65), inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -4px 6px rgba(20,5,60,0.55);
+  }
+  .diamond-hero {
+    background: linear-gradient(135deg, #fff0c2 0%, #e8a020 48%, #7a5005 100%);
+    box-shadow: 0 0 18px rgba(232,160,32,0.65), inset 0 2px 3px rgba(255,255,255,0.55), inset 0 -4px 6px rgba(70,40,0,0.55);
+  }
+  .diamond-wild {
+    background: linear-gradient(45deg, #ddd1ff 0%, #8b5cf6 30%, #4c1d95 49.5%, #7a5005 50.5%, #e8a020 70%, #fff0c2 100%);
+    box-shadow: 0 0 18px rgba(190,130,120,0.6), inset 0 2px 3px rgba(255,255,255,0.5), inset 0 -4px 6px rgba(30,10,30,0.55);
+  }
+  /* チャンピオン入れ替えダイアログ */
+  .swap-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .swap-box { background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 16px; width: min(340px, 92vw); }
+  .swap-title { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.5; }
+  .swap-options { display: flex; gap: 8px; margin: 14px 0; }
+  .swap-opt { flex: 1; cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; background: var(--surface); transition: border-color 0.12s; }
+  @media (hover: hover) { .swap-opt:hover { border-color: var(--accent); } }
+  .swap-remove-btn { background: #e8304a; color: #fff; font-weight: 700; flex: 1; }
+  .swap-keep-btn { flex: 1; }
+  .swap-opt img { width: 56px; height: 56px; object-fit: contain; display: block; margin: 0 auto 4px; }
+  .swap-opt-name { font-size: 11px; font-weight: 500; }
+  .swap-opt-slot { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+  .swap-cancel { width: 100%; }
+  .mode-toggle-btn {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px; color: var(--text); font-size: 9px;
+    padding: 2px 5px; cursor: pointer; z-index: 3;
+    transition: background 0.15s; white-space: nowrap;
+  }
+  @media (hover: hover) { .mode-toggle-btn:hover { background: rgba(255,255,255,0.2); } }
+  .slot-badge {
+    display: inline-block; font-size: 8px; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px; margin-left: 3px;
+    vertical-align: middle; line-height: 1.4;
+  }
+  .evolved-badge { background: rgba(139,92,246,0.3); color: #c4a0ff; }
+  .hero-badge { background: rgba(232,160,32,0.3); color: #ffd080; }
+  .slot.dragging { opacity: 0.3; border-style: dashed; }
+  .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); transform: scale(1.03); }
+  @media (hover: hover) { .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); } }
+  .slot-num { display: none; }
+  .slot-name {
+    font-size: 10px; font-weight: 500;
+    line-height: 1.3;
+    word-break: break-all;
+    position: relative; z-index: 2;
+    flex: 1;
+  }
+  .slot-type { display: none; }
+  .slot-empty-text { font-size: 22px; color: var(--text-dim); opacity: 0.25; }
+
+  .deck-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .btn {
+    padding: 8px 12px; border-radius: 6px; font-family: var(--font-body);
+    font-size: 12px; cursor: pointer; transition: all 0.12s; border: none;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #000; font-weight: 700; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+  @media (hover: hover) {
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    color: var(--text); padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: all 0.2s;
+    pointer-events: none; z-index: 999; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* MOBILE */
+  @media (max-width: 720px) {
+    /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定 */
+    body { display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
+    /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
+    header { display: none; }
+
+    .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
+
+    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
+
+    .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .deck-title { font-size: 13px; flex-shrink: 0; }
+    .avg-row { margin-top: 0; flex-shrink: 0; display: flex; align-items: baseline; gap: 4px; }
+    .avg-label { display: inline; font-size: 9px; }
+    .avg-val { font-size: 18px; }
+    .avg-sub { font-size: 10px; }
+    .cost-bar { display: none; }
+
+    .deck-slots {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px; padding: 6px 10px;
+      flex-direction: unset !important;
+    }
+    .slot {
+      width: 100%; height: 120px;
+      flex-direction: column; align-items: center;
+      justify-content: flex-start;
+      padding: 6px 4px 6px; gap: 4px;
+    }
+    .slot-num { display: none; }
+    .slot-type { display: none; }
+    .slot-empty-text { font-size: 22px; opacity: 0.2; color: var(--text-dim); }
+    .slot-img-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 0;
+    }
+    .slot-img {
+      position: static; transform: none;
+      width: 80px; height: 80px;
+      opacity: 0.9; filter: saturate(1);
+    }
+    .slot-info {
+      display: flex; align-items: flex-start; gap: 4px;
+      width: 100%; flex-shrink: 0; padding: 0 2px;
+    }
+    .slot .cost-pip {
+      width: 20px; height: 20px; font-size: 11px;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .slot-name {
+      font-size: 9px; font-weight: 500;
+      line-height: 1.3; display: block;
+      word-break: break-all;
+    }
+
+    .deck-actions { padding: 6px 10px; flex-direction: row; gap: 6px; }
+    .deck-actions .btn { flex: 1; padding: 7px 8px; font-size: 11px; }
+
+    .controls { padding: 8px 10px; }
+    .controls-row { gap: 6px; }
+    .type-tabs { gap: 2px; }
+    .ttab { padding: 4px 7px; font-size: 11px; }
+    .cfbtn { width: 24px; height: 24px; font-size: 11px; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+    .card { padding: 9px 8px 11px; min-height: 94px; }
+    .card-img { width: 76px; height: 76px; }
+    .card-name { font-size: 10px; }
+    .card-role { font-size: 9px; padding-right: 64px; }
+    .cost-pip { width: 18px; height: 18px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CR Deck Builder<span>クラロワ デッキビルダー</span></div>
+</header>
+
+<div class="app">
+  <!-- RIGHT: deck (モバイルでは上に表示) -->
+  <div class="right">
+    <div class="deck-header">
+      <div class="deck-title">Deck <span class="deck-count" id="deckCount">0/8</span></div>
+      <div class="avg-row">
+        <span class="avg-label">平均コスト</span>
+        <span class="avg-val" id="avgVal">—</span>
+        <span class="avg-sub" id="avgSub"></span>
+      </div>
+      <div class="cost-bar" id="costBar"></div>
+    </div>
+    <div class="deck-slots" id="deckSlots"></div>
+    <div class="deck-actions">
+      <button class="btn btn-primary" id="copyBtn">📋 テキストコピー</button>
+      <button class="btn btn-ghost" id="clearBtn">クリア</button>
+    </div>
+  </div>
+
+  <!-- LEFT: card list -->
+  <div class="left">
+    <div class="controls">
+      <div class="controls-row">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="search" placeholder="カード名で検索...">
+          <button class="search-clear" id="searchClear" tabindex="-1">✕</button>
+        </div>
+        <div class="type-tabs">
+          <button class="ttab active" data-type="all">全て</button>
+          <button class="ttab" data-type="troop">ユニット</button>
+          <button class="ttab" data-type="spell">呪文</button>
+          <button class="ttab" data-type="building">建物</button>
+          <button class="ttab" data-type="fav" title="お気に入りを上に表示">
+            <svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="cost-filters" id="costFilters"></div>
+        <span class="count-info" id="countInfo"></span>
+      </div>
+    </div>
+    <div class="card-list" id="cardList"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// CARD DATA — ここを編集してカードを追加・変更
+// 名称はsmashlog正式名称に準拠
+// =============================================
+const CARDS = [
+  // 1コスト
+  {name:"スケルトン", yomi:"スケルトン スケ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeletons-ev1.png",           cost:1, type:"troop",    role:"サイクル・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeletons.png"},
+  {name:"アイススピリット", yomi:"アイススピリット アイスピ アイス", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-spirit-ev1.png",      cost:1, type:"troop",    role:"凍結・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-spirit.png"},
+  {name:"ファイアスピリット", yomi:"ファイアスピリット ファイスピ ファイア",    cost:1, type:"troop",    role:"小型処理・対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fire-spirit.png"},
+  {name:"エレクトロスピリット", yomi:"エレクトロスピリット エレスピ エレクトロ",  cost:1, type:"troop",    role:"チェーン感電・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-spirit.png"},
+  {name:"ヒールスピリット", yomi:"ヒールスピリット ヒルスピ ヒール",      cost:1, type:"troop",    role:"回復サポート", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/heal-spirit.png"},
+
+  // 2コスト
+  {name:"ゴブリン", yomi:"ゴブリン ゴブ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblins-hero.png",              cost:2, type:"troop",    role:"小型高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblins.png"},
+  {name:"ボンバー", yomi:"ボンバー ボンバ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bomber-ev1.png",              cost:2, type:"troop",    role:"範囲攻撃・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bomber.png"},
+  {name:"槍ゴブリン", yomi:"やりごぶりん やり ゴブ",            cost:2, type:"troop",    role:"対空・遠距離", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/spear-goblins.png"},
+  {name:"コウモリの群れ", yomi:"コウモリの群れ コウモリ バット バツ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bats-ev1.png",        cost:2, type:"troop",    role:"対空・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bats.png"},
+  {name:"アイスゴーレム", yomi:"アイスゴーレム アイゴレ アイスゴレ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-golem-hero.png",        cost:2, type:"troop",    role:"タンク・デス凍結", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-golem.png"},
+  {name:"ウォールブレイカー", yomi:"ウォールブレイカー ウォールブレ ウォルブレ WB", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wall-breakers-ev1.png",    cost:2, type:"troop",    role:"建物狙い・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wall-breakers.png"},
+  {name:"バーサーカー", yomi:"バーサーカー バーサカ",          cost:2, type:"troop",    role:"高速高DPS近接", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/berserker.png"},
+  {name:"ザップ", yomi:"ザップ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zap-ev1.png",                cost:2, type:"spell",    role:"即時感電・リセット", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zap.png"},
+  {name:"巨大雪玉", yomi:"きょだいゆきだま ゆきだま 雪玉", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-snowball-ev1.png",              cost:2, type:"spell",    role:"ノックバック・減速", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-snowball.png"},
+  {name:"ローリングバーバリアン", yomi:"ローリングバーバリアン バーバレル ロリバーバ ロリババ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-barrel-hero.png", cost:2, type:"spell",    role:"転がし＋バーバリアン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-barrel.png"},
+  {name:"ローリングウッド", yomi:"ローリングウッド ログ THE LOG",      cost:2, type:"spell",    role:"広範囲ローリング", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/the-log.png"},
+  {name:"レイジ", yomi:"レイジ",                cost:2, type:"spell",    role:"速度・火力アップ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rage.png"},
+  {name:"ステルスブッシュ", yomi:"ステルスブッシュ ブッシュ 茂み あやしいしげみ しげみ",  cost:2, type:"troop",    role:"茂みに隠れて潜伏", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/suspicious-bush.png"},
+  {name:"ゴブリンの呪い", yomi:"ごぶりんののろい のろい カース ゴブカース",  cost:2, type:"spell",    role:"範囲呪い・倒すとゴブ化", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-curse.png"},
+
+  // 3コスト
+  {name:"ナイト", yomi:"ナイト", evolved:true, hero:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight-ev1.png", imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight-hero.png",                cost:3, type:"troop",    role:"タンク・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight.png"},
+  {name:"アーチャー", yomi:"アーチャー アチャ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archers-ev1.png",            cost:3, type:"troop",    role:"対空・遠距離", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archers.png"},
+  {name:"ガーゴイル", yomi:"ガーゴイル ミニオン ガゴ",            cost:3, type:"troop",    role:"対空・高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minions.png"},
+  {name:"ゴブリンギャング", yomi:"ゴブリンギャング ゴブギャ ギャング",      cost:3, type:"troop",    role:"地上・対空mix", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-gang.png"},
+  {name:"スケルトンバレル", yomi:"スケルトンバレル スケバレ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-barrel-ev1.png",      cost:3, type:"troop",    role:"空中突撃・デス処理", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-barrel.png"},
+  {name:"ロケット砲士", yomi:"ロケット砲士 ファイクラ ファイアクラッカー", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/firecracker-ev1.png",          cost:3, type:"troop",    role:"遠距離・小型処理", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/firecracker.png"},
+  {name:"メガガーゴイル", yomi:"メガガーゴイル メガガゴ メガミニオン メガミニ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-minion-hero.png",        cost:3, type:"troop",    role:"対空高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-minion.png"},
+  {name:"吹き矢ゴブリン", yomi:"ふきやごぶりん ふきや ダートゴブ ダーゴブ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dart-goblin-ev1.png",        cost:3, type:"troop",    role:"超長射程・速射", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dart-goblin.png"},
+  {name:"エリクサーゴーレム", yomi:"エリクサーゴーレム エリゴレ",    cost:3, type:"troop",    role:"タンク・敵にエリ付与", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-golem.png"},
+  {name:"アイスウィザード", yomi:"アイスウィザード アイウィザ アイスウィズ",      cost:3, type:"troop",    role:"全体減速", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-wizard.png"},
+  {name:"プリンセス", yomi:"ぷりんせす プリセス", evolved:true, imgEvolved:"https://cdn.royaleapi.com/static/img/cards-150/princess-ev1.png",            cost:3, type:"troop",    role:"超長射程・範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/princess.png"},
+  {name:"ディガー", yomi:"ディガー マイナー",              cost:3, type:"troop",    role:"建物狙い奇襲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/miner.png"},
+  {name:"スケルトン部隊", yomi:"スケルトン部隊 スケ部 スケアミ スケルトンアーミー", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-army-ev1.png",        cost:3, type:"troop",    role:"防衛・大量展開", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-army.png"},
+  {name:"盾の戦士", yomi:"たてのせんし たて ガーズ",              cost:3, type:"troop",    role:"盾持ち防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/guards.png"},
+  {name:"アサシン ユーノ", yomi:"アサシンユーノ ユーノ バンディット",       cost:3, type:"troop",    role:"ダッシュ高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bandit.png"},
+  {name:"漁師トリトン", yomi:"りょうしとりとん トリトン フィッシャーマン フィッシャ",          cost:3, type:"troop",    role:"引き寄せ・妨害", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fisherman.png"},
+  {name:"ロイヤルゴースト", yomi:"ロイヤルゴースト ロイゴ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-ghost-ev1.png",      cost:3, type:"troop",    role:"透明・奇襲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-ghost.png"},
+  {name:"矢の雨", yomi:"やのあめ アロー 矢",                cost:3, type:"spell",    role:"範囲・対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/arrows.png"},
+  {name:"トルネード", yomi:"トルネード トルネ",            cost:3, type:"spell",    role:"引き寄せ・集中", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tornado.png"},
+  {name:"アースクエイク", yomi:"アースクエイク 地震 じしん",        cost:3, type:"spell",    role:"建物特効ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/earthquake.png"},
+  {name:"ロイヤルデリバリー", yomi:"ろいやるでりばりー",    cost:3, type:"spell",    role:"範囲＋兵士展開", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-delivery.png"},
+  {name:"ゴブリンバレル", yomi:"ゴブリンバレル ゴブバレ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel-ev1.png",        cost:3, type:"spell",    role:"奇襲ゴブリン3体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel.png"},
+  {name:"クローン", yomi:"クローン",              cost:3, type:"spell",    role:"ユニット複製", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/clone.png"},
+  {name:"ヴァイン", yomi:"ヴァイン バイン ツタ つた",              cost:3, type:"spell",    role:"高HP3体を拘束・空→地", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/vines.png"},
+  {name:"ボイド", yomi:"ボイド ぼいど",              cost:3, type:"spell",    role:"少数ほど高ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/void.png"},
+  {name:"ミラー", yomi:"ミラー みらー",              cost:1, type:"spell",    role:"直前カードを+1コスで複製", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mirror.png"},
+  {name:"大砲", yomi:"おおづつ たいほう 大砲 キャノン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon-ev1.png",                  cost:3, type:"building", role:"単体遠距離防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon.png"},
+  {name:"墓石", yomi:"はかいし ぼせき はか いし トゥームストーン", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/tombstone-hero.png",                  cost:3, type:"building", role:"スケルトン生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tombstone.png"},
+
+  // 4コスト
+  {name:"バルキリー", yomi:"バルキリー バルキ バルキリ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/valkyrie-ev1.png",            cost:4, type:"troop",    role:"範囲防衛・タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/valkyrie.png"},
+  {name:"マスケット銃士", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer-ev1.png", yomi:"マスケット銃士 マスケ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer-hero.png",        cost:4, type:"troop",    role:"遠距離高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer.png"},
+  {name:"ミニペッカ", yomi:"ミニペッカ ミニペ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mini-pekka-hero.png",            cost:4, type:"troop",    role:"単体超高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mini-pekka.png"},
+  {name:"ホグライダー", yomi:"ホグライダー ホグ",          cost:4, type:"troop",    role:"建物狙い突撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hog-rider.png"},
+  {name:"攻城バーバリアン", yomi:"こうじょうばーばりあん 攻城 攻城バーバリアン バトルラム", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram-ev1.png",      cost:4, type:"troop",    role:"建物狙い＋バーバリアン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram.png"},
+  {name:"スケルトンドラゴン", yomi:"スケルトンドラゴン スケドラ",    cost:4, type:"troop",    role:"対空範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-dragons.png"},
+  {name:"ザッピー", yomi:"ザッピー ザピ",              cost:4, type:"troop",    role:"感電・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zappies.png"},
+  {name:"ホバリング砲", yomi:"ホバリング砲 ホバリング フライングマシン フラマシ",          cost:4, type:"troop",    role:"対空・超長射程", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/flying-machine.png"},
+  {name:"バトルヒーラー", yomi:"バトルヒーラー ヒーラー バトヒ",        cost:4, type:"troop",    role:"HP回復タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-healer.png"},
+  {name:"ダイナマイトゴブリン", yomi:"ダイナマイトゴブリン ゴブデモ デモリッシャー",cost:4, type:"troop",    role:"建物狙い・デス爆発", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-demolisher.png"},
+  {name:"ダークプリンス", yomi:"ダークプリンス ダクプリ DP",        cost:4, type:"troop",    role:"盾＋範囲チャージ", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/dark-prince-hero.png", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dark-prince.png"},
+  {name:"ハンター", yomi:"ハンター", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hunter-ev1.png",              cost:4, type:"troop",    role:"近距離超高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hunter.png"},
+  {name:"ベビードラゴン", yomi:"ベビードラゴン ベビドラ ベビー", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/baby-dragon-ev1.png",        cost:4, type:"troop",    role:"対空範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/baby-dragon.png"},
+  {name:"エレクトロウィザード", yomi:"エレクトロウィザード エレウィザ エレウィズ EW",  cost:4, type:"troop",    role:"感電・リセット", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-wizard.png"},
+  {name:"インフェルノドラゴン", yomi:"インフェルノドラゴン インドラ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-dragon-ev1.png",  cost:4, type:"troop",    role:"単体集中加熱", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-dragon.png"},
+  {name:"ランバージャック", yomi:"ランバージャック ランバー ランバジャ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lumberjack-ev1.png",      cost:4, type:"troop",    role:"高速＋デスレイジ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lumberjack.png"},
+  {name:"マジックアーチャー", yomi:"マジックアーチャー マジアチャ MA", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/magic-archer-hero.png",    cost:4, type:"troop",    role:"超射程貫通", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/magic-archer.png"},
+  {name:"マザーネクロマンサー", yomi:"マザーネクロマンサー マザネク マザー",  cost:4, type:"troop",    role:"呪い→ホグ変換", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mother-witch.png"},
+  {name:"ダークネクロ", yomi:"ダークネクロ ナイトウィッチ ナイウィチ",          cost:4, type:"troop",    role:"コウモリ生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/night-witch.png"},
+  {name:"ゴールドナイト", champion:true, yomi:"ゴールドナイト ゴルナイ GK",        cost:4, type:"troop",    role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/golden-knight.png"},
+  {name:"スケルトンキング", champion:true, yomi:"スケルトンキング スケキン SK",      cost:4, type:"troop",    role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-king.png"},
+  {name:"マイティディガー", champion:true, yomi:"マイティディガー マイディガ MD",      cost:4, type:"troop",    role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mighty-miner.png"},
+  {name:"フェニックス", yomi:"フェニックス フェニ",          cost:4, type:"troop",    role:"再生・対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/phoenix.png"},
+  {name:"鍛冶屋ジャイアント", yomi:"かじやじゃいあんと かじジャイ ルーンジャイアント",  cost:4, type:"troop",    role:"味方2体にバフ付与", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rune-giant.png"},
+  {name:"ファイアボール", yomi:"ファイアボール ファイボ FB",        cost:4, type:"spell",    role:"中範囲高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fireball.png"},
+  {name:"フリーズ", yomi:"フリーズ",              cost:4, type:"spell",    role:"全停止", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/freeze.png"},
+  {name:"ポイズン", yomi:"ポイズン ポイズ",              cost:4, type:"spell",    role:"持続ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/poison.png"},
+  {name:"ゴブリンの檻", yomi:"ごぶりんのおり おり ケージ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-cage-ev1.png",          cost:4, type:"building", role:"処理後ブロウラー生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-cage.png"},
+  {name:"ゴブリンドリル", yomi:"ゴブリンドリル ドリル", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-drill-ev1.png",        cost:4, type:"building", role:"地中攻撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-drill.png"},
+  {name:"ゴブリンの小屋", yomi:"ごぶりんのこや ゴブ小屋 ゴブこや ハット",        cost:4, type:"building", role:"槍ゴブリン生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-hut.png"},
+  {name:"ボムタワー", yomi:"ボムタワー ボムタワ",            cost:4, type:"building", role:"範囲防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bomb-tower.png"},
+  {name:"テスラ", yomi:"テスラ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tesla-ev1.png",                cost:4, type:"building", role:"感電防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tesla.png"},
+  {name:"迫撃砲", yomi:"はくげきほう 迫撃 モーター モルタル", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mortar-ev1.png",                cost:4, type:"building", role:"超長射程建物狙い", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mortar.png"},
+  {name:"オーブン", yomi:"オーブン かまど 炉", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/furnace-ev1.png",              cost:4, type:"building", role:"ファイアスピリット生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/furnace.png"},
+
+  // 5コスト
+  {name:"バーバリアン", yomi:"バーバリアン ババ バーバリアン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarians-ev1.png",          cost:5, type:"troop",    role:"高体力集団", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarians.png"},
+  {name:"ガーゴイルの群れ", yomi:"ガーゴイルの群れ ガゴ群れ ミニオンホード", evolved:true, imgEvolved:"https://cdn.royaleapi.com/static/img/cards-150/minion-horde-ev1.png",      cost:5, type:"troop",    role:"大量対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minion-horde.png"},
+  {name:"ジャイアント", yomi:"ジャイアント ジャイ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-hero.png",          cost:5, type:"troop",    role:"建物狙いタンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant.png"},
+  {name:"ウィザード", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard-ev1.png", yomi:"ウィザード ウィズ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard-hero.png",            cost:5, type:"troop",    role:"範囲スプラッシュ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard.png"},
+  {name:"エアバルーン", yomi:"エアバルーン バルーン", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/balloon-hero.png",          cost:5, type:"troop",    role:"建物狙い爆撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/balloon.png"},
+  {name:"ネクロマンサー", yomi:"ネクロマンサー ネクロ ウィッチ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/witch-ev1.png",        cost:5, type:"troop",    role:"スケルトン生成＋範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/witch.png"},
+  {name:"ボウラー", yomi:"ボウラー", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/bowler-hero.png",              cost:5, type:"troop",    role:"貫通プッシュ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bowler.png"},
+  {name:"執行人ファルチェ", yomi:"しっこうにんふぁるちぇ ファルチェ エクスキュ エグゼ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/executioner-ev1.png",      cost:5, type:"troop",    role:"貫通往復斧", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/executioner.png"},
+  {name:"60式ムート", yomi:"60式ムート ムート キャノンカート",            cost:5, type:"troop",    role:"遠距離＋盾", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon-cart.png"},
+  {name:"ロイヤルホグ", yomi:"ロイヤルホグ ロイホグ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-hogs-ev1.png",          cost:5, type:"troop",    role:"建物狙い4体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-hogs.png"},
+  {name:"アウトロー", yomi:"アウトロー ラスカルズ",            cost:5, type:"troop",    role:"地空混合群", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rascals.png"},
+  {name:"ライトニングドラゴン", yomi:"ライトニングドラゴン エレドラ 電気ドラゴン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-dragon-ev1.png",  cost:5, type:"troop",    role:"チェーン感電", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-dragon.png"},
+  {name:"プリンス", yomi:"プリンス",              cost:5, type:"troop",    role:"チャージ高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/prince.png"},
+  {name:"ラムライダー", yomi:"ラムライダー ラム",          cost:5, type:"troop",    role:"建物狙い＋スネア", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ram-rider.png"},
+  {name:"リトルプリンス", champion:true, yomi:"リトルプリンス リトプリ LP", cost:3, type:"troop", role:"チャンピオン・盾持ち", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/little-prince.png"},
+  {name:"モンク", champion:true, yomi:"モンク もんく", cost:5, type:"troop", role:"チャンピオン・攻防一体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/monk.png"},
+  {name:"ゴブリンシュタイン", champion:true, yomi:"ゴブリンシュタイン ゴブリンスタイン ゴブシュタ", cost:5, type:"troop", role:"チャンピオン・博士＋モンスター", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblinstein.png"},
+  {name:"ボスアサシン", champion:true, yomi:"ボスアサシン ボスバンディット ボスバン", cost:6, type:"troop", role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"},
+  {name:"アーチャークイーン", champion:true, yomi:"アーチャークイーン AQ アチャクイ クイーン",    cost:5, type:"troop",    role:"チャンピオン・高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archer-queen.png"},
+  {name:"ゴブリンマシン", yomi:"ゴブリンマシン ゴブマシン マシン",    cost:5, type:"troop",    role:"ロケット移動砲台", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-machine.png"},
+  {name:"スケルトンラッシュ", yomi:"スケルトンラッシュ グレイブヤード グレヤ 墓場",    cost:5, type:"spell",    role:"スケルトン大量召喚", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/graveyard.png"},
+  {name:"インフェルノタワー", yomi:"インフェルノタワー インタワ IT",    cost:5, type:"building", role:"単体集中加熱", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-tower.png"},
+
+  // 6コスト
+  {name:"ロイヤルジャイアント", yomi:"ロイヤルジャイアント ロイジャイ RG", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-giant-ev1.png",  cost:6, type:"troop",    role:"建物狙い超射程", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-giant.png"},
+  {name:"エリートバーバリアン", yomi:"エリートバーバリアン エリババ EB",  cost:6, type:"troop",    role:"高速高火力2体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elite-barbarians.png"},
+  {name:"巨大スケルトン", yomi:"きょだいすけるとん ジャイスケ 巨大スケルトン",        cost:6, type:"troop",    role:"タンク＋デス爆弾", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-skeleton.png"},
+  {name:"ゴブジャイアント", yomi:"ゴブジャイアント ゴブジャイ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant-ev1.png",      cost:6, type:"troop",    role:"タンク＋槍ゴブリン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant.png"},
+  {name:"スパーキー", yomi:"スパーキー スパキ",            cost:6, type:"troop",    role:"蓄電超高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/sparky.png"},
+  {name:"スピリットエンプレス", yomi:"スピリットエンプレス エンプレス せいれい",            cost:6, type:"troop",    role:"3コス陸/6コス空の二形態", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/spirit-empress.png"},
+  {name:"ロケット", yomi:"ロケット",              cost:6, type:"spell",    role:"超高火力単発", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rocket.png"},
+  {name:"ライトニング", yomi:"ライトニング 雷",          cost:6, type:"spell",    role:"3体感電高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lightning.png"},
+  {name:"エリクサーポンプ", yomi:"えりくさーぽんぷ ポンプ エリポン",      cost:6, type:"building", role:"エリクサー生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-collector.png"},
+  {name:"バーバリアンの小屋", yomi:"ばーばりあんのこや ババこや バーバハット",    cost:6, type:"building", role:"バーバリアン生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-hut.png"},
+  {name:"巨大クロスボウ", yomi:"きょだいくろすぼう Xボウ クロスボウ",        cost:6, type:"building", role:"超長射程建物狙い", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/x-bow.png"},
+
+  // 7コスト
+  {name:"ペッカ", yomi:"ペッカ PEKKA", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/pekka-ev1.png",                cost:7, type:"troop",    role:"単体超高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/pekka.png"},
+  {name:"ラヴァハウンド", yomi:"ラヴァハウンド ラヴァ ラバ",        cost:7, type:"troop",    role:"空中タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lava-hound.png"},
+  {name:"エレクトロジャイアント", yomi:"エレクトロジャイアント エレジャイ EG",cost:7, type:"troop",    role:"感電反射タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-giant.png"},
+  {name:"メガナイト", yomi:"メガナイト メガナイ MK", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight-ev1.png",            cost:7, type:"troop",    role:"スポーン＋ジャンプ範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight.png"},
+  {name:"見習い親衛隊", yomi:"みならいしんえいたい 親衛隊 ロイリク リクルート", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits-ev1.png",          cost:7, type:"troop",    role:"壁役6体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits.png"},
+
+  // 8・9コスト
+  {name:"ゴーレム", yomi:"ゴーレム ゴレ",              cost:8, type:"troop",    role:"最大タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/golem.png"},
+  {name:"三銃士", yomi:"さんじゅうし 三銃士 スリーマスケット",                cost:9, type:"troop",    role:"超高火力3体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/three-musketeers.png"},
+];
+// =============================================
+
+let deck = [null,null,null,null,null,null,null,null];
+let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
+let activeType = 'all';
+let activeCosts = new Set();
+let favSort = false; // ❤トグル：ONでお気に入りを先頭に並べ替え
+
+function saveFavorites() {
+  try { localStorage.setItem('cr_favorites', JSON.stringify(favorites)); } catch(e) {}
+}
+
+function isFav(name) { return favorites.includes(name); }
+
+function toggleFav(name, e) {
+  e.stopPropagation();
+  if (isFav(name)) { openFavRemoveDialog(name); return; } // ミスタップ対策：外す時は確認
+  favorites.push(name);
+  saveFavorites();
+  render();
+}
+
+// お気に入り解除の確認ダイアログ
+function openFavRemoveDialog(name) {
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">「${name}」をお気に入りから外す？</div>
+    <div class="swap-options">
+      <button class="btn swap-remove-btn">外す</button>
+      <button class="btn btn-ghost swap-keep-btn">キャンセル</button>
+    </div>
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('.swap-keep-btn').onclick = () => ov.remove();
+  ov.querySelector('.swap-remove-btn').onclick = () => {
+    favorites = favorites.filter(f => f !== name);
+    saveFavorites();
+    ov.remove();
+    render();
+  };
+  document.body.appendChild(ov);
+}
+
+function init() {
+  const cf = document.getElementById('costFilters');
+  [1,2,3,4,5,6,7,8,9].forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'cfbtn'; b.dataset.c = c; b.textContent = c; b.title = c + 'コスト';
+    b.onclick = () => { b.classList.toggle('active'); activeCosts.has(c) ? activeCosts.delete(c) : activeCosts.add(c); render(); };
+    cf.appendChild(b);
+  });
+
+  document.querySelectorAll('.ttab').forEach(t => {
+    t.onclick = () => {
+      if (t.dataset.type === 'fav') {
+        // ❤はオンオフトグル（タイプタブとは独立）
+        favSort = !favSort;
+        t.classList.toggle('active', favSort);
+        render();
+        return;
+      }
+      document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      activeType = t.dataset.type;
+      render();
+    };
+  });
+
+  const cardListEl = document.getElementById('cardList');
+  cardListEl.addEventListener('dragover', e => e.preventDefault());
+  cardListEl.addEventListener('drop', e => {
+    e.preventDefault();
+    if (dragSrcIdx !== null) {
+      deck[dragSrcIdx] = null;
+      dragSrcIdx = null;
+      renderDeck(); render();
+    }
+  });
+  const searchEl = document.getElementById('search');
+  const clearBtn2 = document.getElementById('searchClear');
+  searchEl.oninput = () => {
+    clearBtn2.classList.toggle('visible', searchEl.value.length > 0);
+    searchEl.classList.toggle('has-value', searchEl.value.length > 0);
+    render();
+  };
+  clearBtn2.onclick = () => {
+    searchEl.value = '';
+    clearBtn2.classList.remove('visible');
+    searchEl.classList.remove('has-value');
+    searchEl.focus();
+    render();
+  };
+  document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
+  document.getElementById('copyBtn').onclick = copyDeck;
+
+  render();
+  renderDeck();
+  initTouchDnD();
+}
+
+// ひらがな→カタカナ変換（検索用）
+function toKatakana(str) {
+  return str.replace(/[ぁ-ゖ]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+}
+
+function getFiltered() {
+  const raw = document.getElementById('search').value;
+  const q = toKatakana(raw.toLowerCase());
+  let res = CARDS.filter(c => {
+    if (activeType !== 'all' && c.type !== activeType) return false;
+    if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
+    if (q) {
+      const nameMatch = toKatakana(c.name.toLowerCase()).includes(q);
+      const yomiMatch = c.yomi && toKatakana(c.yomi.toLowerCase()).includes(q);
+      if (!nameMatch && !yomiMatch) return false;
+    }
+    return true;
+  });
+  if (favSort) {
+    // お気に入りを先頭に（元の並び順は維持）
+    res = res.filter(c => isFav(c.name)).concat(res.filter(c => !isFav(c.name)));
+  }
+  return res;
+}
+
+function render() {
+  const filtered = getFiltered();
+  document.getElementById('countInfo').textContent = filtered.length + ' / ' + CARDS.length + ' 枚';
+  const list = document.getElementById('cardList');
+  list.innerHTML = '';
+  filtered.forEach(c => {
+    const inDeck = deck.some(d => d && d.name === c.name);
+    const faved = isFav(c.name);
+    const div = document.createElement('div');
+    div.className = 'card' + (inDeck ? ' in-deck' : '');
+    const tagClass = c.champion ? 'tag-champion' : c.hero ? 'tag-hero' : 'tag-' + c.type;
+    const tagText = c.champion ? 'チャンピオン' : c.hero ? 'ヒーロー' : c.type === 'troop' ? 'ユニット' : c.type === 'spell' ? '呪文' : '建物';
+    const heartSvg = `<svg width="20" height="19" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+    const imgHtml = c.img ? `<img class="card-img" src="${c.img}" alt="" loading="lazy">` : '';
+    div.innerHTML = `
+      ${imgHtml}
+      <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">${heartSvg}</button>
+      <div class="card-top">
+        <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
+        <div class="card-name">${c.name}</div>
+      </div>
+      <span class="type-tag ${tagClass}">${tagText}</span>
+      <div class="card-bottom">
+        <div class="card-role">${c.role}</div>
+      </div>`;
+    div.draggable = true;
+    div.addEventListener('dragstart', e => {
+      if (deck.some(d => d && d.name === c.name)) { e.preventDefault(); return; }
+      dragSrcCard = c;
+      dragSrcIdx = null;
+      div.style.opacity = '0.4';
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    div.addEventListener('dragend', e => { div.style.opacity = ''; dragSrcCard = null; });
+    div.onclick = () => toggleDeck(c);
+    list.appendChild(div);
+  });
+}
+
+
+// ヒーロー配置ルール：idx1（スロット2）かidx2（スロット3）のみ
+function championCanGoTo(slotIdx) { return slotIdx === 1 || slotIdx === 2; }
+
+// ヒーローの優先配置先を返す（スロット2→スロット3の順）
+function championTargetSlot() {
+  if (deck[1] === null) return 1;
+  if (deck[2] === null) return 2;
+  return -1;
+}
+
+function addToDeck(card) {
+  if (deck.some(d => d && d.name === card.name)) return;
+  if (card.champion) {
+    if (deck.some(d => d && d.champion)) { showToast('⚠ チャンピオンは1枚まで'); return; }
+    const idx = championTargetSlot();
+    if (idx === -1) { openChampSwapDialog(card); return; }
+    deck[idx] = card;
+  } else {
+    // 通常カード：スロット2・3以外の空きに入れる（ただし空いてれば入れる）
+    const emptyIdx = deck.findIndex((d, i) => d === null);
+    if (emptyIdx === -1) { showToast('⚠ デッキは8枚まで'); return; }
+    deck[emptyIdx] = card;
+  }
+  renderDeck(); render();
+}
+
+// チャンピオン追加時、スロット2・3が非チャンピオンで埋まっている場合の入れ替えダイアログ
+function openChampSwapDialog(card) {
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  const opts = [1, 2].map(i => {
+    const d = deck[i];
+    return `<div class="swap-opt" data-idx="${i}">
+      ${d.img ? `<img src="${d.img}" alt="">` : ''}
+      <div class="swap-opt-name">${d.name}</div>
+      <div class="swap-opt-slot">スロット${i + 1}</div>
+    </div>`;
+  }).join('');
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">${card.name} をどちらと入れ替える？</div>
+    <div class="swap-options">${opts}</div>
+    <button class="btn btn-ghost swap-cancel">キャンセル</button>
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('.swap-cancel').onclick = () => ov.remove();
+  ov.querySelectorAll('.swap-opt').forEach(o => {
+    o.onclick = () => {
+      const i = +o.dataset.idx;
+      const displaced = deck[i];
+      deck[i] = card;
+      const empty = deck.findIndex(d => d === null);
+      if (empty >= 0) {
+        deck[empty] = displaced;
+        showToast(displaced.name + ' をスロット' + (empty + 1) + 'へ移動');
+      } else {
+        showToast(displaced.name + ' をデッキから外しました');
+      }
+      ov.remove();
+      renderDeck(); render();
+    };
+  });
+  document.body.appendChild(ov);
+}
+
+function removeFromDeck(card) {
+  const idx = deck.findIndex(d => d && d.name === card.name);
+  if (idx >= 0) { deck[idx] = null; renderDeck(); render(); }
+}
+
+
+let dragSrcIdx = null;
+let dragSrcCard = null;
+
+function onDragStart(e) {
+  dragSrcIdx = parseInt(this.dataset.idx);
+  dragSrcCard = null;
+  this.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragEnd(e) {
+  document.querySelectorAll('.slot').forEach(s => {
+    s.classList.remove('dragging', 'drag-over');
+  });
+  // カード選択ゾーン上でドロップ終了→キャンセル
+  if (dragSrcIdx !== null) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el && el.closest('#cardList')) {
+      deck[dragSrcIdx] = null;
+      dragSrcIdx = null;
+      renderDeck(); render();
+    }
+  }
+  dragSrcIdx = null;
+  dragSrcCard = null;
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  this.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  this.classList.remove('drag-over');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  this.classList.remove('drag-over');
+  const destIdx = parseInt(this.dataset.idx);
+  if (dragSrcCard) {
+    const c = dragSrcCard;
+    dragSrcCard = null;
+    if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); return; }
+    if (c.champion && deck.some(d => d && d.champion)) { showToast('⚠ チャンピオンは1枚まで'); return; }
+    if (c.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); return; }
+    deck[destIdx] = c;
+    renderDeck(); render();
+  } else if (dragSrcIdx !== null && dragSrcIdx !== destIdx) {
+    const movingCard = deck[dragSrcIdx];
+    const targetCard = deck[destIdx];
+    // チャンピオンは2・3スロット以外に移動不可
+    if (movingCard && movingCard.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); return; }
+    if (targetCard && targetCard.champion && !championCanGoTo(dragSrcIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); return; }
+    const tmp = deck[destIdx];
+    deck[destIdx] = deck[dragSrcIdx];
+    deck[dragSrcIdx] = tmp;
+    dragSrcIdx = null;
+    renderDeck(); render();
+  }
+}
+
+
+// タッチD&D（モバイル・デッキスロット専用）
+let touchSrcIdx = null;
+let touchClone = null;
+let touchSrcCard = null;
+let touchOffsetX = 0;
+let touchOffsetY = 0;
+
+function createGhost(imgSrc, name, cost, size) {
+  const ghost = document.createElement('div');
+  ghost.style.cssText = [
+    'position:fixed',
+    'pointer-events:none',
+    'z-index:9999',
+    'width:' + size + 'px',
+    'height:' + size + 'px',
+    'border-radius:10px',
+    'background:#1e2230',
+    'border:2px solid rgba(58,142,240,0.8)',
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'gap:4px',
+    'opacity:0.85',
+    'box-shadow:0 4px 20px rgba(0,0,0,0.5)',
+  ].join(';');
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.style.cssText = 'width:60%;height:60%;object-fit:contain;';
+    ghost.appendChild(img);
+  }
+  const label = document.createElement('div');
+  label.textContent = name;
+  label.style.cssText = 'font-size:9px;color:#e8eaf0;text-align:center;padding:0 4px;line-height:1.2;font-family:sans-serif;';
+  ghost.appendChild(label);
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function moveGhost(ghost, x, y) {
+  const w = ghost.offsetWidth;
+  const h = ghost.offsetHeight;
+  ghost.style.left = (x - w/2) + 'px';
+  ghost.style.top  = (y - h/2 - 20) + 'px';
+}
+
+let longPressTimer = null;
+let touchStartX = 0;
+let touchStartY = 0;
+const LONG_PRESS_MS = 70;       // カード選択ゾーンの長押し判定
+const LONG_PRESS_DECK_MS = 30;  // デッキゾーンは速めの応答
+const DRAG_THRESHOLD = 10;
+let isDragging = false;
+
+function startDrag(srcCard, srcIdx, imgSrc, name, cost, x, y, srcEl) {
+  isDragging = true;
+  touchSrcCard = srcCard;
+  touchSrcIdx = srcIdx;
+  // ゴーストを作成して body に追加してから位置を設定
+  touchClone = createGhost(imgSrc, name, cost, 90);
+  // 次フレームで offsetWidth が確定してから位置設定
+  requestAnimationFrame(() => {
+    moveGhost(touchClone, x, y);
+  });
+  if (srcEl) srcEl.style.opacity = '0.3';
+}
+
+function cancelDrag() {
+  clearTimeout(longPressTimer);
+  longPressTimer = null;
+  isDragging = false;
+  touchSrcCard = null;
+  touchSrcIdx = null;
+  if (touchClone) { touchClone.remove(); touchClone = null; }
+  document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
+  document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
+}
+
+function initTouchDnD() {
+  // カード選択ゾーン
+  document.getElementById('cardList').addEventListener('touchstart', e => {
+    const card = e.target.closest('.card');
+    if (!card || card.classList.contains('in-deck')) return;
+    const cardName = card.querySelector('.card-name').textContent.trim();
+    const srcCard = CARDS.find(c => c.name === cardName);
+    if (!srcCard) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY;
+    longPressTimer = setTimeout(() => {
+      startDrag(srcCard, null, srcCard.img, srcCard.name, srcCard.cost, touchStartX, touchStartY, card);
+    }, LONG_PRESS_MS);
+  }, {passive:true});
+
+  // デッキスロット
+  document.getElementById('deckSlots').addEventListener('touchstart', e => {
+    const slot = e.target.closest('.slot.filled');
+    if (!slot) return;
+    const idx = parseInt(slot.dataset.idx);
+    const c = deck[idx];
+    if (!c) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX; touchStartY = t.clientY;
+    longPressTimer = setTimeout(() => {
+      startDrag(null, idx, c.img, c.name, c.cost, touchStartX, touchStartY, slot);
+    }, LONG_PRESS_DECK_MS);
+  }, {passive:true});
+
+  document.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    // 長押し前に大きく動いたらキャンセル（スクロール優先）
+    if (!isDragging) {
+      const dx = Math.abs(t.clientX - touchStartX);
+      const dy = Math.abs(t.clientY - touchStartY);
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+      return;
+    }
+    e.preventDefault();
+    if (touchClone) moveGhost(touchClone, t.clientX, t.clientY);
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('.slot');
+    if (target) target.classList.add('drag-over');
+  }, {passive:false});
+
+  document.addEventListener('touchend', e => {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    if (!isDragging) return;
+    const t = e.changedTouches[0];
+    if (touchClone) { touchClone.remove(); touchClone = null; }
+    document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
+    document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const target = el && el.closest('.slot');
+    const onCardList = el && el.closest('#cardList');
+    if (touchSrcIdx !== null && onCardList) {
+      // デッキ→カード選択ゾーンへドロップ＝キャンセル（削除）
+      deck[touchSrcIdx] = null;
+      renderDeck(); render();
+    } else if (target) {
+      const destIdx = parseInt(target.dataset.idx);
+      if (touchSrcCard) {
+        const c = touchSrcCard;
+        if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); }
+        else if (c.champion && deck.some(d => d && d.champion)) { showToast('⚠ チャンピオンは1枚まで'); }
+        else if (c.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
+        else { deck[destIdx] = c; renderDeck(); render(); }
+      } else if (touchSrcIdx !== null && destIdx !== touchSrcIdx) {
+        const movingCard = deck[touchSrcIdx];
+        const targetCard = deck[destIdx];
+        if (movingCard && movingCard.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
+        else if (targetCard && targetCard.champion && !championCanGoTo(touchSrcIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
+        else {
+          const tmp = deck[destIdx];
+          deck[destIdx] = deck[touchSrcIdx];
+          deck[touchSrcIdx] = tmp;
+          renderDeck(); render();
+        }
+      }
+    }
+    isDragging = false;
+    touchSrcCard = null;
+    touchSrcIdx = null;
+  }, {passive:true});
+
+  document.addEventListener('touchcancel', cancelDrag, {passive:true});
+}
+function toggleSlot2Mode(name, e) {
+  e.stopPropagation();
+  slot2Mode[name] = (slot2Mode[name] === 'hero') ? 'evolved' : 'hero';
+  renderDeck();
+}
+
+function toggleDeck(card) { addToDeck(card); }
+
+
+// スロットタイプ定義（0始まり、コの字順）
+// idx0=進化枠, idx1=ヒーロー/チャンピオン枠, idx2=ワイルド枠, idx3-7=通常
+// スロット2（idx=2）の選択モード（両方対応カードのみ有効）
+let slot2Mode = {}; // key: カード名, value: "evolved" | "hero"
+
+const SLOT_TYPE = ['evolved','hero','wild','normal','normal','normal','normal','normal'];
+
+// どのスロットにも全カード置ける（制限なし）
+function canPlace(card, slotIdx) { return true; }
+
+// スロット位置とカード種類でモードを決定
+function slotMode(card, slotIdx) {
+  const st = SLOT_TYPE[slotIdx];
+  if (st === 'evolved' && card.evolved) return 'evolved';
+  if (st === 'hero'    && card.hero)    return 'hero';
+  if (st === 'wild') {
+    // 両方対応カードはslot2Modeの選択状態を参照（デフォルトはevolved）
+    if (card.evolved && card.hero) return slot2Mode[card.name] || 'evolved';
+    if (card.evolved) return 'evolved';
+    if (card.hero)    return 'hero';
+  }
+  return 'normal';
+}
+
+const COST_COLORS = {1:'#4caf50',2:'#26c6a0',3:'#3a8ef0',4:'#e8a020',5:'#8b5cf6',6:'#e05050',7:'#c0781a',8:'#888',9:'#9090d0'};
+
+function renderDeck() {
+  const slots = document.getElementById('deckSlots');
+  slots.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const div = document.createElement('div');
+    const c = deck[i];
+    const st = SLOT_TYPE[i];
+    const slotClass = st === 'evolved' ? ' slot-evolved' : st === 'hero' ? ' slot-hero' : st === 'wild' ? ' slot-wild' : '';
+    if (c) {
+      const mode = slotMode(c, i);
+      const modeClass = mode === 'evolved' ? ' slot-evolved' : mode === 'hero' ? ' slot-hero' : '';
+      div.className = 'slot filled' + modeClass;
+      div.title = 'クリックで外す';
+      div.draggable = true;
+      div.dataset.idx = i;
+      const modeBadge = mode === 'evolved' ? '<span class="slot-badge evolved-badge">進化</span>'
+                      : mode === 'hero'    ? '<span class="slot-badge hero-badge">英雄</span>' : '';
+      const slotImgSrc = mode === 'evolved' && c.imgEvolved ? c.imgEvolved
+                       : mode === 'hero'    && c.imgHero    ? c.imgHero
+                       : c.img;
+      const slotImg = slotImgSrc
+        ? `<div class="slot-img-wrap"><img class="slot-img" src="${slotImgSrc}" alt="" loading="lazy"></div>`
+        : `<div class="slot-img-wrap"></div>`;
+      // wildスロット（idx=2）かつ進化・ヒーロー両方対応カード→切り替えボタン
+      const showToggle = SLOT_TYPE[i] === 'wild' && c.evolved && c.hero;
+      const toggleBtn = showToggle ? `<button class="mode-toggle-btn" onclick="toggleSlot2Mode('${c.name}', event)">
+        ${mode === 'evolved' ? '⚡進化' : '👑英雄'}
+      </button>` : '';
+      div.innerHTML = `${slotImg}
+        <div class="slot-info">
+          <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
+          <span class="slot-name">${c.name}${modeBadge}</span>
+        </div>
+        ${toggleBtn}`;
+      div.onclick = () => removeFromDeck(c);
+      div.addEventListener('dragstart', onDragStart);
+      div.addEventListener('dragend',   onDragEnd);
+      div.addEventListener('dragover',  onDragOver);
+      div.addEventListener('dragleave', onDragLeave);
+      div.addEventListener('drop',      onDrop);
+    } else {
+      div.className = 'slot' + slotClass;
+      div.dataset.idx = i;
+      const emptyContent = st === 'evolved' ? '<span class="slot-empty-icon diamond-evolved" title="進化"></span>'
+                         : st === 'hero'    ? '<span class="slot-empty-icon diamond-hero" title="ヒーロー/チャンピオン"></span>'
+                         : st === 'wild'    ? '<span class="slot-empty-icon diamond-wild" title="進化/ヒーロー"></span>'
+                         : '<span class="slot-empty-text">+</span>';
+      div.innerHTML = `<div class="slot-empty-center">${emptyContent}</div>`;
+      div.addEventListener('dragover',  onDragOver);
+      div.addEventListener('dragleave', onDragLeave);
+      div.addEventListener('drop',      onDrop);
+    }
+    slots.appendChild(div);
+  }
+
+  document.getElementById('deckCount').textContent = deck.filter(d=>d).length + '/8';
+  if (deck.filter(d=>d).length > 0) {
+    const filled = deck.filter(d => d);
+    const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length);
+    document.getElementById('avgVal').textContent = avg.toFixed(2);
+    const cnt = deck.filter(d=>d).length;
+    document.getElementById('avgSub').textContent = cnt < 8 ? '（' + cnt + '枚）' : '';
+  } else {
+    document.getElementById('avgVal').textContent = '—';
+    document.getElementById('avgSub').textContent = '';
+  }
+
+  const bar = document.getElementById('costBar');
+  bar.innerHTML = '';
+  if (deck.filter(d=>d).length > 0) {
+    const counts = {};
+    deck.filter(d=>d).forEach(c => counts[c.cost] = (counts[c.cost]||0) + 1);
+    Object.entries(counts).sort((a,b) => +a[0]-+b[0]).forEach(([cost, cnt]) => {
+      const seg = document.createElement('div');
+      seg.className = 'bar-seg'; seg.style.flex = cnt;
+      seg.style.background = COST_COLORS[cost] || '#888';
+      seg.title = cost + 'コスト × ' + cnt;
+      bar.appendChild(seg);
+    });
+  }
+}
+
+function copyDeck() {
+  const filled = deck.filter(d => d);
+  if (filled.length === 0) { showToast('デッキが空です'); return; }
+  const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length).toFixed(2);
+  const text = '【クラロワ デッキ】平均コスト ' + avg + '\n' +
+    filled.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
+  navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+init();
+
+// iOS対策：ページ自体がパンして上部（平均コスト）が隠れたら即座に戻す
+if (window.matchMedia('(max-width: 720px)').matches) {
+  window.addEventListener('scroll', () => {
+    if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+  }, { passive: true });
+  window.addEventListener('pageshow', () => window.scrollTo(0, 0));
+}
+</script>
+</body>
+</html>
