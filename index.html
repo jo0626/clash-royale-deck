@@ -215,7 +215,16 @@
     background: var(--surface2); border: 1px dashed var(--border);
     border-radius: 6px; height: 44px; display: flex;
     align-items: center; padding: 0 10px; gap: 8px; transition: all 0.15s;
+    position: relative; overflow: hidden;
   }
+  .slot-img {
+    position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+    width: 52px; height: 52px; object-fit: contain;
+    opacity: 0.55; pointer-events: none;
+    filter: saturate(0.8);
+    transition: opacity 0.12s;
+  }
+  .slot.filled:hover .slot-img { opacity: 0.3; }
   .slot.filled { border-style: solid; border-color: var(--border-hi); background: var(--surface); cursor: pointer; }
   .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); }
   .slot-num { font-size: 10px; color: var(--text-dim); width: 14px; flex-shrink: 0; }
@@ -271,6 +280,7 @@
       justify-content: center; padding: 4px 2px; gap: 2px;
     }
     .slot-num { display: none; }
+    .slot-img { width: 40px; height: 40px; right: -4px; }
     .slot-name { font-size: 10px; text-align: center; line-height: 1.2; }
     .slot-type { font-size: 8px; }
     .slot-empty-text { font-size: 10px; }
@@ -595,7 +605,8 @@ function renderDeck() {
       div.className = 'slot filled'; div.title = 'クリックで外す';
       const typeLabel = c.champion ? 'CHAMP' : c.type === 'troop' ? 'UNIT' : c.type === 'spell' ? 'SPELL' : 'BLDG';
       const color = COST_COLORS[c.cost] || '#888';
-      div.innerHTML = `<span class="slot-num">${i+1}</span>
+      const slotImg = c.img ? `<img class="slot-img" src="${c.img}" alt="" loading="lazy">` : '';
+      div.innerHTML = `${slotImg}<span class="slot-num">${i+1}</span>
         <div class="cost-pip pip-${Math.min(c.cost,9)}" style="flex-shrink:0">${c.cost}</div>
         <span class="slot-name">${c.name}</span>
         <span class="slot-type" style="color:${color};opacity:0.7">${typeLabel}</span>`;
