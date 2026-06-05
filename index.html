@@ -149,6 +149,7 @@
   /* card list */
   .card-list {
     overflow-y: auto; flex: 1; padding: 10px 12px;
+    overscroll-behavior-y: contain;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 6px; align-content: start;
   }
@@ -492,8 +493,8 @@
     color: #ffffff;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
   }
-  /* PC版：card側フッターも表示 */
-  .footer-card { display: block; }
+  /* PC版：card側フッターも表示・常に最下部 */
+  .footer-card { display: block; margin-top: auto; flex-shrink: 0; }
   /* モバイル版：deck側フッターは非表示 */
   @media (max-width: 720px) {
     .footer-deck { display: none; }
