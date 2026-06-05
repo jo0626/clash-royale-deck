@@ -272,6 +272,14 @@
   }
   .slot.slot-hero { border-color: #e8a020; background: rgba(232,160,32,0.06); }
   .slot.slot-evolved { border-color: #8b5cf6; background: rgba(139,92,246,0.06); }
+  .slot.slot-wild { border-color: #26c6a0; background: rgba(38,198,160,0.06); }
+  .slot-badge {
+    display: inline-block; font-size: 8px; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px; margin-left: 3px;
+    vertical-align: middle; line-height: 1.4;
+  }
+  .evolved-badge { background: rgba(139,92,246,0.3); color: #c4a0ff; }
+  .hero-badge { background: rgba(232,160,32,0.3); color: #ffd080; }
   .slot.dragging { opacity: 0.3; border-style: dashed; }
   .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); transform: scale(1.03); }
   .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); }
@@ -696,11 +704,13 @@ function render() {
 
 function addToDeck(card) {
   if (deck.some(d => d && d.name === card.name)) return;
-  const emptyIdx = deck.indexOf(null);
-  if (emptyIdx === -1) { showToast('⚠ デッキは8枚まで'); return; }
-  if (card.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); return; }
-  if (card.evolved && deck.filter(d => d && d.evolved && d.name === card.name).length >= 1) { showToast('⚠ 同じカードの限界突破は1枚まで'); return; }
-  deck[emptyIdx] = card;
+  // 置けるスロットを探す（スロットタイプと一致するもの）
+  let targetIdx = -1;
+  for (let i = 0; i < 8; i++) {
+    if (deck[i] === null && canPlace(card, i)) { targetIdx = i; break; }
+  }
+  if (targetIdx === -1) { showToast('⚠ 対応するスロットが空いていません'); return; }
+  deck[targetIdx] = card;
   renderDeck(); render();
 }
 
@@ -752,11 +762,10 @@ function onDrop(e) {
   this.classList.remove('drag-over');
   const destIdx = parseInt(this.dataset.idx);
   if (dragSrcCard) {
-    // カード選択ゾーンからドロップ
     const c = dragSrcCard;
     dragSrcCard = null;
     if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); return; }
-    if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); return; }
+    if (!canPlace(c, destIdx)) { showToast('⚠ このスロットには置けません'); return; }
     deck[destIdx] = c;
     renderDeck(); render();
   } else if (dragSrcIdx !== null && dragSrcIdx !== destIdx) {
@@ -917,7 +926,7 @@ function initTouchDnD() {
       if (touchSrcCard) {
         const c = touchSrcCard;
         if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); }
-        else if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); }
+        else if (!canPlace(c, destIdx)) { showToast('⚠ このスロットには置けません'); }
         else { deck[destIdx] = c; renderDeck(); render(); }
       } else if (touchSrcIdx !== null && destIdx !== touchSrcIdx) {
         const tmp = deck[destIdx];
@@ -935,6 +944,27 @@ function initTouchDnD() {
 }
 function toggleDeck(card) { addToDeck(card); }
 
+
+// スロットタイプ定義
+// idx 0=通常 1=限界突破 2=ヒーロー/チャンピオン 3=限界突破orヒーロー/チャンピオン 4-7=通常
+const SLOT_TYPE = ['normal','evolved','hero','wild','normal','normal','normal','normal'];
+// スロットに置けるか判定
+function canPlace(card, slotIdx) {
+  const st = SLOT_TYPE[slotIdx];
+  if (st === 'normal') return !card.evolved && !card.hero;
+  if (st === 'evolved') return !!card.evolved;
+  if (st === 'hero') return !!card.hero;
+  if (st === 'wild') return !!card.evolved || !!card.hero;
+  return true;
+}
+// スロット位置でのカードの実際のモード
+function slotMode(card, slotIdx) {
+  const st = SLOT_TYPE[slotIdx];
+  if ((st === 'evolved' || st === 'wild') && card.evolved) return 'evolved';
+  if ((st === 'hero' || st === 'wild') && card.hero) return 'hero';
+  return 'normal';
+}
+
 const COST_COLORS = {1:'#4caf50',2:'#26c6a0',3:'#3a8ef0',4:'#e8a020',5:'#8b5cf6',6:'#e05050',7:'#c0781a',8:'#888',9:'#9090d0'};
 
 function renderDeck() {
@@ -943,18 +973,24 @@ function renderDeck() {
   for (let i = 0; i < 8; i++) {
     const div = document.createElement('div');
     const c = deck[i];
+    const st = SLOT_TYPE[i];
+    const slotClass = st === 'evolved' ? ' slot-evolved' : st === 'hero' ? ' slot-hero' : st === 'wild' ? ' slot-wild' : '';
     if (c) {
-      div.className = 'slot filled' + (c.hero ? ' slot-hero' : c.evolved ? ' slot-evolved' : '');
+      const mode = slotMode(c, i);
+      const modeClass = mode === 'evolved' ? ' slot-evolved' : mode === 'hero' ? ' slot-hero' : '';
+      div.className = 'slot filled' + modeClass;
       div.title = 'クリックで外す';
       div.draggable = true;
       div.dataset.idx = i;
+      const modeBadge = mode === 'evolved' ? '<span class="slot-badge evolved-badge">進化</span>'
+                      : mode === 'hero'    ? '<span class="slot-badge hero-badge">英雄</span>' : '';
       const slotImg = c.img
         ? `<div class="slot-img-wrap"><img class="slot-img" src="${c.img}" alt="" loading="lazy"></div>`
         : `<div class="slot-img-wrap"></div>`;
       div.innerHTML = `${slotImg}
         <div class="slot-info">
           <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
-          <span class="slot-name">${c.name}</span>
+          <span class="slot-name">${c.name}${modeBadge}</span>
         </div>`;
       div.onclick = () => removeFromDeck(c);
       div.addEventListener('dragstart', onDragStart);
@@ -963,9 +999,10 @@ function renderDeck() {
       div.addEventListener('dragleave', onDragLeave);
       div.addEventListener('drop',      onDrop);
     } else {
-      div.className = 'slot';
+      div.className = 'slot' + slotClass;
       div.dataset.idx = i;
-      div.innerHTML = `<span class="slot-empty-text">+</span>`;
+      const emptyLabel = st === 'evolved' ? '進化' : st === 'hero' ? '英雄' : st === 'wild' ? '進化/英雄' : '+';
+      div.innerHTML = `<span class="slot-empty-text">${emptyLabel}</span>`;
       div.addEventListener('dragover',  onDragOver);
       div.addEventListener('dragleave', onDragLeave);
       div.addEventListener('drop',      onDrop);
