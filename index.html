@@ -24,7 +24,8 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { font-size: 14px; }
+  html { font-size: 14px; touch-action: manipulation; } /* ダブルタップ拡大無効（ピンチ拡大は可） */
+  body { touch-action: manipulation; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -96,7 +97,7 @@
     opacity: 0; pointer-events: none; transition: opacity 0.15s;
   }
   .search-clear.visible { opacity: 0.6; pointer-events: auto; }
-  .search-clear:hover { opacity: 1; color: var(--text); }
+  @media (hover: hover) { .search-clear:hover { opacity: 1; color: var(--text); } }
   input[type=text].has-value { padding-right: 28px; }
   input[type=text] {
     width: 100%; padding: 7px 10px 7px 30px;
@@ -113,9 +114,14 @@
     color: var(--text-muted); border-radius: 4px; cursor: pointer; transition: all 0.1s; white-space: nowrap;
   }
   .ttab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
-  .ttab:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
-  /* お気に入りタブ */
-  .ttab[data-type="fav"].active { background: #e05090; border-color: #e05090; color: #fff; }
+  /* お気に入りタブ（インスタ風SVGハート・オンオフトグル） */
+  .ttab[data-type="fav"] { display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; }
+  .ttab[data-type="fav"] svg { display: block; }
+  .ttab[data-type="fav"] svg .heart-fill { fill: none; }
+  .ttab[data-type="fav"] svg .heart-stroke { stroke: rgba(255,255,255,0.45); stroke-width: 1.8; }
+  .ttab[data-type="fav"].active { background: rgba(232,48,74,0.14); border-color: #e8304a; }
+  .ttab[data-type="fav"].active svg .heart-fill { fill: #e8304a; }
+  .ttab[data-type="fav"].active svg .heart-stroke { stroke: #e8304a; }
 
   .cost-filters { display: flex; gap: 4px; flex-wrap: wrap; }
   .cfbtn {
@@ -123,7 +129,10 @@
     border: 1px solid var(--border); background: transparent;
     color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.1s;
   }
-  .cfbtn:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+  @media (hover: hover) {
+    .cfbtn:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+    .ttab:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+  }
   .cfbtn.active { color: #000; font-weight: 700; }
   .cfbtn[data-c="1"].active { background:#4caf50; border-color:#4caf50; }
   .cfbtn[data-c="2"].active { background:#26c6a0; border-color:#26c6a0; }
@@ -162,9 +171,11 @@
     transition: opacity 0.12s;
     filter: saturate(0.6);
   }
-  .card:hover .card-img { opacity: 0.9; }
+  @media (hover: hover) {
+    .card:hover .card-img { opacity: 0.9; }
+    .card:hover { border-color: var(--border-hi); background: var(--surface2); transform: translateY(-1px); }
+  }
   .card.in-deck .card-img { opacity: 0.85; filter: saturate(1); }
-  .card:hover { border-color: var(--border-hi); background: var(--surface2); transform: translateY(-1px); }
   .card.in-deck {
     border-color: var(--border);
     background: var(--surface);
@@ -206,10 +217,12 @@
     padding: 2px; line-height: 1; z-index: 2;
     transition: transform 0.15s;
   }
-  .fav-btn:hover { transform: scale(1.15); }
   .fav-btn svg .heart-fill { fill: none; }
   .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
-  .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
+  @media (hover: hover) {
+    .fav-btn:hover { transform: scale(1.15); }
+    .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
+  }
   .fav-btn.active svg .heart-fill { fill: #e8304a; }
   .fav-btn.active svg .heart-stroke { stroke: #e8304a; }
 
@@ -263,7 +276,7 @@
     transition: opacity 0.12s;
     display: block;
   }
-  .slot.filled:hover .slot-img { opacity: 0.25; }
+  @media (hover: hover) { .slot.filled:hover .slot-img { opacity: 0.25; } }
   .slot.filled { border-style: solid; border-color: var(--border-hi); background: var(--surface); cursor: pointer; }
   .slot-info {
     display: flex; align-items: flex-start; gap: 4px;
@@ -289,7 +302,9 @@
   .swap-title { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.5; }
   .swap-options { display: flex; gap: 8px; margin: 14px 0; }
   .swap-opt { flex: 1; cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; background: var(--surface); transition: border-color 0.12s; }
-  .swap-opt:hover { border-color: var(--accent); }
+  @media (hover: hover) { .swap-opt:hover { border-color: var(--accent); } }
+  .swap-remove-btn { background: #e8304a; color: #fff; font-weight: 700; flex: 1; }
+  .swap-keep-btn { flex: 1; }
   .swap-opt img { width: 56px; height: 56px; object-fit: contain; display: block; margin: 0 auto 4px; }
   .swap-opt-name { font-size: 11px; font-weight: 500; }
   .swap-opt-slot { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
@@ -301,7 +316,7 @@
     padding: 2px 5px; cursor: pointer; z-index: 3;
     transition: background 0.15s; white-space: nowrap;
   }
-  .mode-toggle-btn:hover { background: rgba(255,255,255,0.2); }
+  @media (hover: hover) { .mode-toggle-btn:hover { background: rgba(255,255,255,0.2); } }
   .slot-badge {
     display: inline-block; font-size: 8px; font-weight: 700;
     padding: 1px 4px; border-radius: 3px; margin-left: 3px;
@@ -311,7 +326,7 @@
   .hero-badge { background: rgba(232,160,32,0.3); color: #ffd080; }
   .slot.dragging { opacity: 0.3; border-style: dashed; }
   .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); transform: scale(1.03); }
-  .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); }
+  @media (hover: hover) { .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); } }
   .slot-num { display: none; }
   .slot-name {
     font-size: 10px; font-weight: 500;
@@ -330,9 +345,11 @@
     display: flex; align-items: center; justify-content: center; gap: 6px;
   }
   .btn-primary { background: var(--accent); color: #000; font-weight: 700; }
-  .btn-primary:hover { background: var(--accent2); }
   .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
-  .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+  @media (hover: hover) {
+    .btn-primary:hover { background: var(--accent2); }
+    .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
+  }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%;
@@ -356,10 +373,10 @@
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
-    .avg-row { margin-top: 0; flex-shrink: 0; }
-    .avg-label { display: none; }
+    .avg-row { margin-top: 0; flex-shrink: 0; display: flex; align-items: baseline; gap: 4px; }
+    .avg-label { display: inline; font-size: 9px; }
     .avg-val { font-size: 18px; }
     .avg-sub { font-size: 10px; }
     .cost-bar { display: none; }
@@ -457,7 +474,9 @@
           <button class="ttab" data-type="troop">ユニット</button>
           <button class="ttab" data-type="spell">呪文</button>
           <button class="ttab" data-type="building">建物</button>
-          <button class="ttab" data-type="fav">❤</button>
+          <button class="ttab" data-type="fav" title="お気に入りを上に表示">
+            <svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </div>
       <div class="controls-row">
@@ -630,10 +649,32 @@ function isFav(name) { return favorites.includes(name); }
 
 function toggleFav(name, e) {
   e.stopPropagation();
-  if (isFav(name)) { favorites = favorites.filter(f => f !== name); }
-  else { favorites.push(name); }
+  if (isFav(name)) { openFavRemoveDialog(name); return; } // ミスタップ対策：外す時は確認
+  favorites.push(name);
   saveFavorites();
   render();
+}
+
+// お気に入り解除の確認ダイアログ
+function openFavRemoveDialog(name) {
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">「${name}」をお気に入りから外す？</div>
+    <div class="swap-options">
+      <button class="btn swap-remove-btn">外す</button>
+      <button class="btn btn-ghost swap-keep-btn">キャンセル</button>
+    </div>
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('.swap-keep-btn').onclick = () => ov.remove();
+  ov.querySelector('.swap-remove-btn').onclick = () => {
+    favorites = favorites.filter(f => f !== name);
+    saveFavorites();
+    ov.remove();
+    render();
+  };
+  document.body.appendChild(ov);
 }
 
 function init() {
