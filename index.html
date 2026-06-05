@@ -161,7 +161,7 @@
   .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; padding-right: 58px; word-break: break-all; }
 
   .cost-pip {
-    min-width: 20px; height: 20px; border-radius: 50%;
+    width: 20px; height: 20px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700; flex-shrink: 0;
   }
@@ -265,10 +265,13 @@
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 8px 12px 6px; }
-    .deck-title { font-size: 14px; }
-    .avg-val { font-size: 20px; }
-    .avg-row { margin-top: 2px; }
+    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .deck-title { font-size: 13px; flex-shrink: 0; }
+    .avg-row { margin-top: 0; flex-shrink: 0; }
+    .avg-label { display: none; }
+    .avg-val { font-size: 18px; }
+    .avg-sub { font-size: 10px; }
+    .cost-bar { display: none; }
 
     .deck-slots {
       display: grid !important;
@@ -277,30 +280,35 @@
       flex-direction: unset !important;
     }
     .slot {
-      width: 100%; height: 90px;
+      width: 100%; height: 130px;
       flex-direction: column; align-items: center;
       justify-content: flex-end;
-      padding: 4px 4px 6px; gap: 3px;
+      padding: 0 0 6px; gap: 0;
     }
     .slot-num { display: none; }
     .slot-type { display: none; }
-    .slot-empty-text { font-size: 18px; opacity: 0.2; color: var(--text-dim); }
+    .slot-empty-text { font-size: 22px; opacity: 0.2; color: var(--text-dim); }
     .slot-img {
       position: absolute; top: 4px; left: 50%;
       transform: translateX(-50%);
-      width: 60px; height: 60px; right: auto;
+      width: 90px; height: 90px; right: auto;
       opacity: 0.9; filter: saturate(1);
     }
-    .slot.filled:hover .slot-img { opacity: 0.35; }
+    .slot.filled:hover .slot-img { opacity: 0.3; }
+    .slot-info {
+      display: flex; align-items: flex-start; gap: 4px;
+      width: 100%; padding: 0 5px;
+      position: relative; z-index: 2;
+      margin-top: 2px;
+    }
     .slot .cost-pip {
-      width: 16px; height: 16px; font-size: 9px;
-      flex-shrink: 0; z-index: 2; position: relative;
+      width: 20px; height: 20px; font-size: 11px;
+      flex-shrink: 0; margin-top: 1px;
     }
     .slot-name {
       font-size: 9px; font-weight: 500;
-      text-align: center; line-height: 1.2;
-      display: block; width: 100%;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      line-height: 1.3; display: block;
+      word-break: break-all;
       z-index: 2; position: relative;
     }
 
@@ -624,14 +632,15 @@ function renderDeck() {
       const typeLabel = c.champion ? 'CHAMP' : c.type === 'troop' ? 'UNIT' : c.type === 'spell' ? 'SPELL' : 'BLDG';
       const color = COST_COLORS[c.cost] || '#888';
       const slotImg = c.img ? `<img class="slot-img" src="${c.img}" alt="" loading="lazy">` : '';
-      div.innerHTML = `${slotImg}<span class="slot-num">${i+1}</span>
-        <div class="cost-pip pip-${Math.min(c.cost,9)}" style="flex-shrink:0">${c.cost}</div>
-        <span class="slot-name">${c.name}</span>
-        <span class="slot-type" style="color:${color};opacity:0.7">${typeLabel}</span>`;
+      div.innerHTML = `${slotImg}
+        <div class="slot-info">
+          <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
+          <span class="slot-name">${c.name}</span>
+        </div>`;
       div.onclick = () => toggleDeck(c);
     } else {
       div.className = 'slot';
-      div.innerHTML = `<span class="slot-num">${i+1}</span><span class="slot-empty-text">— 空き —</span>`;
+      div.innerHTML = `<span class="slot-empty-text">+</span>`;
     }
     slots.appendChild(div);
   }
