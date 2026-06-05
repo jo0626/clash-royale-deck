@@ -466,6 +466,31 @@
     .card-role { font-size: 9px; padding-right: 64px; }
     .cost-pip { width: 18px; height: 18px; font-size: 10px; }
   }
+
+  .footer-signature {
+    text-align: center;
+    padding: 40px 0 20px;
+    font-family: 'Courier New', Courier, monospace;
+    color: #888;
+    letter-spacing: 1px;
+  }
+  .footer-signature .by-text {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-right: 4px;
+  }
+  .footer-signature .creator-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #eaeaea;
+    letter-spacing: 3px;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+    transition: all 0.3s ease;
+  }
+  .footer-signature .creator-name:hover {
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  }
 </style>
 
 <script type="application/ld+json">
@@ -551,6 +576,10 @@
   </div>
 </div>
 
+
+<div class=footer-signature>
+  <span class=by-text>By</span> <span class=creator-name>rea-fi-ria</span>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
