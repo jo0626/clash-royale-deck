@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>CR Deck Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -328,7 +328,7 @@
   /* MOBILE */
   @media (max-width: 720px) {
     body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; overscroll-behavior-y: none; }
-    header { flex-shrink: 0; padding: 8px 12px; }
+    header { flex-shrink: 0; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
     .logo { font-size: 17px; }
     .logo span { display: none; }
 
@@ -337,7 +337,7 @@
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
     .deck-title { font-size: 13px; flex-shrink: 0; }
     .avg-row { margin-top: 0; flex-shrink: 0; }
     .avg-label { display: none; }
