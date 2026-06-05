@@ -593,6 +593,16 @@ function init() {
     };
   });
 
+  const cardListEl = document.getElementById('cardList');
+  cardListEl.addEventListener('dragover', e => e.preventDefault());
+  cardListEl.addEventListener('drop', e => {
+    e.preventDefault();
+    if (dragSrcIdx !== null) {
+      deck[dragSrcIdx] = null;
+      dragSrcIdx = null;
+      renderDeck(); render();
+    }
+  });
   document.getElementById('search').oninput = render;
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('copyBtn').onclick = copyDeck;
@@ -690,6 +700,17 @@ function onDragEnd(e) {
   document.querySelectorAll('.slot').forEach(s => {
     s.classList.remove('dragging', 'drag-over');
   });
+  // カード選択ゾーン上でドロップ終了→キャンセル
+  if (dragSrcIdx !== null) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el && el.closest('#cardList')) {
+      deck[dragSrcIdx] = null;
+      dragSrcIdx = null;
+      renderDeck(); render();
+    }
+  }
+  dragSrcIdx = null;
+  dragSrcCard = null;
 }
 
 function onDragOver(e) {
@@ -775,7 +796,7 @@ function moveGhost(ghost, x, y) {
 let longPressTimer = null;
 let touchStartX = 0;
 let touchStartY = 0;
-const LONG_PRESS_MS = 50;
+const LONG_PRESS_MS = 40;
 const DRAG_THRESHOLD = 10;
 let isDragging = false;
 
@@ -862,7 +883,12 @@ function initTouchDnD() {
     document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
-    if (target) {
+    const onCardList = el && el.closest('#cardList');
+    if (touchSrcIdx !== null && onCardList) {
+      // デッキ→カード選択ゾーンへドロップ＝キャンセル（削除）
+      deck[touchSrcIdx] = null;
+      renderDeck(); render();
+    } else if (target) {
       const destIdx = parseInt(target.dataset.idx);
       if (touchSrcCard) {
         const c = touchSrcCard;
