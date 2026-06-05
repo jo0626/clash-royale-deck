@@ -88,11 +88,21 @@
 
   .search-wrap { position: relative; flex: 1; min-width: 140px; }
   .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+  .search-clear {
+    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 14px; line-height: 1;
+    padding: 2px 4px; border-radius: 4px;
+    opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  }
+  .search-clear.visible { opacity: 0.6; pointer-events: auto; }
+  .search-clear:hover { opacity: 1; color: var(--text); }
+  input[type=text].has-value { padding-right: 28px; }
   input[type=text] {
     width: 100%; padding: 7px 10px 7px 30px;
     background: var(--surface2); border: 1px solid var(--border);
     border-radius: 6px; color: var(--text); font-family: var(--font-body);
-    font-size: 13px; outline: none; transition: border-color 0.15s;
+    font-size: 16px; outline: none; transition: border-color 0.15s;
   }
   input[type=text]:focus { border-color: var(--accent); }
 
@@ -403,6 +413,7 @@
         <div class="search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input type="text" id="search" placeholder="カード名で検索...">
+          <button class="search-clear" id="searchClear" tabindex="-1">✕</button>
         </div>
         <div class="type-tabs">
           <button class="ttab active" data-type="all">全て</button>
@@ -603,7 +614,20 @@ function init() {
       renderDeck(); render();
     }
   });
-  document.getElementById('search').oninput = render;
+  const searchEl = document.getElementById('search');
+  const clearBtn2 = document.getElementById('searchClear');
+  searchEl.oninput = () => {
+    clearBtn2.classList.toggle('visible', searchEl.value.length > 0);
+    searchEl.classList.toggle('has-value', searchEl.value.length > 0);
+    render();
+  };
+  clearBtn2.onclick = () => {
+    searchEl.value = '';
+    clearBtn2.classList.remove('visible');
+    searchEl.classList.remove('has-value');
+    searchEl.focus();
+    render();
+  };
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('copyBtn').onclick = copyDeck;
 
@@ -796,7 +820,7 @@ function moveGhost(ghost, x, y) {
 let longPressTimer = null;
 let touchStartX = 0;
 let touchStartY = 0;
-const LONG_PRESS_MS = 40;
+const LONG_PRESS_MS = 50;
 const DRAG_THRESHOLD = 10;
 let isDragging = false;
 
