@@ -469,18 +469,19 @@
 
   .footer-signature {
     text-align: center;
-    padding: 40px 0 20px;
+    padding: 16px 0 12px;
     font-family: 'Courier New', Courier, monospace;
     color: #888;
     letter-spacing: 1px;
+    border-top: 1px solid var(--border);
   }
   .footer-signature .by-text {
-    font-size: 12px;
+    font-size: 11px;
     opacity: 0.6;
     margin-right: 4px;
   }
   .footer-signature .creator-name {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: bold;
     color: #eaeaea;
     letter-spacing: 3px;
@@ -490,6 +491,13 @@
   .footer-signature .creator-name:hover {
     color: #ffffff;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  }
+  /* PC版：card側フッターは非表示 */
+  .footer-card { display: none; }
+  /* モバイル版：deck側フッターは非表示 */
+  @media (max-width: 720px) {
+    .footer-deck { display: none; }
+    .footer-card { display: block; }
   }
 </style>
 
@@ -546,6 +554,9 @@
       <button class="btn btn-primary" id="copyBtn">📋 テキストコピー</button>
       <button class="btn btn-ghost" id="clearBtn">クリア</button>
     </div>
+    <div class="footer-signature footer-deck">
+      <span class="by-text">By</span> <span class="creator-name">rea-fi-ria</span>
+    </div>
   </div>
 
   <!-- LEFT: card list -->
@@ -573,6 +584,9 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
+    <div class="footer-signature footer-card">
+      <span class="by-text">By</span> <span class="creator-name">rea-fi-ria</span>
+    </div>
   </div>
 </div>
 
