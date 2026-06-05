@@ -274,7 +274,26 @@
   }
   .slot.slot-hero { border-color: #e8a020; background: rgba(232,160,32,0.06); }
   .slot.slot-evolved { border-color: #8b5cf6; background: rgba(139,92,246,0.06); }
-  .slot.slot-wild { border-color: #26c6a0; background: rgba(38,198,160,0.06); }
+  .slot.slot-wild {
+    border-color: rgba(255,255,255,0.22);
+    background: linear-gradient(90deg, rgba(139,92,246,0.10) 0%, rgba(139,92,246,0.10) 50%, rgba(232,160,32,0.10) 50%, rgba(232,160,32,0.10) 100%);
+  }
+  .slot-empty-center { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; }
+  .slot-empty-icon { width: 32px; height: 32px; transform: rotate(45deg); border-radius: 7px; opacity: 0.45; display: block; }
+  .diamond-evolved { background: #8b5cf6; }
+  .diamond-hero { background: #e8a020; }
+  .diamond-wild { background: linear-gradient(45deg, #8b5cf6 50%, #e8a020 50%); }
+  /* チャンピオン入れ替えダイアログ */
+  .swap-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .swap-box { background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 16px; width: min(340px, 92vw); }
+  .swap-title { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.5; }
+  .swap-options { display: flex; gap: 8px; margin: 14px 0; }
+  .swap-opt { flex: 1; cursor: pointer; border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; background: var(--surface); transition: border-color 0.12s; }
+  .swap-opt:hover { border-color: var(--accent); }
+  .swap-opt img { width: 56px; height: 56px; object-fit: contain; display: block; margin: 0 auto 4px; }
+  .swap-opt-name { font-size: 11px; font-weight: 500; }
+  .swap-opt-slot { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+  .swap-cancel { width: 100%; }
   .mode-toggle-btn {
     position: absolute; top: 4px; right: 4px;
     background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
@@ -601,6 +620,7 @@ let deck = [null,null,null,null,null,null,null,null];
 let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
 let activeType = 'all';
 let activeCosts = new Set();
+let favSort = false; // ❤トグル：ONでお気に入りを先頭に並べ替え
 
 function saveFavorites() {
   try { localStorage.setItem('cr_favorites', JSON.stringify(favorites)); } catch(e) {}
@@ -627,7 +647,14 @@ function init() {
 
   document.querySelectorAll('.ttab').forEach(t => {
     t.onclick = () => {
-      document.querySelectorAll('.ttab').forEach(x => x.classList.remove('active'));
+      if (t.dataset.type === 'fav') {
+        // ❤はオンオフトグル（タイプタブとは独立）
+        favSort = !favSort;
+        t.classList.toggle('active', favSort);
+        render();
+        return;
+      }
+      document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       activeType = t.dataset.type;
       render();
@@ -674,9 +701,8 @@ function toKatakana(str) {
 function getFiltered() {
   const raw = document.getElementById('search').value;
   const q = toKatakana(raw.toLowerCase());
-  return CARDS.filter(c => {
-    if (activeType === 'fav' && !isFav(c.name)) return false;
-    if (activeType !== 'all' && activeType !== 'fav' && c.type !== activeType) return false;
+  let res = CARDS.filter(c => {
+    if (activeType !== 'all' && c.type !== activeType) return false;
     if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
     if (q) {
       const nameMatch = toKatakana(c.name.toLowerCase()).includes(q);
@@ -685,6 +711,11 @@ function getFiltered() {
     }
     return true;
   });
+  if (favSort) {
+    // お気に入りを先頭に（元の並び順は維持）
+    res = res.filter(c => isFav(c.name)).concat(res.filter(c => !isFav(c.name)));
+  }
+  return res;
 }
 
 function render() {
@@ -744,7 +775,7 @@ function addToDeck(card) {
   if (card.champion) {
     if (deck.some(d => d && d.champion)) { showToast('⚠ チャンピオンは1枚まで'); return; }
     const idx = championTargetSlot();
-    if (idx === -1) { showToast('⚠ チャンピオンスロット（2・3枠）が埋まっています'); return; }
+    if (idx === -1) { openChampSwapDialog(card); return; }
     deck[idx] = card;
   } else {
     // 通常カード：スロット2・3以外の空きに入れる（ただし空いてれば入れる）
@@ -753,6 +784,44 @@ function addToDeck(card) {
     deck[emptyIdx] = card;
   }
   renderDeck(); render();
+}
+
+// チャンピオン追加時、スロット2・3が非チャンピオンで埋まっている場合の入れ替えダイアログ
+function openChampSwapDialog(card) {
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  const opts = [1, 2].map(i => {
+    const d = deck[i];
+    return `<div class="swap-opt" data-idx="${i}">
+      ${d.img ? `<img src="${d.img}" alt="">` : ''}
+      <div class="swap-opt-name">${d.name}</div>
+      <div class="swap-opt-slot">スロット${i + 1}</div>
+    </div>`;
+  }).join('');
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">${card.name} をどちらと入れ替える？</div>
+    <div class="swap-options">${opts}</div>
+    <button class="btn btn-ghost swap-cancel">キャンセル</button>
+  </div>`;
+  ov.onclick = e => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('.swap-cancel').onclick = () => ov.remove();
+  ov.querySelectorAll('.swap-opt').forEach(o => {
+    o.onclick = () => {
+      const i = +o.dataset.idx;
+      const displaced = deck[i];
+      deck[i] = card;
+      const empty = deck.findIndex(d => d === null);
+      if (empty >= 0) {
+        deck[empty] = displaced;
+        showToast(displaced.name + ' をスロット' + (empty + 1) + 'へ移動');
+      } else {
+        showToast(displaced.name + ' をデッキから外しました');
+      }
+      ov.remove();
+      renderDeck(); render();
+    };
+  });
+  document.body.appendChild(ov);
 }
 
 function removeFromDeck(card) {
@@ -1073,8 +1142,11 @@ function renderDeck() {
     } else {
       div.className = 'slot' + slotClass;
       div.dataset.idx = i;
-      const emptyLabel = st === 'evolved' ? '進化' : st === 'hero' ? '英雄' : st === 'wild' ? '進化/英雄' : '+';
-      div.innerHTML = `<span class="slot-empty-text">${emptyLabel}</span>`;
+      const emptyContent = st === 'evolved' ? '<span class="slot-empty-icon diamond-evolved" title="進化"></span>'
+                         : st === 'hero'    ? '<span class="slot-empty-icon diamond-hero" title="ヒーロー/チャンピオン"></span>'
+                         : st === 'wild'    ? '<span class="slot-empty-icon diamond-wild" title="進化/ヒーロー"></span>'
+                         : '<span class="slot-empty-text">+</span>';
+      div.innerHTML = `<div class="slot-empty-center">${emptyContent}</div>`;
       div.addEventListener('dragover',  onDragOver);
       div.addEventListener('dragleave', onDragLeave);
       div.addEventListener('drop',      onDrop);
