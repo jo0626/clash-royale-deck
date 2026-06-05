@@ -62,12 +62,9 @@
   /* ── LAYOUT ── */
   .app {
     display: grid;
-    grid-template-columns: 1fr 300px;
+    grid-template-columns: 300px 1fr;
     height: calc(100vh - 54px);
     overflow: hidden;
-  }
-  @media (max-width: 720px) {
-    .app { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: auto; }
   }
 
   /* ── LEFT PANEL ── */
@@ -75,7 +72,85 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-right: 1px solid var(--border);
+  }
+
+  /* ── MOBILE ── */
+  @media (max-width: 720px) {
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    header { flex-shrink: 0; padding: 8px 12px; }
+    .logo { font-size: 17px; }
+    .logo span { display: none; }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      height: auto;
+    }
+
+    /* デッキを上に */
+    .right {
+      order: -1;
+      flex-shrink: 0;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+    .left {
+      flex: 1;
+      overflow: hidden;
+      border-right: none;
+    }
+
+    /* モバイル用デッキヘッダー: コンパクト */
+    .deck-header { padding: 8px 12px 6px; }
+    .deck-title { font-size: 14px; }
+    .avg-val { font-size: 20px; }
+    .avg-row { margin-top: 2px; }
+
+    /* デッキスロット: 横並びグリッド */
+    .deck-slots {
+      flex-direction: row !important;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 6px 10px;
+      max-height: none;
+      overflow: visible;
+    }
+    .slot {
+      width: calc(25% - 3px);
+      height: 52px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 2px;
+      gap: 2px;
+    }
+    .slot-num { display: none; }
+    .slot-name { font-size: 10px; text-align: center; line-height: 1.2; }
+    .slot-type { font-size: 8px; }
+    .slot-empty-text { font-size: 10px; }
+    .slot .cost-pip { width: 16px; height: 16px; font-size: 9px; }
+
+    /* デッキアクション */
+    .deck-actions { padding: 6px 10px; flex-direction: row; gap: 6px; }
+    .deck-actions .btn { flex: 1; padding: 7px 8px; font-size: 11px; }
+
+    /* カードリスト */
+    .controls { padding: 8px 10px; }
+    .controls-row { gap: 6px; }
+    .type-tabs { gap: 2px; }
+    .ttab { padding: 4px 8px; font-size: 11px; }
+    .cfbtn { width: 24px; height: 24px; font-size: 11px; }
+    .card-list {
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 5px;
+      padding: 8px 10px;
+    }
+    .card { padding: 6px 8px; }
+    .card-name { font-size: 11px; }
+    .card-role { font-size: 9px; }
+    .cost-pip { width: 18px; height: 18px; font-size: 10px; }
   }
   .controls {
     padding: 12px 16px;
@@ -225,6 +300,7 @@
     flex-direction: column;
     overflow: hidden;
     background: var(--surface);
+    border-right: 1px solid var(--border);
   }
   .deck-header {
     padding: 14px 16px 10px;
@@ -264,6 +340,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-height: 0;
   }
   .slot {
     background: var(--surface2);
@@ -347,6 +424,24 @@
 </header>
 
 <div class="app">
+  <!-- RIGHT: deck (モバイルでは上に表示) -->
+  <div class="right">
+    <div class="deck-header">
+      <div class="deck-title">Deck <span class="deck-count" id="deckCount">0/8</span></div>
+      <div class="avg-row">
+        <span class="avg-label">平均コスト</span>
+        <span class="avg-val" id="avgVal">—</span>
+        <span class="avg-sub" id="avgSub"></span>
+      </div>
+      <div class="cost-bar" id="costBar"></div>
+    </div>
+    <div class="deck-slots" id="deckSlots"></div>
+    <div class="deck-actions">
+      <button class="btn btn-primary" id="copyBtn">📋 デッキをテキストでコピー</button>
+      <button class="btn btn-ghost" id="clearBtn">クリア</button>
+    </div>
+  </div>
+
   <!-- LEFT: card list -->
   <div class="left">
     <div class="controls">
@@ -368,24 +463,6 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
-  </div>
-
-  <!-- RIGHT: deck -->
-  <div class="right">
-    <div class="deck-header">
-      <div class="deck-title">Deck <span class="deck-count" id="deckCount">0/8</span></div>
-      <div class="avg-row">
-        <span class="avg-label">平均コスト</span>
-        <span class="avg-val" id="avgVal">—</span>
-        <span class="avg-sub" id="avgSub"></span>
-      </div>
-      <div class="cost-bar" id="costBar"></div>
-    </div>
-    <div class="deck-slots" id="deckSlots"></div>
-    <div class="deck-actions">
-      <button class="btn btn-primary" id="copyBtn">📋 デッキをテキストでコピー</button>
-      <button class="btn btn-ghost" id="clearBtn">クリア</button>
-    </div>
   </div>
 </div>
 
