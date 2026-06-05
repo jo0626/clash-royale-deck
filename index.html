@@ -722,44 +722,86 @@ function onDrop(e) {
 }
 
 
-// タッチD&D（モバイル）
+// タッチD&D（モバイル・デッキスロット専用）
 let touchSrcIdx = null;
 let touchClone = null;
-
 let touchSrcCard = null;
+let touchOffsetX = 0;
+let touchOffsetY = 0;
+
+function createGhost(imgSrc, name, cost, size) {
+  const ghost = document.createElement('div');
+  ghost.style.cssText = [
+    'position:fixed',
+    'pointer-events:none',
+    'z-index:9999',
+    'width:' + size + 'px',
+    'height:' + size + 'px',
+    'border-radius:10px',
+    'background:#1e2230',
+    'border:2px solid rgba(58,142,240,0.8)',
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'gap:4px',
+    'opacity:0.85',
+    'box-shadow:0 4px 20px rgba(0,0,0,0.5)',
+  ].join(';');
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.style.cssText = 'width:60%;height:60%;object-fit:contain;';
+    ghost.appendChild(img);
+  }
+  const label = document.createElement('div');
+  label.textContent = name;
+  label.style.cssText = 'font-size:9px;color:#e8eaf0;text-align:center;padding:0 4px;line-height:1.2;font-family:sans-serif;';
+  ghost.appendChild(label);
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function moveGhost(ghost, x, y) {
+  const w = ghost.offsetWidth;
+  const h = ghost.offsetHeight;
+  ghost.style.left = (x - w/2) + 'px';
+  ghost.style.top  = (y - h/2 - 20) + 'px';
+}
 
 function initTouchDnD() {
   // カード選択ゾーンのタッチD&D
   document.getElementById('cardList').addEventListener('touchstart', e => {
-    const card = e.target.closest('.card:not(.in-deck)');
-    if (!card) return;
-    const cardName = card.querySelector('.card-name').textContent;
+    const card = e.target.closest('.card');
+    if (!card || card.classList.contains('in-deck')) return;
+    const cardName = card.querySelector('.card-name').textContent.trim();
     touchSrcCard = CARDS.find(c => c.name === cardName);
+    if (!touchSrcCard) return;
     touchSrcIdx = null;
-    touchClone = card.cloneNode(true);
-    touchClone.style.cssText = 'position:fixed;opacity:0.7;pointer-events:none;z-index:999;width:'+card.offsetWidth+'px;border-radius:8px;';
-    document.body.appendChild(touchClone);
+    const t = e.touches[0];
+    touchClone = createGhost(touchSrcCard.img, touchSrcCard.name, touchSrcCard.cost, 90);
+    moveGhost(touchClone, t.clientX, t.clientY);
+    card.style.opacity = '0.3';
   }, {passive:true});
 
-  // スロットゾーンのタッチD&D
+  // デッキスロットのタッチD&D
   document.getElementById('deckSlots').addEventListener('touchstart', e => {
     const slot = e.target.closest('.slot.filled');
     if (!slot) return;
     touchSrcIdx = parseInt(slot.dataset.idx);
     touchSrcCard = null;
-    touchClone = slot.cloneNode(true);
-    touchClone.style.cssText = 'position:fixed;opacity:0.7;pointer-events:none;z-index:999;width:'+slot.offsetWidth+'px;border-radius:8px;';
-    document.body.appendChild(touchClone);
+    const c = deck[touchSrcIdx];
+    const t = e.touches[0];
+    touchClone = createGhost(c ? c.img : null, c ? c.name : '', c ? c.cost : '', 90);
+    moveGhost(touchClone, t.clientX, t.clientY);
+    slot.style.opacity = '0.3';
   }, {passive:true});
 
   document.addEventListener('touchmove', e => {
     if (touchSrcIdx === null && !touchSrcCard) return;
     e.preventDefault();
     const t = e.touches[0];
-    if (touchClone) {
-      touchClone.style.left = (t.clientX - touchClone.offsetWidth/2) + 'px';
-      touchClone.style.top  = (t.clientY - touchClone.offsetHeight/2) + 'px';
-    }
+    if (touchClone) moveGhost(touchClone, t.clientX, t.clientY);
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
@@ -769,19 +811,19 @@ function initTouchDnD() {
   document.addEventListener('touchend', e => {
     if (touchSrcIdx === null && !touchSrcCard) return;
     if (touchClone) { touchClone.remove(); touchClone = null; }
-    document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
+    document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
+    document.querySelectorAll('.card').forEach(c => { c.style.opacity = ''; });
     const t = e.changedTouches[0];
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
     if (target) {
       const destIdx = parseInt(target.dataset.idx);
       if (touchSrcCard) {
-        // カード→スロットへドロップ
+        // カード選択→スロットへ
         const c = touchSrcCard;
-        if (!deck.some(d => d && d.name === c.name)) {
-          if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); }
-          else { deck[destIdx] = c; renderDeck(); render(); }
-        }
+        if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); }
+        else if (c.hero && deck.filter(d => d && d.hero).length >= 2) { showToast('⚠ ヒーロー/チャンピオンは2枚まで'); }
+        else { deck[destIdx] = c; renderDeck(); render(); }
       } else if (touchSrcIdx !== null && destIdx !== touchSrcIdx) {
         // スロット→スロット入れ替え
         const tmp = deck[destIdx];
