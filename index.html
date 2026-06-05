@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CR Deck Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -230,17 +230,17 @@
   .bar-seg { height: 100%; transition: flex 0.3s; }
 
   .deck-slots {
-    padding: 10px 12px;
+    overflow-y: auto; padding: 10px 12px;
     display: grid;
-    grid-template-columns: repeat(4, 64px);
-    grid-template-rows: repeat(2, 120px);
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, auto);
     gap: 6px;
+    align-content: start;
     min-height: 0;
-    overflow: visible;
   }
   .slot {
     background: var(--surface2); border: 1px dashed var(--border);
-    border-radius: 6px;
+    border-radius: 6px; height: 120px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: flex-start;
     padding: 6px 4px 6px; gap: 4px;
@@ -250,7 +250,6 @@
     user-select: none; -webkit-user-select: none;
     -webkit-touch-callout: none;
     position: relative;
-    min-height: 0;
   }
   .slot-img-wrap {
     flex: 1; display: flex; align-items: center; justify-content: center;
@@ -328,16 +327,16 @@
   /* MOBILE */
   @media (max-width: 720px) {
     body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; overscroll-behavior-y: none; }
-    header { flex-shrink: 0; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
+    header { flex-shrink: 0; padding: 8px 12px; }
     .logo { font-size: 17px; }
     .logo span { display: none; }
 
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; }
 
-    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); touch-action: none; }
+    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .deck-header { padding: 6px 12px 4px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
     .avg-row { margin-top: 0; flex-shrink: 0; }
     .avg-label { display: none; }
@@ -352,10 +351,10 @@
       flex-direction: unset !important;
     }
     .slot {
-      width: 100%; height: 110px;
+      width: 100%; height: 120px;
       flex-direction: column; align-items: center;
       justify-content: flex-start;
-      padding: 4px 4px 5px; gap: 3px;
+      padding: 6px 4px 6px; gap: 4px;
     }
     .slot-num { display: none; }
     .slot-type { display: none; }
@@ -366,7 +365,7 @@
     }
     .slot-img {
       position: static; transform: none;
-      width: 72px; height: 72px;
+      width: 80px; height: 80px;
       opacity: 0.9; filter: saturate(1);
     }
     .slot-info {
@@ -478,6 +477,8 @@ const CARDS = [
   {name:"ローリングバーバリアン", yomi:"ローリングバーバリアン バーバレル ロリバーバ ロリババ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-barrel-hero.png", cost:2, type:"spell",    role:"転がし＋バーバリアン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-barrel.png"},
   {name:"ローリングウッド", yomi:"ローリングウッド ログ THE LOG",      cost:2, type:"spell",    role:"広範囲ローリング", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/the-log.png"},
   {name:"レイジ", yomi:"レイジ",                cost:2, type:"spell",    role:"速度・火力アップ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rage.png"},
+  {name:"ステルスブッシュ", yomi:"ステルスブッシュ ブッシュ 茂み あやしいしげみ しげみ",  cost:2, type:"troop",    role:"茂みに隠れて潜伏", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/suspicious-bush.png"},
+  {name:"ゴブリンの呪い", yomi:"ごぶりんののろい のろい カース ゴブカース",  cost:2, type:"spell",    role:"範囲呪い・倒すとゴブ化", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-curse.png"},
 
   // 3コスト
   {name:"ナイト", yomi:"ナイト", evolved:true, hero:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight-ev1.png", imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight-hero.png",                cost:3, type:"troop",    role:"タンク・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight.png"},
@@ -490,7 +491,7 @@ const CARDS = [
   {name:"吹き矢ゴブリン", yomi:"ふきやごぶりん ふきや ダートゴブ ダーゴブ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dart-goblin-ev1.png",        cost:3, type:"troop",    role:"超長射程・速射", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dart-goblin.png"},
   {name:"エリクサーゴーレム", yomi:"エリクサーゴーレム エリゴレ",    cost:3, type:"troop",    role:"タンク・敵にエリ付与", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-golem.png"},
   {name:"アイスウィザード", yomi:"アイスウィザード アイウィザ アイスウィズ",      cost:3, type:"troop",    role:"全体減速", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-wizard.png"},
-  {name:"プリンセス", evolved:true, yomi:"ぷりんせす プリセス",            cost:3, type:"troop",    role:"超長射程・範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/princess.png"},
+  {name:"プリンセス", yomi:"ぷりんせす プリセス", evolved:true, imgEvolved:"https://cdn.royaleapi.com/static/img/cards-150/princess-ev1.png",            cost:3, type:"troop",    role:"超長射程・範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/princess.png"},
   {name:"ディガー", yomi:"ディガー マイナー",              cost:3, type:"troop",    role:"建物狙い奇襲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/miner.png"},
   {name:"スケルトン部隊", yomi:"スケルトン部隊 スケ部 スケアミ スケルトンアーミー", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-army-ev1.png",        cost:3, type:"troop",    role:"防衛・大量展開", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-army.png"},
   {name:"盾の戦士", yomi:"たてのせんし たて ガーズ",              cost:3, type:"troop",    role:"盾持ち防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/guards.png"},
@@ -501,23 +502,26 @@ const CARDS = [
   {name:"トルネード", yomi:"トルネード トルネ",            cost:3, type:"spell",    role:"引き寄せ・集中", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tornado.png"},
   {name:"アースクエイク", yomi:"アースクエイク 地震 じしん",        cost:3, type:"spell",    role:"建物特効ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/earthquake.png"},
   {name:"ロイヤルデリバリー", yomi:"ろいやるでりばりー",    cost:3, type:"spell",    role:"範囲＋兵士展開", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-delivery.png"},
-  {name:"ゴブリンバレル", yomi:"ゴブリンバレル ゴブバレ",        cost:3, type:"spell",    role:"奇襲ゴブリン3体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel.png"},
+  {name:"ゴブリンバレル", yomi:"ゴブリンバレル ゴブバレ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel-ev1.png",        cost:3, type:"spell",    role:"奇襲ゴブリン3体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel.png"},
   {name:"クローン", yomi:"クローン",              cost:3, type:"spell",    role:"ユニット複製", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/clone.png"},
+  {name:"ヴァイン", yomi:"ヴァイン バイン ツタ つた",              cost:3, type:"spell",    role:"高HP3体を拘束・空→地", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/vines.png"},
+  {name:"ボイド", yomi:"ボイド ぼいど",              cost:3, type:"spell",    role:"少数ほど高ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/void.png"},
+  {name:"ミラー", yomi:"ミラー みらー",              cost:1, type:"spell",    role:"直前カードを+1コスで複製", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mirror.png"},
   {name:"大砲", yomi:"おおづつ たいほう 大砲 キャノン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon-ev1.png",                  cost:3, type:"building", role:"単体遠距離防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon.png"},
-  {name:"墓石", yomi:"はかいし ぼせき はか いし トゥームストーン",                  cost:3, type:"building", role:"スケルトン生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tombstone.png"},
+  {name:"墓石", yomi:"はかいし ぼせき はか いし トゥームストーン", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/tombstone-hero.png",                  cost:3, type:"building", role:"スケルトン生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tombstone.png"},
 
   // 4コスト
   {name:"バルキリー", yomi:"バルキリー バルキ バルキリ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/valkyrie-ev1.png",            cost:4, type:"troop",    role:"範囲防衛・タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/valkyrie.png"},
   {name:"マスケット銃士", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer-ev1.png", yomi:"マスケット銃士 マスケ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer-hero.png",        cost:4, type:"troop",    role:"遠距離高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer.png"},
   {name:"ミニペッカ", yomi:"ミニペッカ ミニペ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mini-pekka-hero.png",            cost:4, type:"troop",    role:"単体超高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mini-pekka.png"},
   {name:"ホグライダー", yomi:"ホグライダー ホグ",          cost:4, type:"troop",    role:"建物狙い突撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hog-rider.png"},
-  {name:"攻城バーバリアン", yomi:"こうじょうばーばりあん 攻城 攻城バーバリアン バトルラム",      cost:4, type:"troop",    role:"建物狙い＋バーバリアン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram.png"},
+  {name:"攻城バーバリアン", yomi:"こうじょうばーばりあん 攻城 攻城バーバリアン バトルラム", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram-ev1.png",      cost:4, type:"troop",    role:"建物狙い＋バーバリアン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram.png"},
   {name:"スケルトンドラゴン", yomi:"スケルトンドラゴン スケドラ",    cost:4, type:"troop",    role:"対空範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-dragons.png"},
   {name:"ザッピー", yomi:"ザッピー ザピ",              cost:4, type:"troop",    role:"感電・防衛", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zappies.png"},
   {name:"ホバリング砲", yomi:"ホバリング砲 ホバリング フライングマシン フラマシ",          cost:4, type:"troop",    role:"対空・超長射程", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/flying-machine.png"},
   {name:"バトルヒーラー", yomi:"バトルヒーラー ヒーラー バトヒ",        cost:4, type:"troop",    role:"HP回復タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-healer.png"},
   {name:"ダイナマイトゴブリン", yomi:"ダイナマイトゴブリン ゴブデモ デモリッシャー",cost:4, type:"troop",    role:"建物狙い・デス爆発", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-demolisher.png"},
-  {name:"ダークプリンス", yomi:"ダークプリンス ダクプリ DP",        cost:4, type:"troop",    role:"盾＋範囲チャージ", hero:true, img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dark-prince.png"},
+  {name:"ダークプリンス", yomi:"ダークプリンス ダクプリ DP",        cost:4, type:"troop",    role:"盾＋範囲チャージ", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/dark-prince-hero.png", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dark-prince.png"},
   {name:"ハンター", yomi:"ハンター", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hunter-ev1.png",              cost:4, type:"troop",    role:"近距離超高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hunter.png"},
   {name:"ベビードラゴン", yomi:"ベビードラゴン ベビドラ ベビー", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/baby-dragon-ev1.png",        cost:4, type:"troop",    role:"対空範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/baby-dragon.png"},
   {name:"エレクトロウィザード", yomi:"エレクトロウィザード エレウィザ エレウィズ EW",  cost:4, type:"troop",    role:"感電・リセット", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-wizard.png"},
@@ -530,6 +534,7 @@ const CARDS = [
   {name:"スケルトンキング", champion:true, yomi:"スケルトンキング スケキン SK",      cost:4, type:"troop",    role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-king.png"},
   {name:"マイティディガー", champion:true, yomi:"マイティディガー マイディガ MD",      cost:4, type:"troop",    role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mighty-miner.png"},
   {name:"フェニックス", yomi:"フェニックス フェニ",          cost:4, type:"troop",    role:"再生・対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/phoenix.png"},
+  {name:"鍛冶屋ジャイアント", yomi:"かじやじゃいあんと かじジャイ ルーンジャイアント",  cost:4, type:"troop",    role:"味方2体にバフ付与", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rune-giant.png"},
   {name:"ファイアボール", yomi:"ファイアボール ファイボ FB",        cost:4, type:"spell",    role:"中範囲高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fireball.png"},
   {name:"フリーズ", yomi:"フリーズ",              cost:4, type:"spell",    role:"全停止", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/freeze.png"},
   {name:"ポイズン", yomi:"ポイズン ポイズ",              cost:4, type:"spell",    role:"持続ダメージ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/poison.png"},
@@ -543,12 +548,12 @@ const CARDS = [
 
   // 5コスト
   {name:"バーバリアン", yomi:"バーバリアン ババ バーバリアン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarians-ev1.png",          cost:5, type:"troop",    role:"高体力集団", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarians.png"},
-  {name:"ガーゴイルの群れ", yomi:"ガーゴイルの群れ ガゴ群れ ミニオンホード",      cost:5, type:"troop",    role:"大量対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minion-horde.png"},
+  {name:"ガーゴイルの群れ", yomi:"ガーゴイルの群れ ガゴ群れ ミニオンホード", evolved:true, imgEvolved:"https://cdn.royaleapi.com/static/img/cards-150/minion-horde-ev1.png",      cost:5, type:"troop",    role:"大量対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minion-horde.png"},
   {name:"ジャイアント", yomi:"ジャイアント ジャイ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-hero.png",          cost:5, type:"troop",    role:"建物狙いタンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant.png"},
   {name:"ウィザード", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard-ev1.png", yomi:"ウィザード ウィズ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard-hero.png",            cost:5, type:"troop",    role:"範囲スプラッシュ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard.png"},
-  {name:"エアバルーン", yomi:"エアバルーン バルーン",          cost:5, type:"troop",    role:"建物狙い爆撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/balloon.png"},
+  {name:"エアバルーン", yomi:"エアバルーン バルーン", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/balloon-hero.png",          cost:5, type:"troop",    role:"建物狙い爆撃", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/balloon.png"},
   {name:"ネクロマンサー", yomi:"ネクロマンサー ネクロ ウィッチ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/witch-ev1.png",        cost:5, type:"troop",    role:"スケルトン生成＋範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/witch.png"},
-  {name:"ボウラー", yomi:"ボウラー",              cost:5, type:"troop",    role:"貫通プッシュ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bowler.png"},
+  {name:"ボウラー", yomi:"ボウラー", hero:true, imgHero:"https://cdn.royaleapi.com/static/img/cards-150/bowler-hero.png",              cost:5, type:"troop",    role:"貫通プッシュ", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bowler.png"},
   {name:"執行人ファルチェ", yomi:"しっこうにんふぁるちぇ ファルチェ エクスキュ エグゼ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/executioner-ev1.png",      cost:5, type:"troop",    role:"貫通往復斧", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/executioner.png"},
   {name:"60式ムート", yomi:"60式ムート ムート キャノンカート",            cost:5, type:"troop",    role:"遠距離＋盾", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon-cart.png"},
   {name:"ロイヤルホグ", yomi:"ロイヤルホグ ロイホグ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-hogs-ev1.png",          cost:5, type:"troop",    role:"建物狙い4体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-hogs.png"},
@@ -556,11 +561,12 @@ const CARDS = [
   {name:"ライトニングドラゴン", yomi:"ライトニングドラゴン エレドラ 電気ドラゴン", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-dragon-ev1.png",  cost:5, type:"troop",    role:"チェーン感電", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-dragon.png"},
   {name:"プリンス", yomi:"プリンス",              cost:5, type:"troop",    role:"チャージ高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/prince.png"},
   {name:"ラムライダー", yomi:"ラムライダー ラム",          cost:5, type:"troop",    role:"建物狙い＋スネア", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ram-rider.png"},
-  {name:"リトルプリンス", champion:true, cost:3, type:"troop", role:"チャンピオン・盾持ち", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/little-prince.png"},
-  {name:"モンク", champion:true, cost:5, type:"troop", role:"チャンピオン・攻防一体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/monk.png"},
-  {name:"ゴブリンスタイン", champion:true, cost:5, type:"troop", role:"チャンピオン・博士＋モンスター", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblinstein.png"},
-  {name:"ボスバンディット", champion:true, cost:6, type:"troop", role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"},
+  {name:"リトルプリンス", champion:true, yomi:"リトルプリンス リトプリ LP", cost:3, type:"troop", role:"チャンピオン・盾持ち", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/little-prince.png"},
+  {name:"モンク", champion:true, yomi:"モンク もんく", cost:5, type:"troop", role:"チャンピオン・攻防一体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/monk.png"},
+  {name:"ゴブリンシュタイン", champion:true, yomi:"ゴブリンシュタイン ゴブリンスタイン ゴブシュタ", cost:5, type:"troop", role:"チャンピオン・博士＋モンスター", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblinstein.png"},
+  {name:"ボスバンディット", champion:true, yomi:"ボスバンディット ボスバン", cost:6, type:"troop", role:"チャンピオン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"},
   {name:"アーチャークイーン", champion:true, yomi:"アーチャークイーン AQ アチャクイ クイーン",    cost:5, type:"troop",    role:"チャンピオン・高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archer-queen.png"},
+  {name:"ゴブリンマシン", yomi:"ゴブリンマシン ゴブマシン マシン",    cost:5, type:"troop",    role:"ロケット移動砲台", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-machine.png"},
   {name:"スケルトンラッシュ", yomi:"スケルトンラッシュ グレイブヤード グレヤ 墓場",    cost:5, type:"spell",    role:"スケルトン大量召喚", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/graveyard.png"},
   {name:"インフェルノタワー", yomi:"インフェルノタワー インタワ IT",    cost:5, type:"building", role:"単体集中加熱", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-tower.png"},
 
@@ -568,8 +574,9 @@ const CARDS = [
   {name:"ロイヤルジャイアント", yomi:"ロイヤルジャイアント ロイジャイ RG", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-giant-ev1.png",  cost:6, type:"troop",    role:"建物狙い超射程", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-giant.png"},
   {name:"エリートバーバリアン", yomi:"エリートバーバリアン エリババ EB",  cost:6, type:"troop",    role:"高速高火力2体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elite-barbarians.png"},
   {name:"巨大スケルトン", yomi:"きょだいすけるとん ジャイスケ 巨大スケルトン",        cost:6, type:"troop",    role:"タンク＋デス爆弾", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-skeleton.png"},
-  {name:"ゴブジャイアント", yomi:"ゴブジャイアント ゴブジャイ",      cost:6, type:"troop",    role:"タンク＋槍ゴブリン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant.png"},
+  {name:"ゴブジャイアント", yomi:"ゴブジャイアント ゴブジャイ", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant-ev1.png",      cost:6, type:"troop",    role:"タンク＋槍ゴブリン", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant.png"},
   {name:"スパーキー", yomi:"スパーキー スパキ",            cost:6, type:"troop",    role:"蓄電超高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/sparky.png"},
+  {name:"スピリットエンプレス", yomi:"スピリットエンプレス エンプレス せいれい",            cost:6, type:"troop",    role:"3コス陸/6コス空の二形態", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/spirit-empress.png"},
   {name:"ロケット", yomi:"ロケット",              cost:6, type:"spell",    role:"超高火力単発", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rocket.png"},
   {name:"ライトニング", yomi:"ライトニング 雷",          cost:6, type:"spell",    role:"3体感電高火力", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lightning.png"},
   {name:"エリクサーポンプ", yomi:"えりくさーぽんぷ ポンプ エリポン",      cost:6, type:"building", role:"エリクサー生成", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-collector.png"},
@@ -580,8 +587,8 @@ const CARDS = [
   {name:"ペッカ", yomi:"ペッカ PEKKA", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/pekka-ev1.png",                cost:7, type:"troop",    role:"単体超高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/pekka.png"},
   {name:"ラヴァハウンド", yomi:"ラヴァハウンド ラヴァ ラバ",        cost:7, type:"troop",    role:"空中タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lava-hound.png"},
   {name:"エレクトロジャイアント", yomi:"エレクトロジャイアント エレジャイ EG",cost:7, type:"troop",    role:"感電反射タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-giant.png"},
-  {name:"メガナイト", yomi:"メガナイト メガナイ MK",            cost:7, type:"troop",    role:"スポーン＋ジャンプ範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight.png"},
-  {name:"見習い親衛隊", yomi:"みならいしんえいたい 親衛隊 ロイリク リクルート",          cost:7, type:"troop",    role:"壁役6体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits.png"},
+  {name:"メガナイト", yomi:"メガナイト メガナイ MK", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight-ev1.png",            cost:7, type:"troop",    role:"スポーン＋ジャンプ範囲", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight.png"},
+  {name:"見習い親衛隊", yomi:"みならいしんえいたい 親衛隊 ロイリク リクルート", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits-ev1.png",          cost:7, type:"troop",    role:"壁役6体", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits.png"},
 
   // 8・9コスト
   {name:"ゴーレム", yomi:"ゴーレム ゴレ",              cost:8, type:"troop",    role:"最大タンク", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/golem.png"},
@@ -964,13 +971,20 @@ function initTouchDnD() {
       if (touchSrcCard) {
         const c = touchSrcCard;
         if (deck.some(d => d && d.name === c.name)) { showToast('⚠ すでに追加済み'); }
-
+        else if (c.champion && deck.some(d => d && d.champion)) { showToast('⚠ チャンピオンは1枚まで'); }
+        else if (c.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
         else { deck[destIdx] = c; renderDeck(); render(); }
       } else if (touchSrcIdx !== null && destIdx !== touchSrcIdx) {
-        const tmp = deck[destIdx];
-        deck[destIdx] = deck[touchSrcIdx];
-        deck[touchSrcIdx] = tmp;
-        renderDeck(); render();
+        const movingCard = deck[touchSrcIdx];
+        const targetCard = deck[destIdx];
+        if (movingCard && movingCard.champion && !championCanGoTo(destIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
+        else if (targetCard && targetCard.champion && !championCanGoTo(touchSrcIdx)) { showToast('⚠ チャンピオンはスロット2か3のみ'); }
+        else {
+          const tmp = deck[destIdx];
+          deck[destIdx] = deck[touchSrcIdx];
+          deck[touchSrcIdx] = tmp;
+          renderDeck(); render();
+        }
       }
     }
     isDragging = false;
@@ -1095,11 +1109,11 @@ function renderDeck() {
 }
 
 function copyDeck() {
-  if (deck.length === 0) { showToast('デッキが空です'); return; }
-  const sorted = [...deck];
-  const avg = (deck.reduce((s,c) => s+c.cost, 0) / deck.length).toFixed(2);
+  const filled = deck.filter(d => d);
+  if (filled.length === 0) { showToast('デッキが空です'); return; }
+  const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length).toFixed(2);
   const text = '【クラロワ デッキ】平均コスト ' + avg + '\n' +
-    sorted.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
+    filled.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
   navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
 }
 
