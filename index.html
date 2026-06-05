@@ -18,10 +18,7 @@
     --text-dim: #3a3f50;
     --accent: #e8a020;
     --accent2: #c0781a;
-    --blue: #3a8ef0;
-    --green: #2eb87a;
     --red: #e05050;
-    --purple: #8b5cf6;
     --font-head: 'Rajdhani', sans-serif;
     --font-body: 'Noto Sans JP', sans-serif;
   }
@@ -37,7 +34,6 @@
     grid-template-rows: auto 1fr;
   }
 
-  /* ── HEADER ── */
   header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
@@ -59,7 +55,6 @@
   }
   .logo span { color: var(--text-muted); font-size: 12px; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; display: block; margin-top: -4px; }
 
-  /* ── LAYOUT ── */
   .app {
     display: grid;
     grid-template-columns: 300px 1fr;
@@ -67,91 +62,20 @@
     overflow: hidden;
   }
 
-  /* ── LEFT PANEL ── */
   .left {
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  /* ── MOBILE ── */
-  @media (max-width: 720px) {
-    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-    header { flex-shrink: 0; padding: 8px 12px; }
-    .logo { font-size: 17px; }
-    .logo span { display: none; }
-
-    .app {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-      height: auto;
-    }
-
-    /* デッキを上に */
-    .right {
-      order: -1;
-      flex-shrink: 0;
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-    }
-    .left {
-      flex: 1;
-      overflow: hidden;
-      border-right: none;
-    }
-
-    /* モバイル用デッキヘッダー: コンパクト */
-    .deck-header { padding: 8px 12px 6px; }
-    .deck-title { font-size: 14px; }
-    .avg-val { font-size: 20px; }
-    .avg-row { margin-top: 2px; }
-
-    /* デッキスロット: 横並びグリッド */
-    .deck-slots {
-      flex-direction: row !important;
-      flex-wrap: wrap;
-      gap: 4px;
-      padding: 6px 10px;
-      max-height: none;
-      overflow: visible;
-    }
-    .slot {
-      width: calc(25% - 3px);
-      height: 52px;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 2px;
-      gap: 2px;
-    }
-    .slot-num { display: none; }
-    .slot-name { font-size: 10px; text-align: center; line-height: 1.2; }
-    .slot-type { font-size: 8px; }
-    .slot-empty-text { font-size: 10px; }
-    .slot .cost-pip { width: 16px; height: 16px; font-size: 9px; }
-
-    /* デッキアクション */
-    .deck-actions { padding: 6px 10px; flex-direction: row; gap: 6px; }
-    .deck-actions .btn { flex: 1; padding: 7px 8px; font-size: 11px; }
-
-    /* カードリスト */
-    .controls { padding: 8px 10px; }
-    .controls-row { gap: 6px; }
-    .type-tabs { gap: 2px; }
-    .ttab { padding: 4px 8px; font-size: 11px; }
-    .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list {
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 5px;
-      padding: 8px 10px;
-    }
-    .card { padding: 6px 8px; }
-    .card-name { font-size: 11px; }
-    .card-role { font-size: 9px; }
-    .cost-pip { width: 18px; height: 18px; font-size: 10px; }
+  .right {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
   }
+
   .controls {
     padding: 12px 16px;
     background: var(--surface);
@@ -160,67 +84,34 @@
     flex-direction: column;
     gap: 8px;
   }
-  .controls-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-  .search-wrap {
-    position: relative;
-    flex: 1;
-    min-width: 140px;
-  }
-  .search-wrap svg {
-    position: absolute;
-    left: 8px; top: 50%;
-    transform: translateY(-50%);
-    opacity: 0.4;
-    pointer-events: none;
-  }
+  .controls-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .search-wrap { position: relative; flex: 1; min-width: 140px; }
+  .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
   input[type=text] {
-    width: 100%;
-    padding: 7px 10px 7px 30px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: var(--font-body);
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.15s;
+    width: 100%; padding: 7px 10px 7px 30px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: var(--font-body);
+    font-size: 13px; outline: none; transition: border-color 0.15s;
   }
   input[type=text]:focus { border-color: var(--accent); }
 
-  /* type tabs */
   .type-tabs { display: flex; gap: 2px; }
   .ttab {
-    padding: 5px 10px;
-    font-size: 12px;
-    font-family: var(--font-body);
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-muted);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.1s;
-    white-space: nowrap;
+    padding: 5px 10px; font-size: 12px; font-family: var(--font-body);
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); border-radius: 4px; cursor: pointer; transition: all 0.1s; white-space: nowrap;
   }
   .ttab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
   .ttab:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
+  /* お気に入りタブ */
+  .ttab[data-type="fav"].active { background: #e05090; border-color: #e05090; color: #fff; }
 
-  /* cost filters */
   .cost-filters { display: flex; gap: 4px; flex-wrap: wrap; }
   .cfbtn {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.1s;
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.1s;
   }
   .cfbtn:hover:not(.active) { border-color: var(--border-hi); color: var(--text); }
   .cfbtn.active { color: #000; font-weight: 700; }
@@ -232,189 +123,157 @@
   .cfbtn[data-c="6"].active { background:#e05050; border-color:#e05050; }
   .cfbtn[data-c="7"].active { background:#c0781a; border-color:#c0781a; }
   .cfbtn[data-c="8"].active { background:#888; border-color:#888; }
-  .cfbtn[data-c="9"].active { background:#e8eaf0; border-color:#e8eaf0; }
+  .cfbtn[data-c="9"].active { background:#e8eaf0; border-color:#e8eaf0; color:#000; }
 
   .count-info { font-size: 11px; color: var(--text-muted); }
 
   /* card list */
   .card-list {
-    overflow-y: auto;
-    flex: 1;
-    padding: 12px 16px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 6px;
-    align-content: start;
+    overflow-y: auto; flex: 1; padding: 10px 12px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 6px; align-content: start;
   }
   .card-list::-webkit-scrollbar { width: 4px; }
   .card-list::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 2px; }
 
   .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 10px;
-    cursor: pointer;
-    transition: all 0.12s;
-    user-select: none;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 9px; cursor: pointer;
+    transition: all 0.12s; user-select: none; position: relative;
   }
   .card:hover { border-color: var(--border-hi); background: var(--surface2); transform: translateY(-1px); }
   .card.in-deck { border-color: var(--accent); background: rgba(232,160,32,0.08); }
   .card.in-deck:hover { border-color: var(--red); background: rgba(224,80,80,0.08); }
 
-  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
-  .card-name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+  .card-name { font-size: 11px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; }
+
   .cost-pip {
-    min-width: 20px; height: 20px;
-    border-radius: 50%;
+    min-width: 20px; height: 20px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 700;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .pip-1{background:#1a3d1a;color:#4caf50;} .pip-2{background:#0d2e28;color:#26c6a0;}
+  .pip-3{background:#0d1e3d;color:#3a8ef0;} .pip-4{background:#3d2a00;color:#e8a020;}
+  .pip-5{background:#200d3d;color:#8b5cf6;} .pip-6{background:#3d0d0d;color:#e05050;}
+  .pip-7{background:#2a1500;color:#c0781a;} .pip-8{background:#1a1a1a;color:#888;}
+  .pip-9{background:#1a1a2a;color:#9090d0;}
+
+  .card-bottom { display: flex; align-items: center; justify-content: space-between; }
+  .card-role { font-size: 9px; color: var(--text-muted); flex: 1; }
+
+  .type-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-bottom: 3px; }
+  .tag-troop{background:rgba(58,142,240,0.15);color:#3a8ef0;}
+  .tag-spell{background:rgba(139,92,246,0.15);color:#8b5cf6;}
+  .tag-building{background:rgba(232,160,32,0.15);color:#e8a020;}
+  .tag-champion{background:rgba(224,80,80,0.15);color:#e05050;}
+
+  /* ハートボタン */
+  .fav-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; padding: 2px; line-height: 1;
+    opacity: 0.25; transition: opacity 0.15s, transform 0.15s;
     flex-shrink: 0;
   }
-  .pip-1 { background:#1a3d1a; color:#4caf50; }
-  .pip-2 { background:#0d2e28; color:#26c6a0; }
-  .pip-3 { background:#0d1e3d; color:#3a8ef0; }
-  .pip-4 { background:#3d2a00; color:#e8a020; }
-  .pip-5 { background:#200d3d; color:#8b5cf6; }
-  .pip-6 { background:#3d0d0d; color:#e05050; }
-  .pip-7 { background:#2a1500; color:#c0781a; }
-  .pip-8 { background:#1a1a1a; color:#888; }
-  .pip-9 { background:#1a1a2a; color:#9090d0; }
+  .fav-btn:hover { opacity: 0.7; transform: scale(1.2); }
+  .fav-btn.active { opacity: 1; }
 
-  .card-role { font-size: 10px; color: var(--text-muted); }
-  .type-tag {
-    display: inline-block;
-    font-size: 9px;
-    padding: 1px 5px;
-    border-radius: 3px;
-    margin-bottom: 3px;
-  }
-  .tag-troop { background: rgba(58,142,240,0.15); color: #3a8ef0; }
-  .tag-spell { background: rgba(139,92,246,0.15); color: #8b5cf6; }
-  .tag-building { background: rgba(232,160,32,0.15); color: #e8a020; }
-  .tag-champion { background: rgba(224,80,80,0.15); color: #e05050; }
-
-  /* ── RIGHT PANEL ── */
-  .right {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
-  }
-  .deck-header {
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--border);
-  }
+  /* RIGHT PANEL */
+  .deck-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
   .deck-title {
-    font-family: var(--font-head);
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: var(--text);
-    text-transform: uppercase;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
+    font-family: var(--font-head); font-size: 18px; font-weight: 700;
+    letter-spacing: 1px; color: var(--text); text-transform: uppercase;
+    display: flex; align-items: baseline; gap: 8px;
   }
   .deck-count { font-size: 13px; font-weight: 400; color: var(--text-muted); font-family: var(--font-body); }
-  .avg-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    margin-top: 4px;
-  }
+  .avg-row { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
   .avg-label { font-size: 11px; color: var(--text-muted); }
   .avg-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
   .avg-sub { font-size: 11px; color: var(--text-muted); }
 
-  /* cost bar */
   .cost-bar { display: flex; gap: 2px; margin-top: 8px; height: 4px; border-radius: 2px; overflow: hidden; }
   .bar-seg { height: 100%; transition: flex 0.3s; }
 
-  /* slots */
-  .deck-slots {
-    flex: 1;
-    overflow-y: auto;
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-height: 0;
-  }
+  .deck-slots { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
   .slot {
-    background: var(--surface2);
-    border: 1px dashed var(--border);
-    border-radius: 6px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    gap: 8px;
-    transition: all 0.15s;
+    background: var(--surface2); border: 1px dashed var(--border);
+    border-radius: 6px; height: 44px; display: flex;
+    align-items: center; padding: 0 10px; gap: 8px; transition: all 0.15s;
   }
-  .slot.filled {
-    border-style: solid;
-    border-color: var(--border-hi);
-    background: var(--surface);
-    cursor: pointer;
-  }
+  .slot.filled { border-style: solid; border-color: var(--border-hi); background: var(--surface); cursor: pointer; }
   .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); }
   .slot-num { font-size: 10px; color: var(--text-dim); width: 14px; flex-shrink: 0; }
   .slot-name { font-size: 13px; font-weight: 500; flex: 1; }
-  .slot-cost { font-size: 12px; font-weight: 700; }
   .slot-type { font-size: 9px; }
   .slot-empty-text { font-size: 12px; color: var(--text-dim); }
 
-  /* deck actions */
-  .deck-actions {
-    padding: 10px 12px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
+  .deck-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
   .btn {
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-family: var(--font-body);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.12s;
-    border: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
+    padding: 8px 12px; border-radius: 6px; font-family: var(--font-body);
+    font-size: 12px; cursor: pointer; transition: all 0.12s; border: none;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
   }
   .btn-primary { background: var(--accent); color: #000; font-weight: 700; }
   .btn-primary:hover { background: var(--accent2); }
   .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
   .btn-ghost:hover { border-color: var(--border-hi); color: var(--text); }
 
-  /* cost coloring helpers */
-  .c1 { color:#4caf50; } .c2 { color:#26c6a0; } .c3 { color:#3a8ef0; }
-  .c4 { color:#e8a020; } .c5 { color:#8b5cf6; } .c6 { color:#e05050; }
-  .c7 { color:#c0781a; } .c8 { color:#888; }   .c9 { color:#9090d0; }
-
-  /* toast */
   .toast {
-    position: fixed;
-    bottom: 24px; left: 50%;
+    position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(20px);
-    background: var(--surface2);
-    border: 1px solid var(--border-hi);
-    color: var(--text);
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 13px;
-    opacity: 0;
-    transition: all 0.2s;
-    pointer-events: none;
-    z-index: 999;
-    white-space: nowrap;
+    background: var(--surface2); border: 1px solid var(--border-hi);
+    color: var(--text); padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; opacity: 0; transition: all 0.2s;
+    pointer-events: none; z-index: 999; white-space: nowrap;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* MOBILE */
+  @media (max-width: 720px) {
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    header { flex-shrink: 0; padding: 8px 12px; }
+    .logo { font-size: 17px; }
+    .logo span { display: none; }
+
+    .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; }
+
+    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); }
+    .left { flex: 1; overflow: hidden; }
+
+    .deck-header { padding: 8px 12px 6px; }
+    .deck-title { font-size: 14px; }
+    .avg-val { font-size: 20px; }
+    .avg-row { margin-top: 2px; }
+
+    .deck-slots {
+      flex-direction: row !important; flex-wrap: wrap;
+      gap: 4px; padding: 6px 10px; max-height: none; overflow: visible;
+    }
+    .slot {
+      width: calc(25% - 3px); height: 52px;
+      flex-direction: column; align-items: center;
+      justify-content: center; padding: 4px 2px; gap: 2px;
+    }
+    .slot-num { display: none; }
+    .slot-name { font-size: 10px; text-align: center; line-height: 1.2; }
+    .slot-type { font-size: 8px; }
+    .slot-empty-text { font-size: 10px; }
+    .slot .cost-pip { width: 16px; height: 16px; font-size: 9px; }
+
+    .deck-actions { padding: 6px 10px; flex-direction: row; gap: 6px; }
+    .deck-actions .btn { flex: 1; padding: 7px 8px; font-size: 11px; }
+
+    .controls { padding: 8px 10px; }
+    .controls-row { gap: 6px; }
+    .type-tabs { gap: 2px; }
+    .ttab { padding: 4px 7px; font-size: 11px; }
+    .cfbtn { width: 24px; height: 24px; font-size: 11px; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(98px, 1fr)); gap: 5px; padding: 8px 10px; }
+    .card { padding: 6px 7px; }
+    .card-name { font-size: 10px; }
+    .card-role { font-size: 9px; }
+    .cost-pip { width: 18px; height: 18px; font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -437,7 +296,7 @@
     </div>
     <div class="deck-slots" id="deckSlots"></div>
     <div class="deck-actions">
-      <button class="btn btn-primary" id="copyBtn">📋 デッキをテキストでコピー</button>
+      <button class="btn btn-primary" id="copyBtn">📋 テキストコピー</button>
       <button class="btn btn-ghost" id="clearBtn">クリア</button>
     </div>
   </div>
@@ -452,9 +311,10 @@
         </div>
         <div class="type-tabs">
           <button class="ttab active" data-type="all">全て</button>
-          <button class="ttab" data-type="troop">トループ</button>
-          <button class="ttab" data-type="spell">スペル</button>
+          <button class="ttab" data-type="troop">ユニット</button>
+          <button class="ttab" data-type="spell">呪文</button>
           <button class="ttab" data-type="building">建物</button>
+          <button class="ttab" data-type="fav">❤</button>
         </div>
       </div>
       <div class="controls-row">
@@ -471,168 +331,164 @@
 <script>
 // =============================================
 // CARD DATA — ここを編集してカードを追加・変更
+// 名称はsmashlog正式名称に準拠
 // =============================================
 const CARDS = [
   // 1コスト
-  {name:"スケルトン",        cost:1, type:"troop",    role:"サイクル・防衛"},
-  {name:"アイススピリット",   cost:1, type:"troop",    role:"凍結・サイクル"},
-  {name:"ファイアスピリット", cost:1, type:"troop",    role:"小型処理・対空"},
-  {name:"エレクトロスピリット",cost:1,type:"troop",    role:"チェーン感電・サイクル"},
-  {name:"ヒールスピリット",   cost:1, type:"troop",    role:"回復サポート"},
+  {name:"スケルトン",           cost:1, type:"troop",    role:"サイクル・防衛"},
+  {name:"アイススピリット",      cost:1, type:"troop",    role:"凍結・サイクル"},
+  {name:"ファイアスピリット",    cost:1, type:"troop",    role:"小型処理・対空"},
+  {name:"エレクトロスピリット",  cost:1, type:"troop",    role:"チェーン感電・サイクル"},
+  {name:"ヒールスピリット",      cost:1, type:"troop",    role:"回復サポート"},
 
   // 2コスト
-  {name:"ゴブリン",           cost:2, type:"troop",    role:"小型高DPS"},
-  {name:"ボンバー",           cost:2, type:"troop",    role:"範囲攻撃・防衛"},
-  {name:"スピアゴブリン",     cost:2, type:"troop",    role:"対空・遠距離"},
-  {name:"バット",             cost:2, type:"troop",    role:"対空・サイクル"},
-  {name:"アイスゴレム",       cost:2, type:"troop",    role:"タンク・デス凍結"},
-  {name:"ウォールブレイカー", cost:2, type:"troop",    role:"建物狙い・サイクル"},
-  {name:"バーサーカー",       cost:2, type:"troop",    role:"高速高DPS近接"},
-  {name:"サスピシャスブッシュ",cost:2,type:"troop",    role:"変則攻撃"},
-  {name:"ザップ",             cost:2, type:"spell",    role:"即時感電・リセット"},
-  {name:"雪玉",               cost:2, type:"spell",    role:"ノックバック・減速"},
-  {name:"バーバリアンバレル", cost:2, type:"spell",    role:"転がし＋バーバリアン"},
-  {name:"ザ・ログ",           cost:2, type:"spell",    role:"広範囲ローリング"},
-  {name:"レイジ",             cost:2, type:"spell",    role:"速度・火力アップ"},
-  {name:"ゴブリンカース",     cost:2, type:"spell",    role:"死亡時ゴブリン変換"},
+  {name:"ゴブリン",              cost:2, type:"troop",    role:"小型高DPS"},
+  {name:"ボンバー",              cost:2, type:"troop",    role:"範囲攻撃・防衛"},
+  {name:"槍ゴブリン",            cost:2, type:"troop",    role:"対空・遠距離"},
+  {name:"コウモリの群れ",        cost:2, type:"troop",    role:"対空・サイクル"},
+  {name:"アイスゴーレム",        cost:2, type:"troop",    role:"タンク・デス凍結"},
+  {name:"ウォールブレイカー",    cost:2, type:"troop",    role:"建物狙い・サイクル"},
+  {name:"バーサーカー",          cost:2, type:"troop",    role:"高速高DPS近接"},
+  {name:"ザップ",                cost:2, type:"spell",    role:"即時感電・リセット"},
+  {name:"巨大雪玉",              cost:2, type:"spell",    role:"ノックバック・減速"},
+  {name:"ローリングバーバリアン", cost:2, type:"spell",    role:"転がし＋バーバリアン"},
+  {name:"ローリングウッド",      cost:2, type:"spell",    role:"広範囲ローリング"},
+  {name:"レイジ",                cost:2, type:"spell",    role:"速度・火力アップ"},
 
   // 3コスト
-  {name:"ナイト",             cost:3, type:"troop",    role:"タンク・防衛"},
-  {name:"アーチャー",         cost:3, type:"troop",    role:"対空・遠距離"},
-  {name:"ミニオン",           cost:3, type:"troop",    role:"対空・高DPS"},
-  {name:"ゴブリンギャング",   cost:3, type:"troop",    role:"地上・対空mix"},
-  {name:"スケルトンバレル",   cost:3, type:"troop",    role:"空中突撃・デス処理"},
-  {name:"ファイアクラッカー", cost:3, type:"troop",    role:"遠距離・小型処理"},
-  {name:"メガミニオン",       cost:3, type:"troop",    role:"対空高火力"},
-  {name:"ダートゴブリン",     cost:3, type:"troop",    role:"超長射程・速射"},
-  {name:"エリクサーゴレム",   cost:3, type:"troop",    role:"タンク・敵にエリ付与"},
-  {name:"アイスウィザード",   cost:3, type:"troop",    role:"全体減速"},
-  {name:"プリンセス",         cost:3, type:"troop",    role:"超長射程・範囲"},
-  {name:"マイナー",           cost:3, type:"troop",    role:"建物狙い奇襲"},
-  {name:"スケルトン部隊",     cost:3, type:"troop",    role:"防衛・大量展開"},
-  {name:"ガーズ",             cost:3, type:"troop",    role:"盾持ち防衛"},
-  {name:"バンディット",       cost:3, type:"troop",    role:"ダッシュ高火力"},
-  {name:"フィッシャーマン",   cost:3, type:"troop",    role:"引き寄せ・妨害"},
-  {name:"ロイヤルゴースト",   cost:3, type:"troop",    role:"透明・奇襲"},
-  {name:"リトルプリンス",     cost:3, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"アロー",             cost:3, type:"spell",    role:"範囲・対空"},
-  {name:"トルネード",         cost:3, type:"spell",    role:"引き寄せ・集中"},
-  {name:"地震",               cost:3, type:"spell",    role:"建物特効ダメージ"},
-  {name:"ロイヤルデリバリー", cost:3, type:"spell",    role:"範囲＋兵士展開"},
-  {name:"バイン",             cost:3, type:"spell",    role:"スロー拘束"},
-  {name:"ヴォイド",           cost:3, type:"spell",    role:"ダメージゾーン"},
-  {name:"ゴブリンバレル",     cost:3, type:"spell",    role:"奇襲ゴブリン3体"},
-  {name:"クローン",           cost:3, type:"spell",    role:"ユニット複製"},
-  {name:"キャノン",           cost:3, type:"building", role:"単体遠距離防衛"},
-  {name:"トゥームストーン",   cost:3, type:"building", role:"スケルトン生成"},
+  {name:"ナイト",                cost:3, type:"troop",    role:"タンク・防衛"},
+  {name:"アーチャー",            cost:3, type:"troop",    role:"対空・遠距離"},
+  {name:"ガーゴイル",            cost:3, type:"troop",    role:"対空・高DPS"},
+  {name:"ゴブリンギャング",      cost:3, type:"troop",    role:"地上・対空mix"},
+  {name:"スケルトンバレル",      cost:3, type:"troop",    role:"空中突撃・デス処理"},
+  {name:"ロケット砲士",          cost:3, type:"troop",    role:"遠距離・小型処理"},
+  {name:"メガガーゴイル",        cost:3, type:"troop",    role:"対空高火力"},
+  {name:"吹き矢ゴブリン",        cost:3, type:"troop",    role:"超長射程・速射"},
+  {name:"エリクサーゴーレム",    cost:3, type:"troop",    role:"タンク・敵にエリ付与"},
+  {name:"アイスウィザード",      cost:3, type:"troop",    role:"全体減速"},
+  {name:"プリンセス",            cost:3, type:"troop",    role:"超長射程・範囲"},
+  {name:"ディガー",              cost:3, type:"troop",    role:"建物狙い奇襲"},
+  {name:"スケルトン部隊",        cost:3, type:"troop",    role:"防衛・大量展開"},
+  {name:"盾の戦士",              cost:3, type:"troop",    role:"盾持ち防衛"},
+  {name:"アサシン ユーノ",       cost:3, type:"troop",    role:"ダッシュ高火力"},
+  {name:"漁師トリトン",          cost:3, type:"troop",    role:"引き寄せ・妨害"},
+  {name:"ロイヤルゴースト",      cost:3, type:"troop",    role:"透明・奇襲"},
+  {name:"矢の雨",                cost:3, type:"spell",    role:"範囲・対空"},
+  {name:"トルネード",            cost:3, type:"spell",    role:"引き寄せ・集中"},
+  {name:"アースクエイク",        cost:3, type:"spell",    role:"建物特効ダメージ"},
+  {name:"ロイヤルデリバリー",    cost:3, type:"spell",    role:"範囲＋兵士展開"},
+  {name:"ゴブリンバレル",        cost:3, type:"spell",    role:"奇襲ゴブリン3体"},
+  {name:"クローン",              cost:3, type:"spell",    role:"ユニット複製"},
+  {name:"大砲",                  cost:3, type:"building", role:"単体遠距離防衛"},
+  {name:"墓石",                  cost:3, type:"building", role:"スケルトン生成"},
 
   // 4コスト
-  {name:"バルキリー",         cost:4, type:"troop",    role:"範囲防衛・タンク"},
-  {name:"マスケット銃士",     cost:4, type:"troop",    role:"遠距離高火力"},
-  {name:"ミニペッカ",         cost:4, type:"troop",    role:"単体超高DPS"},
-  {name:"ホグライダー",       cost:4, type:"troop",    role:"建物狙い突撃"},
-  {name:"バトルラム",         cost:4, type:"troop",    role:"建物狙い＋バーバリアン"},
-  {name:"スケルトンドラゴン", cost:4, type:"troop",    role:"対空範囲"},
-  {name:"ザッピー",           cost:4, type:"troop",    role:"感電・防衛"},
-  {name:"フライングマシン",   cost:4, type:"troop",    role:"対空・超長射程"},
-  {name:"バトルヒーラー",     cost:4, type:"troop",    role:"HP回復タンク"},
-  {name:"ゴブリンデモリッシャー",cost:4,type:"troop",  role:"建物狙い・デス爆発"},
-  {name:"ダークプリンス",     cost:4, type:"troop",    role:"盾＋範囲チャージ"},
-  {name:"ハンター",           cost:4, type:"troop",    role:"近距離超高火力"},
-  {name:"ベイビードラゴン",   cost:4, type:"troop",    role:"対空範囲"},
-  {name:"ルーンジャイアント", cost:4, type:"troop",    role:"タンク・スペル無効"},
-  {name:"エレクトロウィザード",cost:4,type:"troop",    role:"感電・リセット"},
-  {name:"インフェルノドラゴン",cost:4,type:"troop",    role:"単体集中加熱"},
-  {name:"ランバージャック",   cost:4, type:"troop",    role:"高速＋デスレイジ"},
-  {name:"マジックアーチャー", cost:4, type:"troop",    role:"超射程貫通"},
-  {name:"マザーウィッチ",     cost:4, type:"troop",    role:"呪い→ホグ変換"},
-  {name:"ナイトウィッチ",     cost:4, type:"troop",    role:"バット生成"},
-  {name:"フェニックス",       cost:4, type:"troop",    role:"再生・対空"},
-  {name:"スケルトンキング",   cost:4, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"ゴールデンナイト",   cost:4, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"マイティマイナー",   cost:4, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"ファイアボール",     cost:4, type:"spell",    role:"中範囲高火力"},
-  {name:"フリーズ",           cost:4, type:"spell",    role:"全停止"},
-  {name:"ポイズン",           cost:4, type:"spell",    role:"持続ダメージ"},
-  {name:"ゴブリンケージ",     cost:4, type:"building", role:"処理後ブロウラー生成"},
-  {name:"ゴブリンドリル",     cost:4, type:"building", role:"地中攻撃"},
-  {name:"ゴブリンハット",     cost:4, type:"building", role:"スピアゴブ生成"},
-  {name:"ボムタワー",         cost:4, type:"building", role:"範囲防衛"},
-  {name:"テスラ",             cost:4, type:"building", role:"感電防衛"},
-  {name:"迫撃砲",             cost:4, type:"building", role:"超長射程建物狙い"},
-  {name:"炉",                 cost:4, type:"building", role:"ファイアスピ生成"},
+  {name:"バルキリー",            cost:4, type:"troop",    role:"範囲防衛・タンク"},
+  {name:"マスケット銃士",        cost:4, type:"troop",    role:"遠距離高火力"},
+  {name:"ミニペッカ",            cost:4, type:"troop",    role:"単体超高DPS"},
+  {name:"ホグライダー",          cost:4, type:"troop",    role:"建物狙い突撃"},
+  {name:"攻城バーバリアン",      cost:4, type:"troop",    role:"建物狙い＋バーバリアン"},
+  {name:"スケルトンドラゴン",    cost:4, type:"troop",    role:"対空範囲"},
+  {name:"ザッピー",              cost:4, type:"troop",    role:"感電・防衛"},
+  {name:"ホバリング砲",          cost:4, type:"troop",    role:"対空・超長射程"},
+  {name:"バトルヒーラー",        cost:4, type:"troop",    role:"HP回復タンク"},
+  {name:"ゴブリンデモリッシャー",cost:4, type:"troop",    role:"建物狙い・デス爆発"},
+  {name:"ダークプリンス",        cost:4, type:"troop",    role:"盾＋範囲チャージ"},
+  {name:"ハンター",              cost:4, type:"troop",    role:"近距離超高火力"},
+  {name:"ベビードラゴン",        cost:4, type:"troop",    role:"対空範囲"},
+  {name:"エレクトロウィザード",  cost:4, type:"troop",    role:"感電・リセット"},
+  {name:"インフェルノドラゴン",  cost:4, type:"troop",    role:"単体集中加熱"},
+  {name:"ランバージャック",      cost:4, type:"troop",    role:"高速＋デスレイジ"},
+  {name:"マジックアーチャー",    cost:4, type:"troop",    role:"超射程貫通"},
+  {name:"マザーネクロマンサー",  cost:4, type:"troop",    role:"呪い→ホグ変換"},
+  {name:"ダークネクロ",          cost:4, type:"troop",    role:"コウモリ生成"},
+  {name:"ゴールドナイト",        cost:4, type:"troop",    role:"チャンピオン", champion:true},
+  {name:"スケルトンキング",      cost:4, type:"troop",    role:"チャンピオン", champion:true},
+  {name:"マイティディガー",      cost:4, type:"troop",    role:"チャンピオン", champion:true},
+  {name:"フェニックス",          cost:4, type:"troop",    role:"再生・対空"},
+  {name:"ファイアボール",        cost:4, type:"spell",    role:"中範囲高火力"},
+  {name:"フリーズ",              cost:4, type:"spell",    role:"全停止"},
+  {name:"ポイズン",              cost:4, type:"spell",    role:"持続ダメージ"},
+  {name:"ゴブリンの檻",          cost:4, type:"building", role:"処理後ブロウラー生成"},
+  {name:"ゴブリンドリル",        cost:4, type:"building", role:"地中攻撃"},
+  {name:"ゴブリンの小屋",        cost:4, type:"building", role:"槍ゴブリン生成"},
+  {name:"ボムタワー",            cost:4, type:"building", role:"範囲防衛"},
+  {name:"テスラ",                cost:4, type:"building", role:"感電防衛"},
+  {name:"迫撃砲",                cost:4, type:"building", role:"超長射程建物狙い"},
+  {name:"オーブン",              cost:4, type:"building", role:"ファイアスピリット生成"},
 
   // 5コスト
-  {name:"バーバリアン",       cost:5, type:"troop",    role:"高体力集団"},
-  {name:"ミニオンホード",     cost:5, type:"troop",    role:"大量対空"},
-  {name:"ジャイアント",       cost:5, type:"troop",    role:"建物狙いタンク"},
-  {name:"ウィザード",         cost:5, type:"troop",    role:"範囲スプラッシュ"},
-  {name:"バルーン",           cost:5, type:"troop",    role:"建物狙い爆撃"},
-  {name:"ウィッチ",           cost:5, type:"troop",    role:"スケルトン生成＋範囲"},
-  {name:"ボウラー",           cost:5, type:"troop",    role:"貫通プッシュ"},
-  {name:"エクスキューショナー",cost:5,type:"troop",    role:"貫通往復斧"},
-  {name:"キャノンカート",     cost:5, type:"troop",    role:"遠距離＋盾"},
-  {name:"ロイヤルホグ",       cost:5, type:"troop",    role:"建物狙い4体"},
-  {name:"ラスカルズ",         cost:5, type:"troop",    role:"地空混合群"},
-  {name:"エレクトロドラゴン", cost:5, type:"troop",    role:"チェーン感電"},
-  {name:"プリンス",           cost:5, type:"troop",    role:"チャージ高火力"},
-  {name:"ゴブリンマシン",     cost:5, type:"troop",    role:"建物狙い高火力"},
-  {name:"ラムライダー",       cost:5, type:"troop",    role:"建物狙い＋スネア"},
-  {name:"モンク",             cost:5, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"ゴブリンスタイン",   cost:5, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"アーチャークイーン", cost:5, type:"troop",    role:"チャンピオン・高火力",champion:true},
-  {name:"グレイブヤード",     cost:5, type:"spell",    role:"スケルトン大量召喚"},
-  {name:"インフェルノタワー", cost:5, type:"building", role:"単体集中加熱"},
+  {name:"バーバリアン",          cost:5, type:"troop",    role:"高体力集団"},
+  {name:"ガーゴイルの群れ",      cost:5, type:"troop",    role:"大量対空"},
+  {name:"ジャイアント",          cost:5, type:"troop",    role:"建物狙いタンク"},
+  {name:"ウィザード",            cost:5, type:"troop",    role:"範囲スプラッシュ"},
+  {name:"エアバルーン",          cost:5, type:"troop",    role:"建物狙い爆撃"},
+  {name:"ネクロマンサー",        cost:5, type:"troop",    role:"スケルトン生成＋範囲"},
+  {name:"ボウラー",              cost:5, type:"troop",    role:"貫通プッシュ"},
+  {name:"執行人ファルチェ",      cost:5, type:"troop",    role:"貫通往復斧"},
+  {name:"60式ムート",            cost:5, type:"troop",    role:"遠距離＋盾"},
+  {name:"ロイヤルホグ",          cost:5, type:"troop",    role:"建物狙い4体"},
+  {name:"アウトロー",            cost:5, type:"troop",    role:"地空混合群"},
+  {name:"ライトニングドラゴン",  cost:5, type:"troop",    role:"チェーン感電"},
+  {name:"プリンス",              cost:5, type:"troop",    role:"チャージ高火力"},
+  {name:"ラムライダー",          cost:5, type:"troop",    role:"建物狙い＋スネア"},
+  {name:"アーチャークイーン",    cost:5, type:"troop",    role:"チャンピオン・高火力", champion:true},
+  {name:"スケルトンラッシュ",    cost:5, type:"spell",    role:"スケルトン大量召喚"},
+  {name:"インフェルノタワー",    cost:5, type:"building", role:"単体集中加熱"},
 
   // 6コスト
-  {name:"ロイヤルジャイアント",cost:6,type:"troop",   role:"建物狙い超射程"},
-  {name:"エリートバーバリアン",cost:6,type:"troop",   role:"高速高火力2体"},
-  {name:"ジャイアントスケルトン",cost:6,type:"troop", role:"タンク＋デス爆弾"},
-  {name:"ゴブリンジャイアント",cost:6,type:"troop",   role:"タンク＋スピアゴブ"},
-  {name:"スパーキー",         cost:6, type:"troop",    role:"蓄電超高火力"},
-  {name:"スピリットエンプレス",cost:6,type:"troop",   role:"変形・高火力"},
-  {name:"ボスバンディット",   cost:6, type:"troop",    role:"チャンピオン",      champion:true},
-  {name:"ロケット",           cost:6, type:"spell",    role:"超高火力単発"},
-  {name:"ライトニング",       cost:6, type:"spell",    role:"3体感電高火力"},
-  {name:"エリクサーコレクター",cost:6,type:"building", role:"エリクサー生成"},
-  {name:"バーバリアンハット", cost:6, type:"building", role:"バーバリアン生成"},
-  {name:"Xボウ",              cost:6, type:"building", role:"超長射程建物狙い"},
+  {name:"ロイヤルジャイアント",  cost:6, type:"troop",    role:"建物狙い超射程"},
+  {name:"エリートバーバリアン",  cost:6, type:"troop",    role:"高速高火力2体"},
+  {name:"巨大スケルトン",        cost:6, type:"troop",    role:"タンク＋デス爆弾"},
+  {name:"ゴブジャイアント",      cost:6, type:"troop",    role:"タンク＋槍ゴブリン"},
+  {name:"スパーキー",            cost:6, type:"troop",    role:"蓄電超高火力"},
+  {name:"ロケット",              cost:6, type:"spell",    role:"超高火力単発"},
+  {name:"ライトニング",          cost:6, type:"spell",    role:"3体感電高火力"},
+  {name:"エリクサーポンプ",      cost:6, type:"building", role:"エリクサー生成"},
+  {name:"バーバリアンの小屋",    cost:6, type:"building", role:"バーバリアン生成"},
+  {name:"巨大クロスボウ",        cost:6, type:"building", role:"超長射程建物狙い"},
 
   // 7コスト
-  {name:"P.E.K.K.A",          cost:7, type:"troop",    role:"単体超高DPS"},
-  {name:"ラヴァハウンド",     cost:7, type:"troop",    role:"空中タンク"},
-  {name:"エレクトロジャイアント",cost:7,type:"troop",  role:"感電反射タンク"},
-  {name:"メガナイト",         cost:7, type:"troop",    role:"スポーン＋ジャンプ範囲"},
-  {name:"ロイヤルリクルーツ", cost:7, type:"troop",    role:"壁役6体"},
+  {name:"ペッカ",                cost:7, type:"troop",    role:"単体超高DPS"},
+  {name:"ラヴァハウンド",        cost:7, type:"troop",    role:"空中タンク"},
+  {name:"エレクトロジャイアント",cost:7, type:"troop",    role:"感電反射タンク"},
+  {name:"メガナイト",            cost:7, type:"troop",    role:"スポーン＋ジャンプ範囲"},
+  {name:"見習い親衛隊",          cost:7, type:"troop",    role:"壁役6体"},
 
   // 8・9コスト
-  {name:"ゴレム",             cost:8, type:"troop",    role:"最大タンク"},
-  {name:"スリーマスケット",   cost:9, type:"troop",    role:"超高火力3体"},
+  {name:"ゴーレム",              cost:8, type:"troop",    role:"最大タンク"},
+  {name:"三銃士",                cost:9, type:"troop",    role:"超高火力3体"},
 ];
 // =============================================
 
 let deck = [];
+let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
 let activeType = 'all';
 let activeCosts = new Set();
 
+function saveFavorites() {
+  try { localStorage.setItem('cr_favorites', JSON.stringify(favorites)); } catch(e) {}
+}
+
+function isFav(name) { return favorites.includes(name); }
+
+function toggleFav(name, e) {
+  e.stopPropagation();
+  if (isFav(name)) { favorites = favorites.filter(f => f !== name); }
+  else { favorites.push(name); }
+  saveFavorites();
+  render();
+}
+
 function init() {
-  // cost filter buttons
   const cf = document.getElementById('costFilters');
   [1,2,3,4,5,6,7,8,9].forEach(c => {
     const b = document.createElement('button');
-    b.className = 'cfbtn';
-    b.dataset.c = c;
-    b.textContent = c;
-    b.title = c + 'コスト';
-    b.onclick = () => {
-      b.classList.toggle('active');
-      activeCosts.has(c) ? activeCosts.delete(c) : activeCosts.add(c);
-      render();
-    };
+    b.className = 'cfbtn'; b.dataset.c = c; b.textContent = c; b.title = c + 'コスト';
+    b.onclick = () => { b.classList.toggle('active'); activeCosts.has(c) ? activeCosts.delete(c) : activeCosts.add(c); render(); };
     cf.appendChild(b);
   });
 
-  // type tabs
   document.querySelectorAll('.ttab').forEach(t => {
     t.onclick = () => {
       document.querySelectorAll('.ttab').forEach(x => x.classList.remove('active'));
@@ -642,10 +498,7 @@ function init() {
     };
   });
 
-  // search
   document.getElementById('search').oninput = render;
-
-  // deck actions
   document.getElementById('clearBtn').onclick = () => { deck = []; renderDeck(); render(); };
   document.getElementById('copyBtn').onclick = copyDeck;
 
@@ -656,7 +509,8 @@ function init() {
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
   return CARDS.filter(c => {
-    if (activeType !== 'all' && c.type !== activeType) return false;
+    if (activeType === 'fav' && !isFav(c.name)) return false;
+    if (activeType !== 'all' && activeType !== 'fav' && c.type !== activeType) return false;
     if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
     if (q && !c.name.toLowerCase().includes(q)) return false;
     return true;
@@ -670,18 +524,21 @@ function render() {
   list.innerHTML = '';
   filtered.forEach(c => {
     const inDeck = deck.some(d => d.name === c.name);
+    const faved = isFav(c.name);
     const div = document.createElement('div');
     div.className = 'card' + (inDeck ? ' in-deck' : '');
-    const typeLabel = c.champion ? 'champion' : c.type;
     const tagClass = c.champion ? 'tag-champion' : 'tag-' + c.type;
-    const tagText = c.champion ? 'チャンピオン' : c.type === 'troop' ? 'トループ' : c.type === 'spell' ? 'スペル' : '建物';
+    const tagText = c.champion ? 'チャンピオン' : c.type === 'troop' ? 'ユニット' : c.type === 'spell' ? '呪文' : '建物';
     div.innerHTML = `
       <div class="card-top">
         <div class="card-name">${c.name}</div>
         <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
       </div>
       <span class="type-tag ${tagClass}">${tagText}</span>
-      <div class="card-role">${c.role}</div>`;
+      <div class="card-bottom">
+        <div class="card-role">${c.role}</div>
+        <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">❤️</button>
+      </div>`;
     div.onclick = () => toggleDeck(c);
     list.appendChild(div);
   });
@@ -689,16 +546,13 @@ function render() {
 
 function toggleDeck(card) {
   const idx = deck.findIndex(d => d.name === card.name);
-  if (idx >= 0) {
-    deck.splice(idx, 1);
-  } else {
+  if (idx >= 0) { deck.splice(idx, 1); }
+  else {
     if (deck.length >= 8) { showToast('⚠ デッキは8枚まで'); return; }
-    const champions = deck.filter(d => d.champion).length;
-    if (card.champion && champions >= 1) { showToast('⚠ チャンピオンは1枚まで'); return; }
+    if (card.champion && deck.filter(d => d.champion).length >= 1) { showToast('⚠ チャンピオンは1枚まで'); return; }
     deck.push(card);
   }
-  renderDeck();
-  render();
+  renderDeck(); render();
 }
 
 const COST_COLORS = {1:'#4caf50',2:'#26c6a0',3:'#3a8ef0',4:'#e8a020',5:'#8b5cf6',6:'#e05050',7:'#c0781a',8:'#888',9:'#9090d0'};
@@ -711,9 +565,8 @@ function renderDeck() {
     const div = document.createElement('div');
     if (i < sorted.length) {
       const c = sorted[i];
-      div.className = 'slot filled';
-      div.title = 'クリックで外す';
-      const typeLabel = c.champion ? 'CHAMP' : c.type === 'troop' ? 'TROOP' : c.type === 'spell' ? 'SPELL' : 'BLDG';
+      div.className = 'slot filled'; div.title = 'クリックで外す';
+      const typeLabel = c.champion ? 'CHAMP' : c.type === 'troop' ? 'UNIT' : c.type === 'spell' ? 'SPELL' : 'BLDG';
       const color = COST_COLORS[c.cost] || '#888';
       div.innerHTML = `<span class="slot-num">${i+1}</span>
         <div class="cost-pip pip-${Math.min(c.cost,9)}" style="flex-shrink:0">${c.cost}</div>
@@ -727,12 +580,9 @@ function renderDeck() {
     slots.appendChild(div);
   }
 
-  // count
   document.getElementById('deckCount').textContent = deck.length + '/8';
-
-  // avg
   if (deck.length > 0) {
-    const avg = (deck.reduce((s,c)=>s+c.cost,0) / deck.length);
+    const avg = (deck.reduce((s,c) => s+c.cost, 0) / deck.length);
     document.getElementById('avgVal').textContent = avg.toFixed(2);
     document.getElementById('avgSub').textContent = deck.length < 8 ? '（' + deck.length + '枚）' : '';
   } else {
@@ -740,16 +590,14 @@ function renderDeck() {
     document.getElementById('avgSub').textContent = '';
   }
 
-  // cost bar
   const bar = document.getElementById('costBar');
   bar.innerHTML = '';
   if (deck.length > 0) {
     const counts = {};
     deck.forEach(c => counts[c.cost] = (counts[c.cost]||0) + 1);
-    Object.entries(counts).sort((a,b)=>+a[0]-+b[0]).forEach(([cost, cnt]) => {
+    Object.entries(counts).sort((a,b) => +a[0]-+b[0]).forEach(([cost, cnt]) => {
       const seg = document.createElement('div');
-      seg.className = 'bar-seg';
-      seg.style.flex = cnt;
+      seg.className = 'bar-seg'; seg.style.flex = cnt;
       seg.style.background = COST_COLORS[cost] || '#888';
       seg.title = cost + 'コスト × ' + cnt;
       bar.appendChild(seg);
@@ -760,7 +608,7 @@ function renderDeck() {
 function copyDeck() {
   if (deck.length === 0) { showToast('デッキが空です'); return; }
   const sorted = [...deck].sort((a,b) => b.cost - a.cost);
-  const avg = (deck.reduce((s,c)=>s+c.cost,0) / deck.length).toFixed(2);
+  const avg = (deck.reduce((s,c) => s+c.cost, 0) / deck.length).toFixed(2);
   const text = '【クラロワ デッキ】平均コスト ' + avg + '\n' +
     sorted.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
   navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
@@ -768,8 +616,7 @@ function copyDeck() {
 
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
 
