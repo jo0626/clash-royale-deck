@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>攻略・人気デッキ | クラロワ デッキ作成</title>
-<meta name="description" content="クラロワの人気デッキ・最強デッキをチェック。デッキの分析もできる攻略ページ。ワンタップでデッキ作成ツールに読み込めます。">
+<meta name="description" content="クラロワの人気デッキ・最強デッキをチェック。ワンタップでデッキ作成ツールに読み込めます。">
 <link rel="canonical" href="https://crdeckbuilders.com/strategy.html">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
@@ -32,7 +32,6 @@
   .nav-icon:hover { border-color: var(--border-hi); background: var(--surface); transform: translateY(-1px); }
   .nav-icon.active { border-color: var(--accent); background: rgba(232,160,32,0.12); }
 
-  /* シームレス切り替え用タブ */
   .seg-tabs { display: flex; gap: 4px; max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
   .seg-tab {
     flex: 1; padding: 12px; text-align: center; cursor: pointer;
@@ -42,7 +41,6 @@
   }
   .seg-tab.active { background: rgba(232,160,32,0.12); border-color: var(--accent); color: var(--accent); }
 
-  /* スワイプ可能なビューポート */
   .swipe-viewport { overflow: hidden; max-width: 900px; margin: 0 auto; }
   .swipe-track { display: flex; transition: transform 0.3s ease; }
   .swipe-page { min-width: 100%; padding: 20px; }
@@ -50,19 +48,21 @@
   .page-title { font-family: var(--font-head); font-size: 22px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
   .page-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; line-height: 1.7; }
 
-  /* 人気デッキカード */
   .deck-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
   .deck-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .deck-rank { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--accent); }
+  .deck-rank { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--accent); min-width: 30px; }
   .deck-card-name { font-weight: 700; font-size: 15px; }
   .deck-card-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
   .deck-cards-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 12px; }
-  .mini-card { aspect-ratio: 3/4; background: var(--surface2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text-dim); text-align: center; padding: 2px; }
-  .load-btn { width: 100%; padding: 10px; font-size: 13px; font-weight: 700; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.12s; }
-  .load-btn:hover { border-color: var(--accent); background: rgba(232,160,32,0.08); }
+  .mini-card { aspect-ratio: 3/4; background: var(--surface2); border-radius: 6px; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; position: relative; }
+  .mini-card img { width: 100%; height: 100%; object-fit: contain; }
+  .mini-card .pip { position: absolute; top: 2px; left: 2px; font-size: 9px; font-weight: 700; background: rgba(0,0,0,0.55); color: #fff; border-radius: 4px; padding: 0 3px; line-height: 1.4; }
+  .load-btn { width: 100%; padding: 11px; font-size: 13px; font-weight: 700; background: var(--accent); color: #000; border: none; border-radius: 8px; cursor: pointer; transition: all 0.12s; text-decoration: none; display: block; text-align: center; }
+  .load-btn:hover { background: var(--accent2); }
 
   .coming-soon { text-align: center; padding: 60px 20px; color: var(--text-muted); }
   .coming-soon .big { font-size: 40px; margin-bottom: 12px; }
+  .note { font-size: 11px; color: var(--text-dim); text-align: center; margin: 4px 0 18px; line-height: 1.6; }
 
   .footer-signature { text-align: center; padding: 24px 0; font-family: 'Courier New', Courier, monospace; color: #888; letter-spacing: 1px; border-top: 1px solid var(--border); margin-top: 40px; }
   .footer-signature .by-text { font-size: 11px; opacity: 0.6; margin-right: 4px; }
@@ -97,35 +97,13 @@
 <div class="swipe-viewport" id="viewport">
   <div class="swipe-track" id="track">
 
-    <!-- ページ0: 人気デッキ -->
     <div class="swipe-page">
       <h1 class="page-title">人気デッキ</h1>
-      <p class="page-sub">ランキング上位や流行のデッキを掲載予定。気に入ったデッキはワンタップでデッキ作成ツールに読み込めます。</p>
-
-      <div class="deck-card">
-        <div class="deck-card-head">
-          <span class="deck-rank">#1</span>
-          <div>
-            <div class="deck-card-name">ホグ2.6サイクル</div>
-            <div class="deck-card-meta">平均コスト 2.6 ・ サンプル</div>
-          </div>
-        </div>
-        <div class="deck-cards-grid">
-          <div class="mini-card">ホグ</div><div class="mini-card">大砲</div>
-          <div class="mini-card">アイススピ</div><div class="mini-card">スケルトン</div>
-          <div class="mini-card">コウモリ</div><div class="mini-card">マスケ</div>
-          <div class="mini-card">ファイボ</div><div class="mini-card">ログ</div>
-        </div>
-        <button class="load-btn" onclick="alert('デッキ読み込み機能は準備中です！')">▶ このデッキを作成ツールで開く</button>
-      </div>
-
-      <div class="coming-soon">
-        <div class="big">🏗️</div>
-        <p>人気デッキ集は準備中です。<br>公式APIと連携して、ランキング上位のデッキを<br>自動で表示できるようにする予定です。</p>
-      </div>
+      <p class="page-sub">現環境で定番・人気のアーキタイプを掲載。「作成ツールで開く」でそのまま8枚読み込まれます。</p>
+      <div id="deckList"></div>
+      <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
     </div>
 
-    <!-- ページ1: 分析 -->
     <div class="swipe-page">
       <h1 class="page-title">デッキ分析</h1>
       <p class="page-sub">保存したデッキの平均コスト推移、攻め・防衛・呪文のバランス、勝率などを分析できるようにする予定です。</p>
@@ -143,35 +121,56 @@
 </div>
 
 <script>
-  const track = document.getElementById('track');
-  const viewport = document.getElementById('viewport');
-  const tabs = document.querySelectorAll('.seg-tab');
-  let currentPage = 0;
-  const totalPages = 2;
+const CARD_INFO={"スケルトン": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeletons.png"}, "アイススピリット": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-spirit.png"}, "ファイアスピリット": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fire-spirit.png"}, "エレクトロスピリット": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-spirit.png"}, "ヒールスピリット": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/heal-spirit.png"}, "ゴブリン": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblins.png"}, "ボンバー": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bomber.png"}, "槍ゴブリン": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/spear-goblins.png"}, "コウモリの群れ": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bats.png"}, "アイスゴーレム": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-golem.png"}, "ウォールブレイカー": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wall-breakers.png"}, "バーサーカー": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/berserker.png"}, "ザップ": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zap.png"}, "巨大雪玉": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-snowball.png"}, "ローリングバーバリアン": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-barrel.png"}, "ローリングウッド": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/the-log.png"}, "レイジ": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rage.png"}, "ステルスブッシュ": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/suspicious-bush.png"}, "ゴブリンの呪い": {"c": 2, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-curse.png"}, "ナイト": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/knight.png"}, "アーチャー": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archers.png"}, "ガーゴイル": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minions.png"}, "ゴブリンギャング": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-gang.png"}, "スケルトンバレル": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-barrel.png"}, "ロケット砲士": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/firecracker.png"}, "メガガーゴイル": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-minion.png"}, "吹き矢ゴブリン": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dart-goblin.png"}, "エリクサーゴーレム": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-golem.png"}, "アイスウィザード": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-wizard.png"}, "プリンセス": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/princess.png"}, "ディガー": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/miner.png"}, "スケルトン部隊": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-army.png"}, "盾の戦士": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/guards.png"}, "アサシン ユーノ": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bandit.png"}, "漁師トリトン": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fisherman.png"}, "ロイヤルゴースト": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-ghost.png"}, "矢の雨": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/arrows.png"}, "トルネード": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tornado.png"}, "アースクエイク": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/earthquake.png"}, "ロイヤルデリバリー": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-delivery.png"}, "ゴブリンバレル": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-barrel.png"}, "クローン": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/clone.png"}, "ヴァイン": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/vines.png"}, "ボイド": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/void.png"}, "ミラー": {"c": 1, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mirror.png"}, "大砲": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon.png"}, "墓石": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tombstone.png"}, "バルキリー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/valkyrie.png"}, "マスケット銃士": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/musketeer.png"}, "ミニペッカ": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mini-pekka.png"}, "ホグライダー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hog-rider.png"}, "攻城バーバリアン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-ram.png"}, "スケルトンドラゴン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-dragons.png"}, "ザッピー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/zappies.png"}, "ホバリング砲": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/flying-machine.png"}, "バトルヒーラー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/battle-healer.png"}, "ダイナマイトゴブリン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-demolisher.png"}, "ダークプリンス": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/dark-prince.png"}, "ハンター": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/hunter.png"}, "ベビードラゴン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/baby-dragon.png"}, "エレクトロウィザード": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-wizard.png"}, "インフェルノドラゴン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-dragon.png"}, "ランバージャック": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lumberjack.png"}, "マジックアーチャー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/magic-archer.png"}, "マザーネクロマンサー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mother-witch.png"}, "ダークネクロ": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/night-witch.png"}, "ゴールドナイト": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/golden-knight.png"}, "スケルトンキング": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/skeleton-king.png"}, "マイティディガー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mighty-miner.png"}, "フェニックス": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/phoenix.png"}, "鍛冶屋ジャイアント": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rune-giant.png"}, "ファイアボール": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fireball.png"}, "フリーズ": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/freeze.png"}, "ポイズン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/poison.png"}, "ゴブリンの檻": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-cage.png"}, "ゴブリンドリル": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-drill.png"}, "ゴブリンの小屋": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-hut.png"}, "ボムタワー": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bomb-tower.png"}, "テスラ": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/tesla.png"}, "迫撃砲": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mortar.png"}, "オーブン": {"c": 4, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/furnace.png"}, "バーバリアン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarians.png"}, "ガーゴイルの群れ": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/minion-horde.png"}, "ジャイアント": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant.png"}, "ウィザード": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/wizard.png"}, "エアバルーン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/balloon.png"}, "ネクロマンサー": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/witch.png"}, "ボウラー": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/bowler.png"}, "執行人ファルチェ": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/executioner.png"}, "60式ムート": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/cannon-cart.png"}, "ロイヤルホグ": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-hogs.png"}, "アウトロー": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rascals.png"}, "ライトニングドラゴン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-dragon.png"}, "プリンス": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/prince.png"}, "ラムライダー": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ram-rider.png"}, "リトルプリンス": {"c": 3, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/little-prince.png"}, "モンク": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/monk.png"}, "ゴブリンシュタイン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblinstein.png"}, "ボスアサシン": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/boss-bandit.png"}, "アーチャークイーン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/archer-queen.png"}, "ゴブリンマシン": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-machine.png"}, "スケルトンラッシュ": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/graveyard.png"}, "インフェルノタワー": {"c": 5, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/inferno-tower.png"}, "ロイヤルジャイアント": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-giant.png"}, "エリートバーバリアン": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elite-barbarians.png"}, "巨大スケルトン": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/giant-skeleton.png"}, "ゴブジャイアント": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblin-giant.png"}, "スパーキー": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/sparky.png"}, "スピリットエンプレス": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/spirit-empress.png"}, "ロケット": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/rocket.png"}, "ライトニング": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lightning.png"}, "エリクサーポンプ": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/elixir-collector.png"}, "バーバリアンの小屋": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/barbarian-hut.png"}, "巨大クロスボウ": {"c": 6, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/x-bow.png"}, "ペッカ": {"c": 7, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/pekka.png"}, "ラヴァハウンド": {"c": 7, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/lava-hound.png"}, "エレクトロジャイアント": {"c": 7, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-giant.png"}, "メガナイト": {"c": 7, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/mega-knight.png"}, "見習い親衛隊": {"c": 7, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/royal-recruits.png"}, "ゴーレム": {"c": 8, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/golem.png"}, "三銃士": {"c": 9, "i": "https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/three-musketeers.png"}};
+const DECKS=[{"name": "ホグ 2.6 サイクル", "sub": "王道サイクル。安定した攻めと低コスト", "cards": ["ホグライダー", "大砲", "アイススピリット", "スケルトン", "コウモリの群れ", "マスケット銃士", "ファイアボール", "ローリングウッド"]}, {"name": "ロイヤルジャイアント サイクル", "sub": "遠距離タンクで塔を削る定番", "cards": ["ロイヤルジャイアント", "漁師トリトン", "ハンター", "ライトニング", "フェニックス", "スケルトン", "アイススピリット", "ゴブリンの檻"]}, {"name": "墓地ポイズン", "sub": "受けてから墓地で削るコントロール", "cards": ["スケルトンラッシュ", "ポイズン", "ナイト", "アイスウィザード", "トルネード", "ベビードラゴン", "アーチャー", "ローリングウッド"]}, {"name": "ロイヤルホグ EQ", "sub": "両サイド同時攻めの速攻", "cards": ["ロイヤルホグ", "アースクエイク", "ホバリング砲", "ザッピー", "バルキリー", "マスケット銃士", "アイススピリット", "ローリングウッド"]}, {"name": "ラヴァルーン", "sub": "空中ビートダウンの王道", "cards": ["ラヴァハウンド", "エアバルーン", "メガガーゴイル", "ホバリング砲", "墓石", "フェニックス", "ファイアボール", "ザップ"]}, {"name": "Xボウ 2.9", "sub": "超遠距離建物で塔を狙う", "cards": ["巨大クロスボウ", "テスラ", "アーチャー", "ナイト", "アイススピリット", "スケルトン", "ファイアボール", "ローリングウッド"]}, {"name": "ディガーポイズン", "sub": "削り続けるチップコントロール", "cards": ["ディガー", "ポイズン", "コウモリの群れ", "ボムタワー", "マスケット銃士", "槍ゴブリン", "アイススピリット", "ローリングウッド"]}, {"name": "ゴブリンバレル（ログベイト）", "sub": "小物連打で呪文を釣る", "cards": ["ゴブリンバレル", "プリンセス", "ゴブリンギャング", "インフェルノタワー", "ナイト", "ロケット", "アイススピリット", "ローリングウッド"]}, {"name": "ゴーレム ビートダウン", "sub": "重量級の押し切り", "cards": ["ゴーレム", "ダークネクロ", "ベビードラゴン", "メガガーゴイル", "ライトニング", "トルネード", "ローリングバーバリアン", "エレクトロウィザード"]}, {"name": "ペッカ ブリッジスパム", "sub": "橋前で殴り合う攻撃的型", "cards": ["ペッカ", "攻城バーバリアン", "アサシン ユーノ", "エレクトロウィザード", "マジックアーチャー", "ロイヤルゴースト", "ザップ", "ポイズン"]}];
 
-  function goToPage(n) {
-    currentPage = Math.max(0, Math.min(totalPages - 1, n));
-    track.style.transform = `translateX(-${currentPage * 100}%)`;
-    tabs.forEach((t, i) => t.classList.toggle('active', i === currentPage));
+// 人気デッキを描画
+(function renderDecks() {
+  const wrap = document.getElementById('deckList');
+  DECKS.forEach((d, idx) => {
+    const avg = (d.cards.reduce((s,n)=> s + (CARD_INFO[n] ? CARD_INFO[n].c : 0), 0) / d.cards.length).toFixed(1);
+    const mini = d.cards.map(n => {
+      const info = CARD_INFO[n];
+      const img = info ? info.i : '';
+      const cost = info ? info.c : '';
+      return '<div class="mini-card" title="'+n+'"><span class="pip">'+cost+'</span>'+(img?'<img src="'+img+'" alt="'+n+'" loading="lazy">':'')+'</div>';
+    }).join('');
+    const url = 'index.html?deck=' + encodeURIComponent(d.cards.join(','));
+    const el = document.createElement('div');
+    el.className = 'deck-card';
+    el.innerHTML =
+      '<div class="deck-card-head">'+
+        '<span class="deck-rank">#'+(idx+1)+'</span>'+
+        '<div><div class="deck-card-name">'+d.name+'</div>'+
+        '<div class="deck-card-meta">'+d.sub+' ・ 平均コスト '+avg+'</div></div>'+
+      '</div>'+
+      '<div class="deck-cards-grid">'+mini+'</div>'+
+      '<a class="load-btn" href="'+url+'">▶ このデッキを作成ツールで開く</a>';
+    wrap.appendChild(el);
+  });
+})();
+
+const track = document.getElementById('track');
+const viewport = document.getElementById('viewport');
+const tabs = document.querySelectorAll('.seg-tab');
+let currentPage = 0;
+const totalPages = 2;
+function goToPage(n) {
+  currentPage = Math.max(0, Math.min(totalPages - 1, n));
+  track.style.transform = 'translateX(-' + (currentPage * 100) + '%)';
+  tabs.forEach((t, i) => t.classList.toggle('active', i === currentPage));
+}
+tabs.forEach(t => t.onclick = () => goToPage(parseInt(t.dataset.page)));
+let startX = 0, startY = 0, dragging = false;
+viewport.addEventListener('touchstart', e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; dragging = true; }, {passive:true});
+viewport.addEventListener('touchend', e => {
+  if (!dragging) return; dragging = false;
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+    if (dx < 0) goToPage(currentPage + 1); else goToPage(currentPage - 1);
   }
-
-  tabs.forEach(t => t.onclick = () => goToPage(parseInt(t.dataset.page)));
-
-  // スワイプ操作
-  let startX = 0, startY = 0, dragging = false;
-  viewport.addEventListener('touchstart', e => {
-    startX = e.touches[0].clientX; startY = e.touches[0].clientY; dragging = true;
-  }, {passive:true});
-  viewport.addEventListener('touchend', e => {
-    if (!dragging) return;
-    dragging = false;
-    const dx = e.changedTouches[0].clientX - startX;
-    const dy = e.changedTouches[0].clientY - startY;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx < 0) goToPage(currentPage + 1);
-      else goToPage(currentPage - 1);
-    }
-  }, {passive:true});
+}, {passive:true});
 </script>
 
 </body>
