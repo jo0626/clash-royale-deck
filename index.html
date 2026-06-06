@@ -6,6 +6,12 @@
 <title>CR Deck Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  /* ページ遷移をスライドに（対応ブラウザのみ。非対応は通常遷移） */
+  @view-transition { navigation: auto; }
+  @keyframes cr-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes cr-slide-out-left { from { transform: translateX(0); } to { transform: translateX(-30%); opacity: .4; } }
+  ::view-transition-old(root) { animation: cr-slide-out-left .28s ease both; }
+  ::view-transition-new(root) { animation: cr-slide-in-right .28s ease both; }
 
   :root {
     --bg: #0d0f14;
@@ -391,7 +397,14 @@
   .slot-type { display: none; }
   .slot-empty-text { font-size: 22px; color: var(--text-dim); opacity: 0.25; }
 
-  .deck-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+  .deck-actions { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; gap: 6px; align-items: stretch; }
+  .da-left { flex: 1; display: flex; gap: 6px; }
+  .da-left .btn { flex: 1; }
+  #analyzeBtn {
+    flex: 1; text-decoration: none; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #3a8ef0, #2a6fd0); color: #fff; font-weight: 700;
+  }
+  #analyzeBtn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; filter: saturate(0.5); }
   .btn {
     padding: 8px 12px; border-radius: 6px; font-family: var(--font-body);
     font-size: 12px; cursor: pointer; transition: all 0.12s; border: none;
@@ -477,8 +490,9 @@
       word-break: break-all;
     }
 
-    .deck-actions { padding: 6px 10px; flex-direction: row; gap: 6px; }
-    .deck-actions .btn { flex: 1; padding: 7px 8px; font-size: 11px; }
+    .deck-actions { padding: 6px 10px; gap: 6px; }
+    .deck-actions .btn { padding: 7px 6px; font-size: 11px; }
+    .da-left { gap: 6px; }
 
     .controls { padding: 8px 10px; }
     .controls-row { gap: 6px; }
@@ -690,7 +704,7 @@
   <a class="logo" href="index.html">CR Deck Builder<span>クラロワ デッキビルダー</span></a>
   <nav class="nav-icons">
     <a class="nav-icon active" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
-    <a class="nav-icon" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">🏆</span></a>
+    <a class="nav-icon" href="decks.html" title="人気デッキ・デッキ探求"><span class="nav-emoji">🏆</span></a>
     <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
     <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
   </nav>
@@ -713,8 +727,11 @@
     </div>
     <div class="deck-slots" id="deckSlots"></div>
     <div class="deck-actions">
-      <button class="btn btn-primary" id="copyBtn">📋 テキストコピー</button>
-      <button class="btn btn-ghost" id="clearBtn">クリア</button>
+      <div class="da-left">
+        <button class="btn btn-ghost" id="clearBtn">クリア</button>
+        <button class="btn btn-primary" id="saveBtn">💾 保存</button>
+      </div>
+      <a class="btn btn-analyze" id="analyzeBtn" href="strategy.html" aria-disabled="true">デッキ分析へ →</a>
     </div>
   </div>
 
@@ -1108,7 +1125,11 @@ function init() {
   };
   clearBtn2.addEventListener('pointerdown', doClear);
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
-  document.getElementById('copyBtn').onclick = copyDeck;
+  document.getElementById('saveBtn').onclick = openSlotSaveDialog;
+  document.getElementById('analyzeBtn').addEventListener('click', (e) => {
+    // 8枚そろってない時は分析ページへ行かせない
+    if (deck.filter(Boolean).length < 8) { e.preventDefault(); showToast('8枚そろうと分析できます'); }
+  });
 
   render();
   renderDeck();
@@ -1585,6 +1606,7 @@ function renderDeck() {
   }
 
   document.getElementById('deckCount').textContent = deck.filter(d=>d).length + '/8';
+  updateActionButtons();
   if (deck.filter(d=>d).length > 0) {
     const filled = deck.filter(d => d);
     const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length);
@@ -1611,13 +1633,54 @@ function renderDeck() {
   }
 }
 
-function copyDeck() {
-  const filled = deck.filter(d => d);
+// 下部ボタンの活性状態を更新
+function updateActionButtons() {
+  const n = deck.filter(Boolean).length;
+  const saveBtn = document.getElementById('saveBtn');
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  if (saveBtn) saveBtn.disabled = (n === 0);          // 1枚でもあれば途中保存OK
+  if (analyzeBtn) analyzeBtn.setAttribute('aria-disabled', n < 8 ? 'true' : 'false'); // 8枚で活性
+}
+
+// デッキ保存（5スロット・クラウド）。未ログインならログインを促す
+async function openSlotSaveDialog() {
+  const filled = deck.filter(Boolean);
   if (filled.length === 0) { showToast('デッキが空です'); return; }
-  const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length).toFixed(2);
-  const text = '【クラロワ デッキ】平均コスト ' + avg + '\n' +
-    filled.map((c,i) => (i+1) + '. ' + c.name + '（' + c.cost + 'コス）').join('\n');
-  navigator.clipboard.writeText(text).then(() => showToast('📋 コピーしました！'));
+  if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
+  if (!CRAuth.getUser()) { showToast('保存にはログインが必要です'); CRAuth.signIn(); return; }
+
+  let slots = [];
+  try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
+
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  const rows = [1,2,3,4,5].map(i => {
+    const s = slots.find(x => x.slot === i);
+    const label = s ? `${s.name}（${(s.slots||[]).length}枚）` : '空きスロット';
+    return `<div class="swap-opt" data-slot="${i}" style="text-align:left;padding:10px 12px">
+      <div style="font-size:11px;color:#6b7080">スロット${i}</div>
+      <div class="swap-opt-name">${label}</div>
+    </div>`;
+  }).join('');
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">どのスロットに保存する？（現在 ${filled.length}枚）</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin:12px 0">${rows}</div>
+    <button class="btn btn-ghost swap-cancel" style="width:100%">キャンセル</button>
+  </div>`;
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('.swap-cancel').onclick = () => ov.remove();
+  ov.querySelectorAll('.swap-opt').forEach(o => {
+    o.onclick = async () => {
+      const slot = +o.dataset.slot;
+      const name = (prompt('デッキ名を入力', 'デッキ' + slot) || 'デッキ' + slot).trim();
+      try {
+        await CRAuth.saveDeckToSlot(slot, name, filled);
+        showToast('スロット' + slot + 'に保存しました');
+      } catch (e) { showToast('保存に失敗しました'); }
+      ov.remove();
+    };
+  });
+  document.body.appendChild(ov);
 }
 
 function showToast(msg) {

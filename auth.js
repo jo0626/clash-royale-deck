@@ -168,6 +168,32 @@ const CRAuth = {
     if (!currentUser || !FB) return;
     await FB.deleteDoc(FB.doc(db, "users", currentUser.uid, "decks", id));
   },
+
+  // ---- 5スロット保存（クラウド・作成途中でも保存可） ----
+  // スロットは users/{uid}/decks/slot1..slot5 に固定IDで保存
+  async saveDeckToSlot(slot, name, cards) {
+    if (!currentUser) { CRAuth.signIn(); return; }
+    const s = Math.max(1, Math.min(5, slot | 0));
+    const list = (cards || []).filter(Boolean);
+    const avg = list.length ? (list.reduce((a, c) => a + (c.cost || 0), 0) / list.length) : 0;
+    await FB.setDoc(FB.doc(db, "users", currentUser.uid, "decks", "slot" + s), {
+      slot: s,
+      name: name || ("デッキ" + s),
+      slots: list.map(c => c.name),
+      avg: Math.round(avg * 100) / 100,
+      createdAt: FB.serverTimestamp(),
+    });
+  },
+
+  // 5スロットの現在の中身を返す（{slot, name, slots[], avg} の配列）
+  async getSlots() {
+    if (!currentUser || !FB) return [];
+    const snap = await FB.getDocs(FB.collection(db, "users", currentUser.uid, "decks"));
+    return snap.docs
+      .filter(d => /^slot[1-5]$/.test(d.id))
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.slot || 0) - (b.slot || 0));
+  },
 };
 window.CRAuth = CRAuth;
 
