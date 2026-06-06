@@ -56,6 +56,13 @@
   }
   .logo span { color: var(--text-muted); font-size: 12px; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; display: block; margin-top: -4px; }
 
+  /* ページ切替ナビ（全ページ共通） */
+  .nav-icons { display: flex; gap: 4px; margin-left: auto; }
+  .nav-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; text-decoration: none; border: 1px solid var(--border); background: var(--surface2); transition: all 0.12s; }
+  .nav-icon .nav-emoji { font-size: 17px; line-height: 1; }
+  @media (hover: hover) { .nav-icon:hover { border-color: var(--border-hi); background: var(--surface); transform: translateY(-1px); } }
+  .nav-icon.active { border-color: var(--accent); background: rgba(232,160,32,0.12); }
+
   .app {
     display: grid;
     grid-template-columns: 400px 1fr;
@@ -412,12 +419,16 @@
     /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定。
        フッターはbody直下(.appの兄弟)に置くことで、.app(flex:1)が縮んでフッターが最下部に常時表示される */
     body { display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
-    /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
-    header { display: none; }
+    /* ヘッダーはナビアイコンのためにスリム表示（携帯でもページ切替できるように） */
+    header { display: flex; flex-shrink: 0; padding: calc(5px + env(safe-area-inset-top, 0px)) 12px 5px; gap: 8px; position: static; }
+    .logo { font-size: 15px; }
+    .logo span { display: none; }
+    .nav-icon { width: 30px; height: 30px; }
+    .nav-icon .nav-emoji { font-size: 15px; }
 
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
-    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
+    .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -674,7 +685,13 @@
 <body>
 
 <header>
-  <div class="logo">CR Deck Builder<span>クラロワ デッキビルダー</span></div>
+  <a class="logo" href="index.html">CR Deck Builder<span>クラロワ デッキビルダー</span></a>
+  <nav class="nav-icons">
+    <a class="nav-icon active" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
+    <a class="nav-icon" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">🏆</span></a>
+    <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
+    <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
+  </nav>
 </header>
 
 <div class="app">
