@@ -223,8 +223,7 @@
   }
   .fav-btn svg .heart-fill { fill: none; }
   .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
-  @media (hover: hover) {
-    .fav-btn:hover { transform: scale(1.15); }
+  /* ハートのポップアニメ（全デバイス共通・モバイルのタップでも動く） */
   @keyframes heartPop {
     0%   { transform: scale(1); }
     30%  { transform: scale(1.5); }
@@ -232,6 +231,8 @@
     100% { transform: scale(1); }
   }
   .fav-btn.pop { animation: heartPop 0.35s ease; }
+  @media (hover: hover) {
+    .fav-btn:hover { transform: scale(1.15); }
     .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
   }
   .fav-btn.active svg .heart-fill { fill: #e8304a; }
@@ -467,8 +468,9 @@
 
     .controls { padding: 8px 10px; }
     .controls-row { gap: 6px; }
-    .type-tabs { gap: 3px; flex-wrap: wrap; align-items: center; }
-    .type-tabs .ttab[data-type="fav"] { margin-left: auto; }
+    /* ハートは折り返さず、同じ行の一番右上に固定 */
+    .type-tabs { gap: 3px; flex-wrap: wrap; align-items: center; position: relative; padding-right: 34px; }
+    .type-tabs .ttab[data-type="fav"] { position: absolute; top: 0; right: 0; margin-left: 0; }
     .ttab { padding: 4px 7px; font-size: 11px; }
 
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
@@ -478,6 +480,16 @@
     .card-name { font-size: 10px; }
     .card-role { font-size: 9px; padding-right: 64px; }
     .cost-pip { width: 18px; height: 18px; font-size: 10px; }
+
+    /* モバイルでもフッターを常時表示（潰れない・セーフエリア対応） */
+    .footer-signature {
+      flex-shrink: 0;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .footer-signature .by-text { font-size: 11px; }
+    .footer-signature .creator-name { font-size: 14px; }
   }
 
   .footer-signature {
@@ -486,6 +498,7 @@
     font-family: 'Courier New', Courier, monospace;
     color: #888;
     letter-spacing: 1px;
+    flex-shrink: 0;
   }
   .footer-signature .by-text {
     font-size: 12px;
@@ -500,9 +513,25 @@
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
     transition: all 0.3s ease;
   }
-  .footer-signature .creator-name:hover {
+  .footer-signature .creator-name:hover,
+  .footer-signature .creator-name.glow {
     color: #ffffff;
-    text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+    text-shadow: 0 0 12px rgba(255, 255, 255, 0.85), 0 0 22px rgba(180, 210, 255, 0.5);
+  }
+  /* 指でなぞると舞う小さなキラキラ */
+  .sig-sparkle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #ffffff 0%, rgba(190,215,255,0.9) 45%, rgba(190,215,255,0) 70%);
+    box-shadow: 0 0 6px rgba(255,255,255,0.9);
+    animation: sigSparkle 0.7s ease-out forwards;
+  }
+  @keyframes sigSparkle {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
+    100% { opacity: 0; transform: translate(-50%, -50%) translateY(-14px) scale(1); }
   }
 
   /* エネルギー充填バー */
@@ -1535,6 +1564,35 @@ function showToast(msg) {
 }
 
 init();
+
+// フッターの署名を指でなぞる/マウスで触ると少しキラキラ
+(function initSignatureSparkle() {
+  const name = document.querySelector('.footer-signature .creator-name');
+  if (!name) return;
+  let last = 0;
+  function spawn(x, y) {
+    const now = Date.now();
+    if (now - last < 45) return; // 出しすぎ防止
+    last = now;
+    const s = document.createElement('div');
+    s.className = 'sig-sparkle';
+    s.style.left = (x + (Math.random() * 16 - 8)) + 'px';
+    s.style.top  = (y + (Math.random() * 10 - 5)) + 'px';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 700);
+  }
+  function on()  { name.classList.add('glow'); }
+  function off() { setTimeout(() => name.classList.remove('glow'), 400); }
+  name.addEventListener('touchstart', on, { passive: true });
+  name.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (t) spawn(t.clientX, t.clientY);
+  }, { passive: true });
+  name.addEventListener('touchend', off, { passive: true });
+  name.addEventListener('touchcancel', off, { passive: true });
+  name.addEventListener('mousemove', e => { on(); spawn(e.clientX, e.clientY); });
+  name.addEventListener('mouseleave', off);
+})();
 
 // iOS対策：ページ自体がパンして上部（平均コスト）が隠れたら即座に戻す
 if (window.matchMedia('(max-width: 720px)').matches) {
