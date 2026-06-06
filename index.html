@@ -284,6 +284,17 @@
   .slot-chip .nm { font-size: 10px; color: var(--text-muted); text-align: center; line-height: 1.2; word-break: break-all; }
   .slot-chip.empty { opacity: 0.5; }
   .slot-chip.current { border-color: var(--accent); background: rgba(232,160,32,0.12); }
+  /* 📁長押しで出る横スクラブ操作バー（なぞるとデッキがリアルタイムに変わる） */
+  .scrub-hint { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 1101;
+    font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
+  .scrub-bar { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1101;
+    background: var(--surface); border: 1px solid var(--border-hi); border-radius: 999px; padding: 8px 12px;
+    display: flex; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); touch-action: none; user-select: none; -webkit-user-select: none; max-width: 94vw; overflow: hidden; }
+  .scrub-seg { width: 46px; height: 46px; flex: 0 0 auto; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border); transition: transform 0.1s, background 0.1s; pointer-events: none; }
+  .scrub-seg .sn { font-size: 18px; line-height: 1; }
+  .scrub-seg .snm { font-size: 7px; max-width: 42px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scrub-seg.on { background: var(--accent); color: #000; transform: scale(1.15); }
 
   .cost-bar { display: flex; gap: 2px; margin-top: 8px; height: 4px; border-radius: 2px; overflow: hidden; }
   .bar-seg { height: 100%; transition: flex 0.3s; }
@@ -1160,7 +1171,7 @@ function init() {
   clearBtn2.addEventListener('pointerdown', doClear);
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('saveBtn').onclick = openSlotSaveDialog;
-  document.getElementById('slotLoadBtn').onclick = openSlotLoadPicker;
+  initSlotScrub();
   document.getElementById('analyzeBtn').addEventListener('click', (e) => {
     // 8枚そろってない時は分析ページへ行かせない
     if (deck.filter(Boolean).length < 8) { e.preventDefault(); showToast('8枚そろうと分析できます'); }
@@ -1767,6 +1778,76 @@ async function openSlotLoadPicker() {
   if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
+// ===== 📁長押し → 横スクラブ操作バー（なぞるとデッキがリアルタイムに変わる） =====
+function initSlotScrub() {
+  const btn = document.getElementById('slotLoadBtn');
+  if (!btn) return;
+  let pressTimer = null, longFired = false, scrubbing = false;
+  let segSlots = [], bar = null, hint = null, lastIdx = -1;
+
+  const startScrub = async () => {
+    if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
+    if (!CRAuth.getUser()) { showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return; }
+    let slots = [];
+    try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
+    segSlots = slots.filter(s => (s.slots || []).length > 0); // 空きスロットは除外
+    if (!segSlots.length) { showToast('保存済みデッキがありません'); return; }
+    longFired = true; scrubbing = true; lastIdx = -1;
+
+    bar = document.createElement('div');
+    bar.className = 'scrub-bar';
+    bar.innerHTML = segSlots.map((s, i) =>
+      `<div class="scrub-seg" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${s.name || ''}</span></div>`
+    ).join('');
+    hint = document.createElement('div');
+    hint.className = 'scrub-hint';
+    hint.textContent = '指を離さず左右になぞってデッキ切替';
+    document.body.appendChild(bar);
+    document.body.appendChild(hint);
+    updateScrub(lastPointerX);
+  };
+
+  const updateScrub = (clientX) => {
+    if (!scrubbing || !bar) return;
+    const r = bar.getBoundingClientRect();
+    const n = segSlots.length;
+    let idx = Math.floor(((clientX - r.left) / r.width) * n);
+    idx = Math.max(0, Math.min(n - 1, idx));
+    if (idx === lastIdx) return;
+    lastIdx = idx;
+    bar.querySelectorAll('.scrub-seg').forEach((e, i) => e.classList.toggle('on', i === idx));
+    const s = segSlots[idx];
+    const cards = (s.slots || []).map(name => CARDS.find(c => c.name === name) || null);
+    if (window.CRDeckBridge) window.CRDeckBridge.setDeck(cards, { silent: true }); // リアルタイム反映（トーストなし）
+    currentSlot = s.slot; updateSlotLoadBtn();
+  };
+
+  const endScrub = () => {
+    if (scrubbing && lastIdx >= 0) showToast('スロット' + segSlots[lastIdx].slot + 'を呼び出しました');
+    scrubbing = false;
+    if (bar) { bar.remove(); bar = null; }
+    if (hint) { hint.remove(); hint = null; }
+  };
+
+  let lastPointerX = 0;
+  btn.addEventListener('pointerdown', (e) => {
+    longFired = false;
+    lastPointerX = e.clientX;
+    pressTimer = setTimeout(startScrub, 280); // 長押しでスクラブ開始
+  });
+  document.addEventListener('pointermove', (e) => {
+    lastPointerX = e.clientX;
+    if (scrubbing) { e.preventDefault(); updateScrub(e.clientX); }
+  }, { passive: false });
+  document.addEventListener('pointerup', () => {
+    clearTimeout(pressTimer);
+    if (scrubbing) { endScrub(); return; }
+    if (!longFired) openSlotLoadPicker(); // 短いタップは従来のピッカー
+  });
+  // ボタン外でのpointercancel対策
+  document.addEventListener('pointercancel', () => { clearTimeout(pressTimer); if (scrubbing) endScrub(); });
+}
+
 // デッキ名入力（プレースホルダ表示・打つと消える）。OK=文字列 / キャンセル=null
 function promptDeckName(placeholder) {
   return new Promise(resolve => {
@@ -1876,11 +1957,11 @@ if (window.matchMedia('(max-width: 720px)').matches) {
 // ログイン機能（auth.js）に現在のデッキを橋渡しする
 window.CRDeckBridge = {
   getDeck: () => deck.slice(),
-  setDeck: (slots) => {
+  setDeck: (slots, opts) => {
     deck = [null,null,null,null,null,null,null,null];
     (slots || []).slice(0,8).forEach((c, i) => { deck[i] = c || null; });
     renderDeck(); render();
-    showToast('デッキを読み込みました');
+    if (!(opts && opts.silent)) showToast('デッキを読み込みました');
   },
   cards: CARDS
 };

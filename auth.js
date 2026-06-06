@@ -48,9 +48,23 @@ let currentUser = null;
 let currentProfile = null;
 const changeCallbacks = [];
 
+// ---- ログイン状態のヒントをローカルに保存（ページ遷移時のチラつき防止） ----
+const HINT_KEY = "cr_user_hint";
+function readHint() { try { return JSON.parse(localStorage.getItem(HINT_KEY) || "null"); } catch (e) { return null; } }
+function writeHint(h) { try { localStorage.setItem(HINT_KEY, JSON.stringify(h)); } catch (e) {} }
+function clearHint() { try { localStorage.removeItem(HINT_KEY); } catch (e) {} }
+
 // ---- まずUIを必ず出す（Firebaseの読み込みを待たない） ---------------
 injectAccountUI();
-setLoggedOutUI(true); // 初期は「準備中」表示、Firebaseが繋がったら有効化
+// 設定済みなら、前回ログインのヒントがあれば即アバター表示（チラつき防止）。
+// 未ログインなら最初から「ログイン」を出す。未設定のときだけ「準備中」。
+if (!isConfigured) {
+  setLoggedOutUI(true);
+} else {
+  const hint = readHint();
+  if (hint && hint.displayName !== undefined) applyAvatarUI(hint);
+  else setLoggedOutUI(false);
+}
 
 // ---- 設定があればFirebaseを動的ロードして起動 ----------------------
 if (!isConfigured) {
@@ -69,9 +83,11 @@ if (!isConfigured) {
       if (user) {
         currentProfile = await ensureProfile(user);
         setLoggedInUI(user, currentProfile);
+        writeHint({ displayName: user.displayName || "プレイヤー", photoURL: user.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
       } else {
         currentProfile = null;
         setLoggedOutUI(false); // ログイン可能状態
+        clearHint();
       }
       changeCallbacks.forEach(fn => { try { fn(user, currentProfile); } catch (e) {} });
     });
@@ -288,19 +304,25 @@ function setLoggedOutUI(disabled) {
   lb.textContent = disabled ? "🔑 ログイン（準備中）" : "🔑 ログイン";
 }
 
-function setLoggedInUI(user, profile) {
+// アバター表示だけを更新（ヒントからの即時描画にも使う・メニューは作らない）
+function applyAvatarUI(info) {
   const lb = document.getElementById("crLoginBtn");
   const ab = document.getElementById("crAvatarBtn");
   if (!lb) return;
   lb.style.display = "none";
   ab.style.display = "inline-flex";
-  document.getElementById("crAvatarImg").src = user.photoURL || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
-  document.getElementById("crAvatarName").textContent = (user.displayName || "プレイヤー").split(" ")[0];
-  const t = TIERS[(profile && profile.tier) || "free"] || TIERS.free;
+  document.getElementById("crAvatarImg").src = info.photoURL || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
+  document.getElementById("crAvatarName").textContent = (info.displayName || "プレイヤー").split(" ")[0];
+  const tier = info.tier || "free";
+  const t = TIERS[tier] || TIERS.free;
   const chip = document.getElementById("crTierChip");
   chip.textContent = t.label;
   chip.style.background = t.color;
-  chip.style.color = (profile && profile.tier === "free") ? "#fff" : "#000";
+  chip.style.color = (tier === "free") ? "#fff" : "#000";
+}
+
+function setLoggedInUI(user, profile) {
+  applyAvatarUI({ displayName: user.displayName, photoURL: user.photoURL, tier: (profile && profile.tier) || "free" });
   buildMenu(user, profile);
 }
 
