@@ -784,7 +784,7 @@ const CARDS = [
   {name:"アイススピリット", yomi:"アイススピリット アイスピ アイス", evolved:true, imgEvolved:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-spirit-ev1.png",      cost:1, type:"troop",    role:"凍結・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/ice-spirit.png"},
   {name:"ファイアスピリット", yomi:"ファイアスピリット ファイスピ ファイア",    cost:1, type:"troop",    role:"小型処理・対空", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/fire-spirit.png"},
   {name:"エレクトロスピリット", yomi:"エレクトロスピリット エレスピ エレクトロ",  cost:1, type:"troop",    role:"チェーン感電・サイクル", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/electro-spirit.png"},
-  {name:"ヒールスピリット", yomi:"ヒールスピリット ヒルスピ ヒール",      cost:1, type:"troop",    role:"回復サポート", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/heal-spirit.png"},
+  {name:"ヒールスピリット", yomi:"ヒールスピリット ヒースピ ヒルスピ ヒール",      cost:1, type:"troop",    role:"回復サポート", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/heal-spirit.png"},
 
   // 2コスト
   {name:"ゴブリン", yomi:"ゴブリン ゴブ", hero:true, imgHero:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblins-hero.png",              cost:2, type:"troop",    role:"小型高DPS", img:"https://raw.githubusercontent.com/RoyaleAPI/cr-api-assets/master/cards/goblins.png"},
@@ -1103,6 +1103,15 @@ function init() {
   });
   const searchEl = document.getElementById('search');
   const clearBtn2 = document.getElementById('searchClear');
+  // 検索を始める前の一覧スクロール位置を覚えておく（解除時にそこへ戻す）
+  let listScrollMemo = 0;
+  cardListEl.addEventListener('scroll', () => {
+    if (!searchEl.value) listScrollMemo = cardListEl.scrollTop;
+  }, { passive: true });
+  const restoreListScroll = () => {
+    // render()で一覧が作り直されるので、次フレームで元の位置へ
+    requestAnimationFrame(() => { cardListEl.scrollTop = listScrollMemo; });
+  };
   // Enter/改行（確定後）でキーボードを閉じる
   searchEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
@@ -1110,9 +1119,11 @@ function init() {
   // フォーム化していないが、念のため送信相当の確定でもblur
   searchEl.addEventListener('search', () => searchEl.blur());
   searchEl.oninput = () => {
-    clearBtn2.classList.toggle('visible', searchEl.value.length > 0);
-    searchEl.classList.toggle('has-value', searchEl.value.length > 0);
+    const has = searchEl.value.length > 0;
+    clearBtn2.classList.toggle('visible', has);
+    searchEl.classList.toggle('has-value', has);
     render();
+    if (!has) restoreListScroll(); // 手動で全部消したときも元の位置へ
   };
   // ✕：キーボードの開閉状態を変えずにテキストだけ消す
   // （開いてたら開いたまま／閉じてたら閉じたまま）
@@ -1122,6 +1133,7 @@ function init() {
     clearBtn2.classList.remove('visible');
     searchEl.classList.remove('has-value');
     render();
+    restoreListScroll(); // 検索を始める前のスクロール位置へ戻す
   };
   clearBtn2.addEventListener('pointerdown', doClear);
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
@@ -1672,15 +1684,41 @@ async function openSlotSaveDialog() {
   ov.querySelectorAll('.swap-opt').forEach(o => {
     o.onclick = async () => {
       const slot = +o.dataset.slot;
-      const name = (prompt('デッキ名を入力', 'デッキ' + slot) || 'デッキ' + slot).trim();
+      ov.remove();
+      const name = await promptDeckName('デッキ' + slot);
+      if (name === null) return; // キャンセル
       try {
-        await CRAuth.saveDeckToSlot(slot, name, filled);
+        await CRAuth.saveDeckToSlot(slot, name || ('デッキ' + slot), filled);
         showToast('スロット' + slot + 'に保存しました');
       } catch (e) { showToast('保存に失敗しました'); }
-      ov.remove();
     };
   });
   document.body.appendChild(ov);
+}
+
+// デッキ名入力（プレースホルダ表示・打つと消える）。OK=文字列 / キャンセル=null
+function promptDeckName(placeholder) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'swap-overlay';
+    ov.innerHTML = `<div class="swap-box">
+      <div class="swap-title">デッキ名を入力</div>
+      <input id="deckNameInput" type="text" placeholder="${placeholder}"
+        style="width:100%;margin:12px 0;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:16px;outline:none">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" id="dnCancel" style="flex:1">キャンセル</button>
+        <button class="btn btn-primary" id="dnOk" style="flex:1">保存</button>
+      </div>
+    </div>`;
+    const close = (val) => { ov.remove(); resolve(val); };
+    ov.onclick = (e) => { if (e.target === ov) close(null); };
+    ov.querySelector('#dnCancel').onclick = () => close(null);
+    const inp = ov.querySelector('#deckNameInput');
+    ov.querySelector('#dnOk').onclick = () => close(inp.value.trim());
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') close(inp.value.trim()); });
+    document.body.appendChild(ov);
+    setTimeout(() => inp.focus(), 30);
+  });
 }
 
 function showToast(msg) {
