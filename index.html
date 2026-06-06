@@ -107,7 +107,7 @@
   }
   input[type=text]:focus { border-color: var(--accent); }
 
-  .type-tabs { display: flex; gap: 2px; }
+  .type-tabs { display: flex; gap: 2px; flex-wrap: wrap; }
   .ttab[data-type="evolved"].active { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
   .ttab[data-type="hero"].active { background: #e8a020; border-color: #e8a020; color: #000; }
   .ttab[data-type="champion"].active { background: #e05050; border-color: #e05050; color: #fff; }
@@ -665,10 +665,10 @@
           <input type="text" id="search" placeholder="カード名で検索...">
           <button class="search-clear" id="searchClear" tabindex="-1">✕</button>
         </div>
-        <button class="ttab active" data-type="all">全て</button>
       </div>
       <div class="controls-row">
         <div class="type-tabs">
+          <button class="ttab active" data-type="all">全て</button>
           <button class="ttab" data-type="troop">ユニット</button>
           <button class="ttab" data-type="spell">呪文</button>
           <button class="ttab" data-type="building">建物</button>
@@ -852,12 +852,15 @@ function saveFavorites() {
 
 function isFav(name) { return favorites.includes(name); }
 
+let justFaved = null; // アニメーション対象のカード名
 function toggleFav(name, e) {
   e.stopPropagation();
   if (isFav(name)) { openFavRemoveDialog(name); return; } // ミスタップ対策：外す時は確認
   favorites.push(name);
   saveFavorites();
+  justFaved = name;
   render();
+  justFaved = null;
 }
 
 // お気に入り解除の確認ダイアログ
@@ -966,15 +969,28 @@ function init() {
   document.querySelectorAll('.ttab').forEach(t => {
     t.onclick = () => {
       if (t.dataset.type === 'fav') {
-        // ❤はオンオフトグル（タイプタブとは独立）
         favSort = !favSort;
         t.classList.toggle('active', favSort);
         render();
         return;
       }
+      if (t.dataset.type === 'all') {
+        document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        activeType = 'all';
+        render();
+        return;
+      }
+      // 非all・非favタブ：もう一度押したら解除→全てに戻る
+      const isActive = t.classList.contains('active');
       document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      activeType = t.dataset.type;
+      if (isActive) {
+        document.querySelector('.ttab[data-type="all"]').classList.add('active');
+        activeType = 'all';
+      } else {
+        t.classList.add('active');
+        activeType = t.dataset.type;
+      }
       render();
     };
   });
@@ -1054,7 +1070,7 @@ function render() {
     const imgHtml = c.img ? `<img class="card-img" src="${c.img}" alt="" loading="lazy">` : '';
     div.innerHTML = `
       ${imgHtml}
-      <button class="fav-btn ${faved ? 'active' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">${heartSvg}</button>
+      <button class="fav-btn ${faved ? 'active' : ''}${justFaved === c.name ? ' pop' : ''}" title="${faved ? 'お気に入り解除' : 'お気に入り追加'}" onclick="toggleFav('${c.name}', event)">${heartSvg}</button>
       <div class="card-top">
         <div class="cost-pip pip-${Math.min(c.cost,9)}">${c.cost}</div>
         <div class="card-name">${c.name}</div>
