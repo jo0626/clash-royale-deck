@@ -413,7 +413,8 @@
     /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定 */
     /* bottom:0(inset:0)とheightを併用するとSafariが下部ツールバーの裏まで伸びてフッターが隠れる。
        bottomは指定せずheight:100dvhで高さを決める */
-    body { display: flex; flex-direction: column; position: fixed; top: 0; left: 0; right: 0; bottom: auto; width: 100%; height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); overflow: hidden; overscroll-behavior-y: none; }
+    /* 100svh = ツールバー表示時の小さい方のビューポート。これで最下部がSafari下部バーの上に来てフッターが隠れない */
+    body { display: flex; flex-direction: column; position: fixed; top: 0; left: 0; right: 0; bottom: auto; width: 100%; height: 100vh; height: 100dvh; height: 100svh; overflow: hidden; overscroll-behavior-y: none; }
     /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
     header { display: none; }
 
@@ -1610,17 +1611,6 @@ init();
   name.addEventListener('mousemove', e => { on(); spawn(e.clientX, e.clientY); });
   name.addEventListener('mouseleave', off);
 })();
-
-// iOS対策：実際の表示高さ(innerHeight)をCSS変数に入れて高さの基準にする。
-// これでSafari下部ツールバーの裏にフッターが隠れるのを防ぐ。
-// innerHeightはキーボード表示では変化しないので、タイプ中に画面が再レイアウトしない。
-function setAppHeight() {
-  document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px');
-}
-setAppHeight();
-window.addEventListener('resize', setAppHeight, { passive: true });
-window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 250), { passive: true });
-window.addEventListener('pageshow', setAppHeight, { passive: true });
 
 // iOS対策：ページ自体がパンして上部（平均コスト）が隠れたら即座に戻す
 if (window.matchMedia('(max-width: 720px)').matches) {
