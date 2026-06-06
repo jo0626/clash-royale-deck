@@ -67,6 +67,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
 
   .right {
@@ -153,7 +154,7 @@
 
   /* card list */
   .card-list {
-    overflow-y: auto; flex: 1; padding: 10px 12px;
+    overflow-y: auto; flex: 1; min-height: 0; padding: 10px 12px;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 6px; align-content: start;
   }
@@ -409,16 +410,18 @@
 
   /* MOBILE */
   @media (max-width: 720px) {
-    /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定。
-       フッターはbody直下(.appの兄弟)に置くことで、.app(flex:1)が縮んでフッターが最下部に常時表示される */
-    body { display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
+    /* iOSでは position:fixed 要素の vh/dvh/svh が大きい方のビューポートで計算され、
+       body下端(=フッター)がSafari下部バーの裏に落ちる。fixedをやめて通常フロー＋100svhで高さを確定。
+       パン対策は html/body の overflow:hidden ＋ overscroll-behavior:none ＋ scrollリセットで担保 */
+    html { height: 100svh; overflow: hidden; overscroll-behavior: none; }
+    body { display: flex; flex-direction: column; position: relative; width: 100%; height: 100vh; height: 100dvh; height: 100svh; overflow: hidden; overscroll-behavior: none; }
     /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
     header { display: none; }
 
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
-    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; min-height: 0; display: flex; flex-direction: column; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
@@ -477,7 +480,7 @@
     .ttab { padding: 4px 7px; font-size: 11px; }
 
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
     .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
@@ -487,10 +490,21 @@
 
   .footer-signature {
     text-align: center;
-    padding: 40px 0 20px;
+    padding: 14px 0 12px;
     font-family: 'Courier New', Courier, monospace;
     color: #888;
     letter-spacing: 1px;
+    flex-shrink: 0;
+    width: 100%;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    /* PCグリッド内では非表示、モバイルのみ表示 */
+    display: none;
+  }
+  @media (max-width: 720px) {
+    .footer-signature {
+      display: block !important;
+    }
   }
   .footer-signature .by-text {
     font-size: 12px;
@@ -510,14 +524,6 @@
     color: #ffffff;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.85), 0 0 22px rgba(180, 210, 255, 0.5);
   }
-  /* モバイル：文字を上端寄せ＋下に大きめパディングで、Safari下部バーの裏に文字が隠れるのを防ぐ */
-  @media (max-width: 720px) {
-    .footer-signature {
-      padding: 8px 0 calc(64px + env(safe-area-inset-bottom, 0px));
-    }
-    .footer-signature .by-text { font-size: 11px; }
-    .footer-signature .creator-name { font-size: 14px; }
-  }
   /* 指でなぞると舞う小さなキラキラ */
   .sig-sparkle {
     position: fixed;
@@ -532,6 +538,17 @@
   @keyframes sigSparkle {
     0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
     100% { opacity: 0; transform: translate(-50%, -50%) translateY(-14px) scale(1); }
+  }
+  /* モバイルのフッター：常時表示・潰れない・セーフエリア対応 */
+  @media (max-width: 720px) {
+    .footer-signature {
+      flex-shrink: 0;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .footer-signature .by-text { font-size: 11px; }
+    .footer-signature .creator-name { font-size: 14px; }
   }
 
   /* エネルギー充填バー */
@@ -719,10 +736,10 @@
     <div class="card-list" id="cardList"></div>
   </div>
 </div>
-
 <div class="footer-signature">
   <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
 </div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -872,7 +889,7 @@ const CARDS = [
 
 let deck = [null,null,null,null,null,null,null,null];
 let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
-let activeType = 'all';
+let activeTypes = new Set(); // 空=全て表示
 let activeCosts = new Set();
 let favSort = false; // ❤トグル：ONでお気に入りを先頭に並べ替え
 
@@ -1005,25 +1022,30 @@ function init() {
         return;
       }
       if (t.dataset.type === 'all') {
+        // 全てボタン：全タイプ選択解除
         document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
         t.classList.add('active');
-        activeType = 'all';
+        activeTypes.clear();
         render();
         return;
       }
-      // 非all・非favタブ：もう一度押したら解除→全てに戻る
-      const isActive = t.classList.contains('active');
-      document.querySelectorAll('.ttab:not([data-type="fav"])').forEach(x => x.classList.remove('active'));
-      if (isActive) {
-        document.querySelector('.ttab[data-type="all"]').classList.add('active');
-        activeType = 'all';
+      // 通常タブ：トグル（複数選択可）
+      const tp = t.dataset.type;
+      if (activeTypes.has(tp)) {
+        activeTypes.delete(tp);
+        t.classList.remove('active');
       } else {
+        activeTypes.add(tp);
         t.classList.add('active');
-        activeType = t.dataset.type;
       }
+      // 全てタブのactive状態を同期
+      const allTab = document.querySelector('.ttab[data-type="all"]');
+      allTab.classList.toggle('active', activeTypes.size === 0);
       render();
     };
   });
+  // 初期状態：全てをactive
+  document.querySelector('.ttab[data-type="all"]').classList.add('active');
 
   const cardListEl = document.getElementById('cardList');
   cardListEl.addEventListener('dragover', e => e.preventDefault());
@@ -1071,15 +1093,21 @@ function toKatakana(str) {
   return str.replace(/[ぁ-ゖ]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0x60));
 }
 
+function cardMatchesType(c, tp) {
+  if (tp === 'evolved')   return !!c.evolved;
+  if (tp === 'hero')      return !!c.hero;
+  if (tp === 'champion')  return c.type === 'champion';
+  return c.type === tp;
+}
+
 function getFiltered() {
   const raw = document.getElementById('search').value;
   const q = toKatakana(raw.toLowerCase());
   let res = CARDS.filter(c => {
-    // 進化/英雄/チャンピオンはtype(troop/spell/building)ではなくフラグで判定
-    if (activeType === 'evolved')        { if (!c.evolved)   return false; }
-    else if (activeType === 'hero')      { if (!c.hero)      return false; }
-    else if (activeType === 'champion')  { if (!c.champion)  return false; }
-    else if (activeType !== 'all' && c.type !== activeType) return false;
+    if (activeTypes.size > 0) {
+      const match = [...activeTypes].some(tp => cardMatchesType(c, tp));
+      if (!match) return false;
+    }
     if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
     if (q) {
       const nameMatch = toKatakana(c.name.toLowerCase()).includes(q);
@@ -1110,10 +1138,9 @@ function render() {
     const heartSvg = `<svg width="20" height="19" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/>
     </svg>`;
-    // 進化タブなら進化後画像、英雄タブなら英雄画像を表示（無ければ通常画像）
-    const cardImgSrc = (activeType === 'evolved' && c.imgEvolved) ? c.imgEvolved
-                     : (activeType === 'hero' && c.imgHero) ? c.imgHero
-                     : c.img;
+    // 進化タブ選択中は進化画像を使用
+    const showEvolved = activeTypes.has('evolved') && c.imgEvolved;
+    const cardImgSrc = showEvolved ? c.imgEvolved : c.img;
     const imgHtml = cardImgSrc ? `<img class="card-img" src="${cardImgSrc}" alt="" loading="lazy">` : '';
     div.innerHTML = `
       ${imgHtml}
