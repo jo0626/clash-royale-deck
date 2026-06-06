@@ -267,8 +267,9 @@
   .avg-sub { font-size: 11px; color: var(--text-muted); }
   /* 保存デッキ呼び出しボタン */
   .slot-load-btn { display: inline-flex; align-items: center; gap: 3px; background: var(--surface2); border: 1px solid var(--border-hi);
-    color: var(--text); border-radius: 8px; padding: 4px 9px; font-size: 13px; cursor: pointer; font-family: inherit; }
-  .slot-load-btn span { font-family: var(--font-head); font-weight: 700; color: var(--accent); }
+    color: var(--text); border-radius: 8px; padding: 4px 9px; font-size: 13px; cursor: pointer; font-family: inherit;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .slot-load-btn span { font-family: var(--font-head); font-weight: 700; color: var(--accent); user-select: none; -webkit-user-select: none; }
   /* 4アイコンは平均コスト行の右端へ */
   .deck-header .deck-nav { display: flex; gap: 4px; margin-left: auto; }
   /* コストバーは行の下に全幅で */
@@ -968,7 +969,7 @@ function syncTabUI() {
   });
 }
 let activeCosts = new Set();
-let favSort = false; // ❤トグル：ONでお気に入りを先頭に並べ替え
+let favSort = (() => { try { return JSON.parse(localStorage.getItem('cr_favsort') || 'false'); } catch(e) { return false; } })(); // ❤トグル：ONでお気に入りを先頭に。リロードでも維持
 
 function saveFavorites() {
   try { localStorage.setItem('cr_favorites', JSON.stringify(favorites)); } catch(e) {}
@@ -1096,6 +1097,7 @@ function init() {
     t.onclick = () => {
       if (t.dataset.type === 'fav') {
         favSort = !favSort;
+        try { localStorage.setItem('cr_favsort', JSON.stringify(favSort)); } catch(e) {}
         t.classList.toggle('active', favSort);
         render();
         return;
@@ -1123,6 +1125,9 @@ function init() {
       render();
     };
   });
+  // 永続化された❤トグル状態をUIに反映
+  const favTabEl = document.querySelector('.ttab[data-type="fav"]');
+  if (favTabEl) favTabEl.classList.toggle('active', favSort);
 
   const cardListEl = document.getElementById('cardList');
   cardListEl.addEventListener('dragover', e => e.preventDefault());
@@ -1842,7 +1847,7 @@ function initSlotScrub() {
   document.addEventListener('pointerup', () => {
     clearTimeout(pressTimer);
     if (scrubbing) { endScrub(); return; }
-    if (!longFired) openSlotLoadPicker(); // 短いタップは従来のピッカー
+    if (!longFired) showToast('📁を長押しして左右になぞるとデッキを切り替えられます'); // タップ時は使い方を案内
   });
   // ボタン外でのpointercancel対策
   document.addEventListener('pointercancel', () => { clearTimeout(pressTimer); if (scrubbing) endScrub(); });
