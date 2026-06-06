@@ -1631,26 +1631,16 @@ function loadDeckFromQuery() {
   const p = new URLSearchParams(location.search).get('deck');
   if (!p) return;
   const names = p.split(',').map(s => s.trim()).filter(Boolean);
-  const cards = [];
-  const seen = new Set();
-  names.forEach(n => {
+  // 順番＝スロット位置（0=進化, 1=ヒーロー/チャンピオン, 2=ワイルド, 3-7=通常）でそのまま配置。
+  // 攻略ページ側でスロット順に並べてあるので、ズレずに意図どおりの枠に入る。
+  const next = [null,null,null,null,null,null,null,null];
+  let placed = 0;
+  names.slice(0,8).forEach((n, i) => {
     const c = CARDS.find(x => x.name === n);
-    if (c && !seen.has(c.name)) { cards.push(c); seen.add(c.name); }
+    if (c) { next[i] = c; placed++; }
   });
-  if (!cards.length) return;
-  deck = [null,null,null,null,null,null,null,null];
-  const champ = cards.find(c => c.champion);
-  const rest = cards.filter(c => c !== champ);
-  if (champ) deck[1] = champ;                       // チャンピオン/ヒーロー枠
-  const evoIdx = rest.findIndex(c => c.evolved);    // 進化対応カードを進化枠(0)へ
-  const used = new Set();
-  if (evoIdx >= 0) { deck[0] = rest[evoIdx]; used.add(evoIdx); }
-  const emptySlots = [0,1,2,3,4,5,6,7].filter(i => deck[i] === null);
-  let si = 0;
-  rest.forEach((c, i) => {
-    if (used.has(i)) return;
-    if (si < emptySlots.length) deck[emptySlots[si++]] = c;
-  });
+  if (!placed) return;
+  deck = next;
   renderDeck(); render();
   showToast('デッキを読み込みました');
 }
