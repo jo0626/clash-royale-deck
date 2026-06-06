@@ -1038,10 +1038,18 @@ function init() {
         render();
         return;
       }
-      // 非all・非favタブ：複数選択トグル
+      // 非all・非favタブ
       const type = t.dataset.type;
-      if (activeTypes.has(type)) activeTypes.delete(type);
-      else activeTypes.add(type);
+      const isMobile = window.matchMedia('(max-width: 720px)').matches;
+      if (isMobile) {
+        // 携帯：単一選択（同じタブ再タップで解除＝全て、別タブで入れ替え）
+        if (activeTypes.has(type) && activeTypes.size === 1) activeTypes.clear();
+        else { activeTypes.clear(); activeTypes.add(type); }
+      } else {
+        // PC：複数選択トグル
+        if (activeTypes.has(type)) activeTypes.delete(type);
+        else activeTypes.add(type);
+      }
       syncTabUI();
       render();
     };
