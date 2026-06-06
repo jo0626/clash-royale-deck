@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>支援・寄付 | クラロワ デッキ作成</title>
+<meta name="description" content="クラロワ デッキ作成ツールへの支援・寄付のページ。応援していただくと支援者グレードがアップします。">
+<link rel="canonical" href="https://crdeckbuilders.com/support.html">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  :root {
+    --bg: #0d0f14; --surface: #161920; --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07); --border-hi: rgba(255,255,255,0.15);
+    --text: #e8eaf0; --text-muted: #6b7080; --text-dim: #3a3f50;
+    --accent: #e8a020; --accent2: #c0781a; --red: #e05050;
+    --font-head: 'Rajdhani', sans-serif; --font-body: 'Noto Sans JP', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: var(--font-head); font-size: 20px; font-weight: 700;
+    letter-spacing: 2px; color: var(--accent); text-transform: uppercase;
+    text-decoration: none;
+  }
+  .logo span { color: var(--text-muted); font-size: 11px; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; display: block; margin-top: -3px; }
+  .nav-icons { display: flex; gap: 4px; margin-left: auto; }
+  .nav-icon {
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; text-decoration: none; border: 1px solid var(--border);
+    background: var(--surface2); transition: all 0.12s;
+  }
+  .nav-icon .nav-emoji { font-size: 17px; line-height: 1; }
+  .nav-icon:hover { border-color: var(--border-hi); background: var(--surface); transform: translateY(-1px); }
+  .nav-icon.active { border-color: var(--accent); background: rgba(232,160,32,0.12); }
+
+  .container { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
+  .page-title { font-family: var(--font-head); font-size: 28px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+  .page-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; line-height: 1.7; }
+
+  .donate-buttons { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+  .donate-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px; border-radius: 10px; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); transition: all 0.12s; font-weight: 500;
+  }
+  .donate-btn:hover { border-color: var(--accent); background: var(--surface2); transform: translateY(-1px); }
+  .donate-btn .emoji { font-size: 24px; }
+  .donate-btn .label { flex: 1; }
+  .donate-btn .label small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
+
+  .grade-section { margin-top: 40px; }
+  .section-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; }
+  .grade-list { display: flex; flex-direction: column; gap: 10px; }
+  .grade-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .grade-medal { font-size: 26px; }
+  .grade-info { flex: 1; }
+  .grade-name { font-weight: 700; font-size: 15px; }
+  .grade-cond { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .grade-bronze { border-left: 3px solid #cd7f32; }
+  .grade-silver { border-left: 3px solid #c0c0c0; }
+  .grade-gold { border-left: 3px solid #e8a020; }
+  .grade-legend { border-left: 3px solid #8b5cf6; }
+  .grade-hidden { border-left: 3px solid var(--text-dim); opacity: 0.6; }
+
+  .note { margin-top: 32px; padding: 16px; background: var(--surface); border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
+
+  .footer-signature {
+    text-align: center; padding: 24px 0;
+    font-family: 'Courier New', Courier, monospace; color: #888; letter-spacing: 1px;
+    border-top: 1px solid var(--border); margin-top: 40px;
+  }
+  .footer-signature .by-text { font-size: 11px; opacity: 0.6; margin-right: 4px; }
+  .footer-signature .creator-name { font-size: 13px; font-weight: bold; color: #eaeaea; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+
+  @media (max-width: 720px) {
+    .logo { font-size: 16px; }
+    .nav-icon { width: 30px; height: 30px; }
+    .nav-icon .nav-emoji { font-size: 15px; }
+    .page-title { font-size: 22px; }
+    .container { padding: 24px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">CR Deck Builders<span>クラロワ デッキ作成ツール</span></a>
+  <nav class="nav-icons">
+    <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
+    <a class="nav-icon" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">🏆</span></a>
+    <a class="nav-icon active" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
+    <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
+  </nav>
+</header>
+
+<div class="container">
+  <h1 class="page-title">支援・寄付</h1>
+  <p class="page-sub">
+    このツールは無料で提供しています。もし気に入っていただけたら、開発・運営の応援をしていただけると嬉しいです。<br>
+    いただいた支援は、サーバー維持やカードデータの更新、新機能の開発に使わせていただきます。
+  </p>
+
+  <div class="donate-buttons">
+    <a class="donate-btn" href="#" target="_blank" rel="noopener">
+      <span class="emoji">☕</span>
+      <span class="label">Buy Me a Coffee で支援<small>クレジットカード・PayPal対応</small></span>
+    </a>
+    <a class="donate-btn" href="#" target="_blank" rel="noopener">
+      <span class="emoji">💌</span>
+      <span class="label">OFUSE で支援<small>応援メッセージを添えて</small></span>
+    </a>
+  </div>
+
+  <div class="grade-section">
+    <h2 class="section-title">支援者グレード</h2>
+    <p class="page-sub" style="margin-bottom:16px;">
+      累計の支援額に応じて、デッキ作成画面の見た目が豪華になります。（機能はすべて無料で使えます）
+    </p>
+    <div class="grade-list">
+      <div class="grade-card grade-bronze">
+        <span class="grade-medal">🥉</span>
+        <div class="grade-info">
+          <div class="grade-name">ブロンズ支援者</div>
+          <div class="grade-cond">累計 500円〜 / デッキ枠にブロンズカラー</div>
+        </div>
+      </div>
+      <div class="grade-card grade-silver">
+        <span class="grade-medal">🥈</span>
+        <div class="grade-info">
+          <div class="grade-name">シルバー支援者</div>
+          <div class="grade-cond">累計 2,000円〜 / デッキ枠にシルバーの輝き</div>
+        </div>
+      </div>
+      <div class="grade-card grade-gold">
+        <span class="grade-medal">🥇</span>
+        <div class="grade-info">
+          <div class="grade-name">ゴールド支援者</div>
+          <div class="grade-cond">累計 10,000円〜 / デッキ枠が黄金に輝く</div>
+        </div>
+      </div>
+      <div class="grade-card grade-legend">
+        <span class="grade-medal">👑</span>
+        <div class="grade-info">
+          <div class="grade-name">レジェンド支援者</div>
+          <div class="grade-cond">累計 50,000円〜 / 特別なエフェクト＆殿堂入り掲載</div>
+        </div>
+      </div>
+      <div class="grade-card grade-hidden">
+        <span class="grade-medal">❓</span>
+        <div class="grade-info">
+          <div class="grade-name">？？？</div>
+          <div class="grade-cond">隠しグレード … 達成者が現れたら解放されます</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    ※ 支援は買い切り（累計式）です。一度達成したグレードは永続的に維持されます。月額・サブスクリプションではありません。<br>
+    ※ グレードによる違いは見た目のみで、デッキ作成・分析などの機能はすべての方が無料で利用できます。<br>
+    ※ This material is unofficial and is not endorsed by Supercell.
+  </div>
+</div>
+
+<div class="footer-signature">
+  <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+</div>
+
+</body>
+</html>

@@ -242,6 +242,21 @@
 
   /* RIGHT PANEL */
   .deck-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+  .deck-header-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .nav-icons { display: flex; gap: 4px; margin-left: auto; }
+  .nav-icon {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px; text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    transition: all 0.12s;
+  }
+  .nav-icon .nav-emoji { font-size: 17px; line-height: 1; }
+  .nav-icon:hover { border-color: var(--border-hi); background: var(--surface); transform: translateY(-1px); }
+  .nav-icon.active { border-color: var(--accent); background: rgba(232,160,32,0.12); }
+  /* 後で画像差し替え用: <img class="nav-img" src="..."> に置き換え可能 */
+  .nav-icon .nav-img { width: 22px; height: 22px; object-fit: contain; }
   .deck-title {
     font-family: var(--font-head); font-size: 18px; font-weight: 700;
     letter-spacing: 1px; color: var(--text); text-transform: uppercase;
@@ -420,7 +435,12 @@
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .deck-header { padding: 8px 12px 5px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .deck-header-top { display: flex; align-items: center; gap: 8px; width: 100%; }
+    .nav-icons { margin-left: auto; gap: 3px; }
+    .nav-icon { width: 30px; height: 30px; }
+    .nav-icon .nav-emoji { font-size: 15px; }
+    .nav-icon .nav-img { width: 19px; height: 19px; }
     .deck-title { font-size: 13px; flex-shrink: 0; }
     .avg-row { margin-top: 0; flex-shrink: 0; display: flex; align-items: baseline; gap: 4px; }
     .avg-label { display: inline; font-size: 9px; }
@@ -681,11 +701,27 @@
   <!-- RIGHT: deck (モバイルでは上に表示) -->
   <div class="right">
     <div class="deck-header">
-      <div class="deck-title">Deck <span class="deck-count" id="deckCount">0/8</span></div>
-      <div class="avg-row">
-        <span class="avg-label">平均コスト</span>
-        <span class="avg-val" id="avgVal">—</span>
-        <span class="avg-sub" id="avgSub"></span>
+      <div class="deck-header-top">
+        <div class="deck-title">Deck <span class="deck-count" id="deckCount">0/8</span></div>
+        <div class="avg-row">
+          <span class="avg-label">平均コスト</span>
+          <span class="avg-val" id="avgVal">—</span>
+          <span class="avg-sub" id="avgSub"></span>
+        </div>
+        <nav class="nav-icons">
+          <a class="nav-icon active" href="index.html" title="デッキ作成">
+            <span class="nav-emoji">🛠️</span>
+          </a>
+          <a class="nav-icon" href="strategy.html" title="攻略・人気デッキ">
+            <span class="nav-emoji">🏆</span>
+          </a>
+          <a class="nav-icon" href="support.html" title="支援・寄付">
+            <span class="nav-emoji">💛</span>
+          </a>
+          <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ">
+            <span class="nav-emoji">✉️</span>
+          </a>
+        </nav>
       </div>
       <div class="cost-bar" id="costBar"></div>
       <div class="energy-bar-wrap" id="energyBarWrap" style="display:none">
@@ -1038,18 +1074,10 @@ function init() {
         render();
         return;
       }
-      // 非all・非favタブ
+      // 非all・非favタブ：複数選択トグル
       const type = t.dataset.type;
-      const isMobile = window.matchMedia('(max-width: 720px)').matches;
-      if (isMobile) {
-        // 携帯：単一選択（同じタブ再タップで解除＝全て、別タブで入れ替え）
-        if (activeTypes.has(type) && activeTypes.size === 1) activeTypes.clear();
-        else { activeTypes.clear(); activeTypes.add(type); }
-      } else {
-        // PC：複数選択トグル
-        if (activeTypes.has(type)) activeTypes.delete(type);
-        else activeTypes.add(type);
-      }
+      if (activeTypes.has(type)) activeTypes.delete(type);
+      else activeTypes.add(type);
       syncTabUI();
       render();
     };

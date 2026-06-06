@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>攻略・人気デッキ | クラロワ デッキ作成</title>
+<meta name="description" content="クラロワの人気デッキ・最強デッキをチェック。デッキの分析もできる攻略ページ。ワンタップでデッキ作成ツールに読み込めます。">
+<link rel="canonical" href="https://crdeckbuilders.com/strategy.html">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+  :root {
+    --bg: #0d0f14; --surface: #161920; --surface2: #1e2230;
+    --border: rgba(255,255,255,0.07); --border-hi: rgba(255,255,255,0.15);
+    --text: #e8eaf0; --text-muted: #6b7080; --text-dim: #3a3f50;
+    --accent: #e8a020; --accent2: #c0781a; --red: #e05050;
+    --font-head: 'Rajdhani', sans-serif; --font-body: 'Noto Sans JP', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 14px; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; gap: 16px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; text-decoration: none; }
+  .logo span { color: var(--text-muted); font-size: 11px; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; display: block; margin-top: -3px; }
+  .nav-icons { display: flex; gap: 4px; margin-left: auto; }
+  .nav-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; text-decoration: none; border: 1px solid var(--border); background: var(--surface2); transition: all 0.12s; }
+  .nav-icon .nav-emoji { font-size: 17px; line-height: 1; }
+  .nav-icon:hover { border-color: var(--border-hi); background: var(--surface); transform: translateY(-1px); }
+  .nav-icon.active { border-color: var(--accent); background: rgba(232,160,32,0.12); }
+
+  /* シームレス切り替え用タブ */
+  .seg-tabs { display: flex; gap: 4px; max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
+  .seg-tab {
+    flex: 1; padding: 12px; text-align: center; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    font-weight: 700; font-size: 14px; color: var(--text-muted); transition: all 0.15s;
+    font-family: var(--font-head); letter-spacing: 1px;
+  }
+  .seg-tab.active { background: rgba(232,160,32,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* スワイプ可能なビューポート */
+  .swipe-viewport { overflow: hidden; max-width: 900px; margin: 0 auto; }
+  .swipe-track { display: flex; transition: transform 0.3s ease; }
+  .swipe-page { min-width: 100%; padding: 20px; }
+
+  .page-title { font-family: var(--font-head); font-size: 22px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+  .page-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; line-height: 1.7; }
+
+  /* 人気デッキカード */
+  .deck-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  .deck-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .deck-rank { font-family: var(--font-head); font-size: 20px; font-weight: 700; color: var(--accent); }
+  .deck-card-name { font-weight: 700; font-size: 15px; }
+  .deck-card-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .deck-cards-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; margin-bottom: 12px; }
+  .mini-card { aspect-ratio: 3/4; background: var(--surface2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: var(--text-dim); text-align: center; padding: 2px; }
+  .load-btn { width: 100%; padding: 10px; font-size: 13px; font-weight: 700; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.12s; }
+  .load-btn:hover { border-color: var(--accent); background: rgba(232,160,32,0.08); }
+
+  .coming-soon { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .coming-soon .big { font-size: 40px; margin-bottom: 12px; }
+
+  .footer-signature { text-align: center; padding: 24px 0; font-family: 'Courier New', Courier, monospace; color: #888; letter-spacing: 1px; border-top: 1px solid var(--border); margin-top: 40px; }
+  .footer-signature .by-text { font-size: 11px; opacity: 0.6; margin-right: 4px; }
+  .footer-signature .creator-name { font-size: 13px; font-weight: bold; color: #eaeaea; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,255,255,0.4); }
+
+  @media (max-width: 720px) {
+    .logo { font-size: 16px; }
+    .nav-icon { width: 30px; height: 30px; }
+    .nav-icon .nav-emoji { font-size: 15px; }
+    .page-title { font-size: 19px; }
+    .deck-cards-grid { gap: 3px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">CR Deck Builders<span>クラロワ デッキ作成ツール</span></a>
+  <nav class="nav-icons">
+    <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
+    <a class="nav-icon active" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">🏆</span></a>
+    <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
+    <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
+  </nav>
+</header>
+
+<div class="seg-tabs">
+  <div class="seg-tab active" data-page="0">🏆 人気デッキ</div>
+  <div class="seg-tab" data-page="1">📊 分析</div>
+</div>
+
+<div class="swipe-viewport" id="viewport">
+  <div class="swipe-track" id="track">
+
+    <!-- ページ0: 人気デッキ -->
+    <div class="swipe-page">
+      <h1 class="page-title">人気デッキ</h1>
+      <p class="page-sub">ランキング上位や流行のデッキを掲載予定。気に入ったデッキはワンタップでデッキ作成ツールに読み込めます。</p>
+
+      <div class="deck-card">
+        <div class="deck-card-head">
+          <span class="deck-rank">#1</span>
+          <div>
+            <div class="deck-card-name">ホグ2.6サイクル</div>
+            <div class="deck-card-meta">平均コスト 2.6 ・ サンプル</div>
+          </div>
+        </div>
+        <div class="deck-cards-grid">
+          <div class="mini-card">ホグ</div><div class="mini-card">大砲</div>
+          <div class="mini-card">アイススピ</div><div class="mini-card">スケルトン</div>
+          <div class="mini-card">コウモリ</div><div class="mini-card">マスケ</div>
+          <div class="mini-card">ファイボ</div><div class="mini-card">ログ</div>
+        </div>
+        <button class="load-btn" onclick="alert('デッキ読み込み機能は準備中です！')">▶ このデッキを作成ツールで開く</button>
+      </div>
+
+      <div class="coming-soon">
+        <div class="big">🏗️</div>
+        <p>人気デッキ集は準備中です。<br>公式APIと連携して、ランキング上位のデッキを<br>自動で表示できるようにする予定です。</p>
+      </div>
+    </div>
+
+    <!-- ページ1: 分析 -->
+    <div class="swipe-page">
+      <h1 class="page-title">デッキ分析</h1>
+      <p class="page-sub">保存したデッキの平均コスト推移、攻め・防衛・呪文のバランス、勝率などを分析できるようにする予定です。</p>
+      <div class="coming-soon">
+        <div class="big">📊</div>
+        <p>分析機能は準備中です。<br>デッキの構成バランスやコストカーブを<br>可視化できるようにしていきます。</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer-signature">
+  <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+</div>
+
+<script>
+  const track = document.getElementById('track');
+  const viewport = document.getElementById('viewport');
+  const tabs = document.querySelectorAll('.seg-tab');
+  let currentPage = 0;
+  const totalPages = 2;
+
+  function goToPage(n) {
+    currentPage = Math.max(0, Math.min(totalPages - 1, n));
+    track.style.transform = `translateX(-${currentPage * 100}%)`;
+    tabs.forEach((t, i) => t.classList.toggle('active', i === currentPage));
+  }
+
+  tabs.forEach(t => t.onclick = () => goToPage(parseInt(t.dataset.page)));
+
+  // スワイプ操作
+  let startX = 0, startY = 0, dragging = false;
+  viewport.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; dragging = true;
+  }, {passive:true});
+  viewport.addEventListener('touchend', e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goToPage(currentPage + 1);
+      else goToPage(currentPage - 1);
+    }
+  }, {passive:true});
+</script>
+
+</body>
+</html>
