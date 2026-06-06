@@ -480,16 +480,6 @@
     .card-name { font-size: 10px; }
     .card-role { font-size: 9px; padding-right: 64px; }
     .cost-pip { width: 18px; height: 18px; font-size: 10px; }
-
-    /* モバイルでもフッターを常時表示（潰れない・セーフエリア対応） */
-    .footer-signature {
-      flex-shrink: 0;
-      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-    }
-    .footer-signature .by-text { font-size: 11px; }
-    .footer-signature .creator-name { font-size: 14px; }
   }
 
   .footer-signature {
@@ -532,6 +522,17 @@
   @keyframes sigSparkle {
     0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.4); }
     100% { opacity: 0; transform: translate(-50%, -50%) translateY(-14px) scale(1); }
+  }
+  /* モバイルのフッター：常時表示・潰れない・セーフエリア対応（base より後ろに置いて確実に上書き） */
+  @media (max-width: 720px) {
+    .footer-signature {
+      flex-shrink: 0;
+      padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+    .footer-signature .by-text { font-size: 11px; }
+    .footer-signature .creator-name { font-size: 14px; }
   }
 
   /* エネルギー充填バー */
@@ -693,7 +694,7 @@
       <div class="controls-row">
         <div class="search-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input type="text" id="search" placeholder="カード名で検索...">
+          <input type="text" id="search" placeholder="カード名で検索..." enterkeyhint="search" autocomplete="off" autocorrect="off" autocapitalize="off">
           <button class="search-clear" id="searchClear" tabindex="-1">✕</button>
         </div>
       </div>
@@ -722,7 +723,7 @@
 
 
 <div class=footer-signature>
-  <span class=by-text>By</span> <span class=creator-name>rea-fi-ria</span>
+  <span class=by-text>By</span> <span class=creator-name>rea-fi-lia</span>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -1038,6 +1039,12 @@ function init() {
   });
   const searchEl = document.getElementById('search');
   const clearBtn2 = document.getElementById('searchClear');
+  // Enter/改行（確定後）でキーボードを閉じる
+  searchEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
+  });
+  // フォーム化していないが、念のため送信相当の確定でもblur
+  searchEl.addEventListener('search', () => searchEl.blur());
   searchEl.oninput = () => {
     clearBtn2.classList.toggle('visible', searchEl.value.length > 0);
     searchEl.classList.toggle('has-value', searchEl.value.length > 0);
