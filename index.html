@@ -510,6 +510,14 @@
     color: #ffffff;
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.85), 0 0 22px rgba(180, 210, 255, 0.5);
   }
+  /* モバイル：文字を上端寄せ＋下に大きめパディングで、Safari下部バーの裏に文字が隠れるのを防ぐ */
+  @media (max-width: 720px) {
+    .footer-signature {
+      padding: 8px 0 calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+    .footer-signature .by-text { font-size: 11px; }
+    .footer-signature .creator-name { font-size: 14px; }
+  }
   /* 指でなぞると舞う小さなキラキラ */
   .sig-sparkle {
     position: fixed;
