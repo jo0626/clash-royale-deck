@@ -108,6 +108,10 @@
   input[type=text]:focus { border-color: var(--accent); }
 
   .type-tabs { display: flex; gap: 2px; }
+  .type-tabs-sub { margin-top: 2px; }
+  .ttab[data-type="evolved"].active { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
+  .ttab[data-type="hero"].active { background: #e8a020; border-color: #e8a020; color: #000; }
+  .ttab[data-type="champion"].active { background: #e05050; border-color: #e05050; color: #fff; }
   .ttab {
     padding: 5px 10px; font-size: 12px; font-family: var(--font-body);
     border: 1px solid var(--border); background: transparent;
@@ -149,7 +153,6 @@
   /* card list */
   .card-list {
     overflow-y: auto; flex: 1; padding: 10px 12px;
-    overscroll-behavior-y: contain;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 6px; align-content: start;
   }
@@ -404,7 +407,7 @@
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
-    .left { flex: 1; overflow: visible; display: flex; flex-direction: column; min-height: 0; }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
@@ -459,8 +462,9 @@
     .controls-row { gap: 6px; }
     .type-tabs { gap: 2px; }
     .ttab { padding: 4px 7px; font-size: 11px; }
+    .type-tabs-sub .ttab { font-size: 10px; padding: 3px 6px; }
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; flex: 1; overflow-y: auto; min-height: 0; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
     .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
@@ -470,25 +474,18 @@
 
   .footer-signature {
     text-align: center;
-    padding: 14px 0 12px;
+    padding: 40px 0 20px;
     font-family: 'Courier New', Courier, monospace;
     color: #888;
     letter-spacing: 1px;
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-    width: 100%;
-    flex-shrink: 0;
-  }
-  @media (max-width: 720px) {
-    .footer-signature { padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px)); }
   }
   .footer-signature .by-text {
-    font-size: 11px;
+    font-size: 12px;
     opacity: 0.6;
     margin-right: 4px;
   }
   .footer-signature .creator-name {
-    font-size: 13px;
+    font-size: 16px;
     font-weight: bold;
     color: #eaeaea;
     letter-spacing: 3px;
@@ -500,15 +497,106 @@
     text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
   }
 
-
+  /* エネルギー充填バー */
+  .energy-bar-wrap {
+    margin-top: 8px;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
   }
+  .energy-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #3a8ef0, #8b5cf6, #e8a020);
+    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .energy-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 40px; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5));
+    border-radius: 3px;
+    animation: shimmer 1.2s infinite;
+  }
+  @keyframes shimmer {
+    0% { opacity: 0; transform: scaleX(0); }
+    50% { opacity: 1; }
+    100% { opacity: 0; transform: scaleX(2); }
+  }
+
+  /* スロット追加アニメ */
+  @keyframes slotPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.7), 0 0 0 0 rgba(232,160,32,0.4); transform: scale(0.95); }
+    40%  { box-shadow: 0 0 0 8px rgba(139,92,246,0.3), 0 0 0 16px rgba(232,160,32,0.1); transform: scale(1.03); }
+    100% { box-shadow: 0 0 0 0 rgba(139,92,246,0), 0 0 0 0 rgba(232,160,32,0); transform: scale(1); }
+  }
+  .slot.just-added {
+    animation: slotPulse 0.5s ease-out forwards;
+  }
+
+  /* 完成フラッシュ */
+  .complete-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: radial-gradient(ellipse at center, rgba(232,160,32,0.35) 0%, rgba(139,92,246,0.2) 50%, transparent 70%);
+    opacity: 0;
+    animation: flashComplete 1.2s ease-out forwards;
+  }
+  @keyframes flashComplete {
+    0%   { opacity: 0; transform: scale(0.8); }
+    20%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.1); }
+  }
+
+  /* COMPLETE テキスト */
+  .complete-text {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    z-index: 9999;
+    pointer-events: none;
+    font-family: var(--font-head);
+    font-size: 48px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(232,160,32,1), 0 0 60px rgba(139,92,246,0.8);
+    animation: completeText 1.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+  @keyframes completeText {
+    0%   { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+    30%  { transform: translate(-50%,-50%) scale(1.1); opacity: 1; }
+    70%  { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(0.9); opacity: 0; }
+  }
+
+  /* パーティクル */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    animation: particleFly 1.2s ease-out forwards;
+  }
+  @keyframes particleFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: var(--fly); scale: 0; }
+  }
+
 </style>
 
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  "name": "クラロワ デッキ作成ツール",
+  "name": "クラロワ デッキビルダー",
   "alternateName": "CR Deck Builders",
   "url": "https://crdeckbuilders.com/",
   "description": "クラッシュ・ロワイヤル（クラロワ）の無料デッキビルダー。全121枚のカードから8枚を選んでデッキを組もう。進化・ヒーロー・チャンピオン対応。スマホでも使いやすい日本語対応ツール。",
@@ -537,7 +625,7 @@
 <body>
 
 <header>
-  <div class="logo">CR Deck Builders<span>クラロワ デッキ作成ツール</span></div>
+  <div class="logo">CR Deck Builder<span>クラロワ デッキビルダー</span></div>
 </header>
 
 <div class="app">
@@ -551,6 +639,9 @@
         <span class="avg-sub" id="avgSub"></span>
       </div>
       <div class="cost-bar" id="costBar"></div>
+      <div class="energy-bar-wrap" id="energyBarWrap" style="display:none">
+        <div class="energy-bar" id="energyBar"></div>
+      </div>
     </div>
     <div class="deck-slots" id="deckSlots"></div>
     <div class="deck-actions">
@@ -577,6 +668,11 @@
             <svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/></svg>
           </button>
         </div>
+        <div class="type-tabs type-tabs-sub">
+          <button class="ttab" data-type="evolved">⚡進化</button>
+          <button class="ttab" data-type="hero">👑英雄</button>
+          <button class="ttab" data-type="champion">🏆チャンピオン</button>
+        </div>
       </div>
       <div class="controls-row">
         <div class="cost-filters" id="costFilters"></div>
@@ -584,14 +680,13 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
-    <div class="footer-signature">
-      <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
-    </div>
   </div>
 </div>
 
 
-
+<div class=footer-signature>
+  <span class=by-text>By</span> <span class=creator-name>rea-fi-ria</span>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -781,6 +876,78 @@ function openFavRemoveDialog(name) {
   document.body.appendChild(ov);
 }
 
+
+let lastDeckCount = 0;
+
+function triggerSlotAnim(idx) {
+  setTimeout(() => {
+    const slots = document.querySelectorAll('.slot');
+    if (slots[idx]) {
+      slots[idx].classList.remove('just-added');
+      void slots[idx].offsetWidth;
+      slots[idx].classList.add('just-added');
+      slots[idx].addEventListener('animationend', () => slots[idx].classList.remove('just-added'), {once:true});
+    }
+  }, 30);
+}
+
+function triggerCompleteAnim() {
+  // フラッシュ
+  const flash = document.createElement('div');
+  flash.className = 'complete-flash';
+  document.body.appendChild(flash);
+  flash.addEventListener('animationend', () => flash.remove());
+
+  // テキスト
+  const txt = document.createElement('div');
+  txt.className = 'complete-text';
+  txt.textContent = 'COMPLETE!';
+  document.body.appendChild(txt);
+  txt.addEventListener('animationend', () => txt.remove());
+
+  // パーティクル
+  const colors = ['#e8a020','#8b5cf6','#3a8ef0','#e8304a','#26c6a0','#fff'];
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / 24) * Math.PI * 2;
+    const dist = 120 + Math.random() * 160;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    p.style.cssText = `left:${cx}px;top:${cy}px;background:${colors[i%colors.length]};--fly:translate(${dx}px,${dy}px);animation-delay:${Math.random()*0.2}s;animation-duration:${0.8+Math.random()*0.6}s;`;
+    document.body.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }
+}
+
+function updateEnergyBar() {
+  const count = deck.filter(d=>d).length;
+  const wrap = document.getElementById('energyBarWrap');
+  const bar = document.getElementById('energyBar');
+  if (!wrap || !bar) return;
+  if (count === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  bar.style.width = (count / 8 * 100) + '%';
+
+  // 追加時のみアニメ
+  if (count > lastDeckCount) {
+    // 追加されたスロットのidxを探す
+    let newIdx = -1;
+    for (let i = 0; i < 8; i++) {
+      if (deck[i] && !window._prevDeck?.[i]) { newIdx = i; break; }
+    }
+    if (newIdx >= 0) triggerSlotAnim(newIdx);
+    if (count === 8) setTimeout(triggerCompleteAnim, 100);
+  }
+  window._prevDeck = deck.map(d => d ? d.name : null);
+  lastDeckCount = count;
+}
+
 function init() {
   const cf = document.getElementById('costFilters');
   [1,2,3,4,5,6,7,8,9].forEach(c => {
@@ -818,7 +985,6 @@ function init() {
   });
   const searchEl = document.getElementById('search');
   const clearBtn2 = document.getElementById('searchClear');
-  searchEl.addEventListener('keydown', e => { if (e.key === 'Enter') { searchEl.blur(); } });
   searchEl.oninput = () => {
     clearBtn2.classList.toggle('visible', searchEl.value.length > 0);
     searchEl.classList.toggle('has-value', searchEl.value.length > 0);
@@ -1353,6 +1519,5 @@ if (window.matchMedia('(max-width: 720px)').matches) {
   window.addEventListener('pageshow', () => window.scrollTo(0, 0));
 }
 </script>
-
 </body>
 </html>
