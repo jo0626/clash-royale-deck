@@ -108,7 +108,6 @@
   input[type=text]:focus { border-color: var(--accent); }
 
   .type-tabs { display: flex; gap: 2px; }
-  .type-tabs-sub { margin-top: 2px; }
   .ttab[data-type="evolved"].active { background: #8b5cf6; border-color: #8b5cf6; color: #fff; }
   .ttab[data-type="hero"].active { background: #e8a020; border-color: #e8a020; color: #000; }
   .ttab[data-type="champion"].active { background: #e05050; border-color: #e05050; color: #fff; }
@@ -225,6 +224,13 @@
   .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
   @media (hover: hover) {
     .fav-btn:hover { transform: scale(1.15); }
+  @keyframes heartPop {
+    0%   { transform: scale(1); }
+    30%  { transform: scale(1.5); }
+    60%  { transform: scale(0.9); }
+    100% { transform: scale(1); }
+  }
+  .fav-btn.pop { animation: heartPop 0.35s ease; }
     .fav-btn:hover svg .heart-stroke { stroke: rgba(255,255,255,0.65); }
   }
   .fav-btn.active svg .heart-fill { fill: #e8304a; }
@@ -462,7 +468,7 @@
     .controls-row { gap: 6px; }
     .type-tabs { gap: 2px; }
     .ttab { padding: 4px 7px; font-size: 11px; }
-    .type-tabs-sub .ttab { font-size: 10px; padding: 3px 6px; }
+
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
     .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
@@ -659,19 +665,19 @@
           <input type="text" id="search" placeholder="カード名で検索...">
           <button class="search-clear" id="searchClear" tabindex="-1">✕</button>
         </div>
+        <button class="ttab active" data-type="all">全て</button>
+      </div>
+      <div class="controls-row">
         <div class="type-tabs">
-          <button class="ttab active" data-type="all">全て</button>
           <button class="ttab" data-type="troop">ユニット</button>
           <button class="ttab" data-type="spell">呪文</button>
           <button class="ttab" data-type="building">建物</button>
-          <button class="ttab" data-type="fav" title="お気に入りを上に表示">
-            <svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/></svg>
-          </button>
-        </div>
-        <div class="type-tabs type-tabs-sub">
           <button class="ttab" data-type="evolved">⚡進化</button>
           <button class="ttab" data-type="hero">👑英雄</button>
           <button class="ttab" data-type="champion">🏆チャンピオン</button>
+          <button class="ttab" data-type="fav" title="お気に入りを上に表示">
+            <svg width="15" height="14" viewBox="0 0 24 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path class="heart-fill heart-stroke" d="M12 20.5C12 20.5 2 13.5 2 7C2 4.2 4.2 2 7 2C9 2 10.8 3.1 12 4.7C13.2 3.1 15 2 17 2C19.8 2 22 4.2 22 7C22 13.5 12 20.5 12 20.5Z" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </div>
       <div class="controls-row">
