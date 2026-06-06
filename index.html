@@ -1682,6 +1682,21 @@ if (window.matchMedia('(max-width: 720px)').matches) {
   }, { passive: true });
   window.addEventListener('pageshow', () => window.scrollTo(0, 0));
 }
+
+// ログイン機能（auth.js）に現在のデッキを橋渡しする
+window.CRDeckBridge = {
+  getDeck: () => deck.slice(),
+  setDeck: (slots) => {
+    deck = [null,null,null,null,null,null,null,null];
+    (slots || []).slice(0,8).forEach((c, i) => { deck[i] = c || null; });
+    renderDeck(); render();
+    showToast('デッキを読み込みました');
+  },
+  cards: CARDS
+};
 </script>
+
+<!-- ログイン＆ユーザーデータ（Firebase）。ヘッダーにログインボタンが自動で付きます -->
+<script type="module" src="auth.js"></script>
 </body>
 </html>

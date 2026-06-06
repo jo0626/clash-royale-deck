@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ユーザープロフィール
+    match /users/{uid} {
+      // 自分のドキュメントだけ読める
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // 作成時：tier は free でのみ作れる（不正な初期グレードを防ぐ）
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.tier == 'free';
+
+      // 更新時：tier はクライアントから変更不可（寄付グレードは運営/サーバーのみ）
+      // crTag・displayName・theme などは自由に更新OK
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.tier == resource.data.tier;
+
+      // 削除は不可
+      allow delete: if false;
+
+      // 保存デッキ：自分のものだけ読み書き可
+      match /decks/{deckId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+  }
+}

@@ -142,5 +142,7 @@ viewport.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.
 viewport.addEventListener('touchend',e=>{ if(!dragging)return; dragging=false; const dx=e.changedTouches[0].clientX-startX, dy=e.changedTouches[0].clientY-startY; if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){ if(dx<0)goToPage(currentPage+1); else goToPage(currentPage-1);} },{passive:true});
 </script>
 
+<!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
+<script type="module" src="auth.js"></script>
 </body>
 </html>
