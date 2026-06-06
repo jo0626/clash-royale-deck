@@ -8,14 +8,7 @@
 <link rel="canonical" href="https://crdeckbuilders.com/strategy.html">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
-  :root {
-    --bg:#0d0f14; --surface:#161920; --surface2:#1e2230;
-    --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.15);
-    --text:#e8eaf0; --text-muted:#6b7080; --text-dim:#3a3f50;
-    --accent:#e8a020; --accent2:#c0781a; --red:#e05050;
-    --evo:#8b5cf6; --hero:#e8a020;
-    --font-head:'Rajdhani',sans-serif; --font-body:'Noto Sans JP',sans-serif;
-  }
+  :root { --bg:#0d0f14; --surface:#161920; --surface2:#1e2230; --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.15); --text:#e8eaf0; --text-muted:#6b7080; --text-dim:#3a3f50; --accent:#e8a020; --accent2:#c0781a; --red:#e05050; --evo:#8b5cf6; --hero:#e8a020; --font-head:'Rajdhani',sans-serif; --font-body:'Noto Sans JP',sans-serif; }
   * { box-sizing:border-box; margin:0; padding:0; }
   html { font-size:14px; }
   body { background:var(--bg); color:var(--text); font-family:var(--font-body); min-height:100vh; overflow-x:hidden; }
@@ -55,13 +48,7 @@
   .footer-signature { text-align:center; padding:24px 0; font-family:'Courier New',Courier,monospace; color:#888; letter-spacing:1px; border-top:1px solid var(--border); margin-top:40px; }
   .footer-signature .by-text { font-size:11px; opacity:0.6; margin-right:4px; }
   .footer-signature .creator-name { font-size:13px; font-weight:bold; color:#eaeaea; letter-spacing:3px; text-shadow:0 0 8px rgba(255,255,255,0.4); }
-  @media (max-width:720px) {
-    .logo { font-size:16px; }
-    .nav-icon { width:30px; height:30px; }
-    .nav-icon .nav-emoji { font-size:15px; }
-    .page-title { font-size:19px; }
-    .deck-cards-grid { gap:4px; max-width:none; }
-  }
+  @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; } }
 </style>
 </head>
 <body>
@@ -69,30 +56,30 @@
 <header>
   <a class="logo" href="index.html">CR Deck Builders<span>クラロワ デッキ作成ツール</span></a>
   <nav class="nav-icons">
-    <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">\U0001f6e0️</span></a>
-    <a class="nav-icon active" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">\U0001f3c6</span></a>
-    <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">\U0001f49b</span></a>
+    <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
+    <a class="nav-icon active" href="strategy.html" title="攻略・人気デッキ"><span class="nav-emoji">🏆</span></a>
+    <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
     <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
   </nav>
 </header>
 
 <div class="seg-tabs">
-  <div class="seg-tab active" data-page="0">\U0001f3c6 人気デッキ</div>
-  <div class="seg-tab" data-page="1">\U0001f4ca 分析</div>
+  <div class="seg-tab active" data-page="0">🏆 人気デッキ</div>
+  <div class="seg-tab" data-page="1">📊 分析</div>
 </div>
 
 <div class="swipe-viewport" id="viewport">
   <div class="swipe-track" id="track">
     <div class="swipe-page">
       <h1 class="page-title">人気デッキ</h1>
-      <p class="page-sub">現環境で定番・人気のアーキタイプを掲載。\U0001f7e3進化・\U0001f451ヒーロー枠もビルダーと同じ表示で、「作成ツールで開く」でそのままの形で読み込まれます。</p>
+      <p class="page-sub">現環境で定番・人気のアーキタイプを掲載。🟣進化・👑ヒーロー枠もビルダーと同じ表示で、「作成ツールで開く」でそのままの形で読み込まれます。</p>
       <div id="deckList"></div>
       <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
     </div>
     <div class="swipe-page">
       <h1 class="page-title">デッキ分析</h1>
       <p class="page-sub">保存したデッキの平均コスト推移、攻め・防衛・呪文のバランス、勝率などを分析できるようにする予定です。</p>
-      <div class="coming-soon"><div class="big">\U0001f4ca</div><p>分析機能は準備中です。<br>デッキの構成バランスやコストカーブを<br>可視化できるようにしていきます。</p></div>
+      <div class="coming-soon"><div class="big">📊</div><p>分析機能は準備中です。<br>デッキの構成バランスやコストカーブを<br>可視化できるようにしていきます。</p></div>
     </div>
   </div>
 </div>
@@ -114,15 +101,16 @@ function slotModeOf(info, idx) {
   return 'normal';
 }
 
-(function renderDecks() {
+function renderDecks(decks) {
   const wrap = document.getElementById('deckList');
-  DECKS.forEach((d, idx) => {
+  wrap.innerHTML = '';
+  decks.forEach((d, idx) => {
     const avg = (d.slots.reduce((s,n)=> s + (CARD_INFO[n]?CARD_INFO[n].c:0), 0) / d.slots.length).toFixed(1);
     const mini = d.slots.map((n, i) => {
       const info = CARD_INFO[n] || {};
       const mode = slotModeOf(info, i);
       const img = mode==='evolved' ? (info.iv||info.i) : mode==='hero' ? (info.ih||info.i) : info.i;
-      const badge = mode==='evolved' ? '<span class="slot-badge">⚡</span>' : mode==='hero' ? '<span class="slot-badge">\U0001f451</span>' : '';
+      const badge = mode==='evolved' ? '<span class="slot-badge">⚡</span>' : mode==='hero' ? '<span class="slot-badge">👑</span>' : '';
       const cls = 'mini-card' + (mode==='evolved'?' is-evo':'') + (mode==='hero'?' is-hero':'');
       return '<div class="'+cls+'" title="'+n+'"><span class="pip">'+(info.c!=null?info.c:'')+'</span>'+badge+(img?'<img src="'+img+'" alt="'+n+'" loading="lazy">':'')+'</div>';
     }).join('');
@@ -137,7 +125,13 @@ function slotModeOf(info, idx) {
       '<a class="load-btn" href="'+url+'">▶ このデッキを作成ツールで開く</a>';
     wrap.appendChild(el);
   });
-})();
+}
+
+// decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
+fetch('decks.json', { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : null)
+  .then(j => { const dk = (j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS; renderDecks(dk); })
+  .catch(() => renderDecks(DECKS));
 
 const track=document.getElementById('track'), viewport=document.getElementById('viewport'), tabs=document.querySelectorAll('.seg-tab');
 let currentPage=0; const totalPages=2;
