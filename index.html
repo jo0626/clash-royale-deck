@@ -518,6 +518,18 @@
     .footer-signature .by-text { font-size: 11px; }
     .footer-signature .creator-name { font-size: 14px; }
   }
+  /* PC：ヘッダー/本体/フッターの3段組みにして、フッターを常に最下部に固定 */
+  @media (min-width: 721px) {
+    body { height: 100vh; min-height: 0; overflow: hidden; grid-template-rows: auto 1fr auto; }
+    .app { height: auto; min-height: 0; }
+    .left { min-height: 0; }
+    .card-list { min-height: 0; }
+    .footer-signature {
+      padding: 12px 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+    }
+  }
   /* 指でなぞると舞う小さなキラキラ */
   .sig-sparkle {
     position: fixed;
