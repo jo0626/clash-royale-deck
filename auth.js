@@ -194,6 +194,15 @@ const CRAuth = {
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.slot || 0) - (b.slot || 0));
   },
+
+  // ---- お気に入り（クラウド保存・端末間で維持） ----
+  getCloudFavorites() { return (currentProfile && currentProfile.favorites) || []; },
+  async saveFavorites(arr) {
+    if (!currentUser || !FB) return;
+    const list = Array.from(new Set(arr || []));
+    await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { favorites: list, updatedAt: FB.serverTimestamp() });
+    if (currentProfile) currentProfile.favorites = list;
+  },
 };
 window.CRAuth = CRAuth;
 
@@ -343,7 +352,7 @@ async function refreshDeckList() {
   decks.forEach(d => {
     const row = document.createElement("div");
     row.className = "cr-deckitem";
-    row.innerHTML = `<span class="nm">${d.name} <span style="color:#6b7080">(平均${(d.avg ?? 0).toFixed ? d.avg.toFixed(2) : d.avg})</span></span><button class="del">✕</button>`;
+    row.innerHTML = `<span class="nm">${d.name} <span style="color:#6b7080">(平均${Number(d.avg ?? 0).toFixed(2)})</span></span><button class="del">✕</button>`;
     row.querySelector(".nm").onclick = () => {
       if (window.CRDeckBridge && d.slots) {
         const cards = window.CRDeckBridge.cards;
