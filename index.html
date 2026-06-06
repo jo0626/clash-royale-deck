@@ -217,8 +217,9 @@
   .fav-btn {
     position: absolute; top: 5px; right: 5px;
     background: none; border: none; cursor: pointer;
-    padding: 2px; line-height: 1; z-index: 2;
+    padding: 4px; line-height: 1; z-index: 2;
     transition: transform 0.15s;
+    touch-action: manipulation;
   }
   .fav-btn svg .heart-fill { fill: none; }
   .fav-btn svg .heart-stroke { stroke: rgba(255,255,255,0.35); stroke-width: 1.6; }
@@ -466,7 +467,8 @@
 
     .controls { padding: 8px 10px; }
     .controls-row { gap: 6px; }
-    .type-tabs { gap: 2px; }
+    .type-tabs { gap: 3px; flex-wrap: wrap; align-items: center; }
+    .type-tabs .ttab[data-type="fav"] { margin-left: auto; }
     .ttab { padding: 4px 7px; font-size: 11px; }
 
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
@@ -1310,6 +1312,7 @@ function cancelDrag() {
 function initTouchDnD() {
   // カード選択ゾーン
   document.getElementById('cardList').addEventListener('touchstart', e => {
+    if (e.target.closest('.fav-btn')) return; // ハートタップ時はドラッグしない
     const card = e.target.closest('.card');
     if (!card || card.classList.contains('in-deck')) return;
     const cardName = card.querySelector('.card-name').textContent.trim();
