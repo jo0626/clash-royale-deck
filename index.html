@@ -410,18 +410,16 @@
 
   /* MOBILE */
   @media (max-width: 720px) {
-    /* iOSでは position:fixed 要素の vh/dvh/svh が大きい方のビューポートで計算され、
-       body下端(=フッター)がSafari下部バーの裏に落ちる。fixedをやめて通常フロー＋100svhで高さを確定。
-       パン対策は html/body の overflow:hidden ＋ overscroll-behavior:none ＋ scrollリセットで担保 */
-    html { height: 100svh; overflow: hidden; overscroll-behavior: none; }
-    body { display: flex; flex-direction: column; position: relative; width: 100%; height: 100vh; height: 100dvh; height: 100svh; overflow: hidden; overscroll-behavior: none; }
+    /* iOS Safariはbody overflow:hiddenでもページをパンできるため、fixedで完全固定。
+       フッターはbody直下(.appの兄弟)に置くことで、.app(flex:1)が縮んでフッターが最下部に常時表示される */
+    body { display: flex; flex-direction: column; position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; overscroll-behavior-y: none; }
     /* ロゴヘッダーは非表示にして、平均コスト行を画面の最上部に固定表示 */
     header { display: none; }
 
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
-    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; min-height: 0; display: flex; flex-direction: column; }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; min-height: 0; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
@@ -727,12 +725,12 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
-    <div class="footer-signature">
-      <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
-    </div>
   </div>
 </div>
 
+<div class="footer-signature">
+  <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1085,7 +1083,11 @@ function getFiltered() {
   const raw = document.getElementById('search').value;
   const q = toKatakana(raw.toLowerCase());
   let res = CARDS.filter(c => {
-    if (activeType !== 'all' && c.type !== activeType) return false;
+    // 進化/英雄/チャンピオンはtype(troop/spell/building)ではなくフラグで判定
+    if (activeType === 'evolved')        { if (!c.evolved)   return false; }
+    else if (activeType === 'hero')      { if (!c.hero)      return false; }
+    else if (activeType === 'champion')  { if (!c.champion)  return false; }
+    else if (activeType !== 'all' && c.type !== activeType) return false;
     if (activeCosts.size > 0 && !activeCosts.has(c.cost)) return false;
     if (q) {
       const nameMatch = toKatakana(c.name.toLowerCase()).includes(q);
