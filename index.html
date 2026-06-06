@@ -67,6 +67,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
 
   .right {
@@ -90,15 +91,17 @@
   .search-wrap { position: relative; flex: 1; min-width: 140px; }
   .search-wrap svg { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
   .search-clear {
-    position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
     background: none; border: none; cursor: pointer;
-    color: var(--text-muted); font-size: 14px; line-height: 1;
-    padding: 2px 4px; border-radius: 4px;
+    color: var(--text-muted); font-size: 20px; line-height: 1;
+    width: 34px; height: 34px; padding: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
     opacity: 0; pointer-events: none; transition: opacity 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
-  .search-clear.visible { opacity: 0.6; pointer-events: auto; }
+  .search-clear.visible { opacity: 0.55; pointer-events: auto; }
   @media (hover: hover) { .search-clear:hover { opacity: 1; color: var(--text); } }
-  input[type=text].has-value { padding-right: 28px; }
+  input[type=text].has-value { padding-right: 40px; }
   input[type=text] {
     width: 100%; padding: 7px 10px 7px 30px;
     background: var(--surface2); border: 1px solid var(--border);
@@ -151,7 +154,7 @@
 
   /* card list */
   .card-list {
-    overflow-y: auto; flex: 1; padding: 10px 12px;
+    overflow-y: auto; flex: 1; min-height: 0; padding: 10px 12px;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 6px; align-content: start;
   }
@@ -415,7 +418,7 @@
     .app { display: flex; flex-direction: column; flex: 1; overflow: hidden; height: auto; min-height: 0; }
 
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; padding-top: env(safe-area-inset-top, 0px); }
-    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
+    .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; min-height: 0; }
 
     .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
@@ -474,7 +477,7 @@
     .ttab { padding: 4px 7px; font-size: 11px; }
 
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
     .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
@@ -484,11 +487,14 @@
 
   .footer-signature {
     text-align: center;
-    padding: 40px 0 20px;
+    padding: 14px 0 12px;
     font-family: 'Courier New', Courier, monospace;
     color: #888;
     letter-spacing: 1px;
     flex-shrink: 0;
+    width: 100%;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
   }
   .footer-signature .by-text {
     font-size: 12px;
@@ -718,13 +724,12 @@
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
+    <div class="footer-signature">
+      <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+    </div>
   </div>
 </div>
 
-
-<div class=footer-signature>
-  <span class=by-text>By</span> <span class=creator-name>rea-fi-lia</span>
-</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1050,13 +1055,16 @@ function init() {
     searchEl.classList.toggle('has-value', searchEl.value.length > 0);
     render();
   };
-  clearBtn2.onclick = () => {
+  // ✕：キーボードの開閉状態を変えずにテキストだけ消す
+  // （開いてたら開いたまま／閉じてたら閉じたまま）
+  const doClear = (e) => {
+    e.preventDefault(); // ボタンにフォーカスを移さない＝入力欄の状態を維持
     searchEl.value = '';
     clearBtn2.classList.remove('visible');
     searchEl.classList.remove('has-value');
-    searchEl.focus();
     render();
   };
+  clearBtn2.addEventListener('pointerdown', doClear);
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('copyBtn').onclick = copyDeck;
 
