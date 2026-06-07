@@ -160,6 +160,11 @@
   .cfbtn[data-c="9"].active { background:#e8eaf0; border-color:#e8eaf0; color:#000; }
 
   .count-info { font-size: 11px; color: var(--text-muted); }
+  .count-sort { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .cost-sort-btn { background: var(--surface2); border: 1px solid var(--border-hi); color: var(--text-muted);
+    border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+    font-family: inherit; white-space: nowrap; }
+  .cost-sort-btn.active { background: rgba(232,160,32,0.16); border-color: var(--accent); color: var(--accent); }
 
   /* card list */
   .card-list {
@@ -857,7 +862,10 @@
       </div>
       <div class="controls-row">
         <div class="cost-filters" id="costFilters"></div>
-        <span class="count-info" id="countInfo"></span>
+        <div class="count-sort">
+          <span class="count-info" id="countInfo"></span>
+          <button class="cost-sort-btn" id="costSortBtn" type="button" title="コスト高い順に並べ替え">コスト順 ⬇⬆</button>
+        </div>
       </div>
     </div>
     <div class="card-list" id="cardList"></div>
@@ -1033,6 +1041,7 @@ function syncTabUI() {
   });
 }
 let activeCosts = new Set();
+let costDesc = false; // コスト高い順に並べ替えるトグル
 let favSort = (() => { try { return JSON.parse(localStorage.getItem('cr_favsort') || 'false'); } catch(e) { return false; } })(); // ❤トグル：ONでお気に入りを先頭に。リロードでも維持
 
 function saveFavorites() {
@@ -1240,17 +1249,25 @@ function init() {
     render();
     if (!has) restoreListScroll(); // 手動で全部消したときも元の位置へ
   };
-  // ✕：キーボードの開閉状態を変えずにテキストだけ消す
-  // （開いてたら開いたまま／閉じてたら閉じたまま）
+  // ✕：テキストを消して、必ずキーボードを閉じる
   const doClear = (e) => {
-    e.preventDefault(); // ボタンにフォーカスを移さない＝入力欄の状態を維持
+    e.preventDefault();
     searchEl.value = '';
     clearBtn2.classList.remove('visible');
     searchEl.classList.remove('has-value');
     render();
     restoreListScroll(); // 検索を始める前のスクロール位置へ戻す
+    searchEl.blur();     // 必ずキーボードを閉じる
   };
   clearBtn2.addEventListener('pointerdown', doClear);
+  // コスト高い順 ⇄ 通常（低い順）トグル
+  const costSortBtn = document.getElementById('costSortBtn');
+  if (costSortBtn) costSortBtn.onclick = () => {
+    costDesc = !costDesc;
+    costSortBtn.classList.toggle('active', costDesc);
+    costSortBtn.textContent = costDesc ? 'コスト高い順 ⬇' : 'コスト順 ⬇⬆';
+    render();
+  };
   document.getElementById('clearBtn').onclick = () => { deck = [null,null,null,null,null,null,null,null]; renderDeck(); render(); };
   document.getElementById('saveBtn').onclick = openSlotSaveDialog;
   initSlotScrub();
@@ -1287,6 +1304,10 @@ function getFiltered() {
   if (favSort) {
     // お気に入りを先頭に（元の並び順は維持）
     res = res.filter(c => isFav(c.name)).concat(res.filter(c => !isFav(c.name)));
+  }
+  if (costDesc) {
+    // コスト高い順（同コストは元の並び順を維持＝安定ソート）
+    res = res.slice().sort((a, b) => b.cost - a.cost);
   }
   return res;
 }
