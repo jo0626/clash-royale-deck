@@ -1024,7 +1024,8 @@ const CARDS = [
 // =============================================
 
 let deck = [null,null,null,null,null,null,null,null];
-let favorites = JSON.parse(localStorage.getItem('cr_favorites') || '[]');
+// お気に入りはログイン状態で切り分け：ログアウト中＝匿名ローカル / ログイン中＝アカウント(クラウド)
+let favorites = JSON.parse(localStorage.getItem('cr_favorites_anon') || localStorage.getItem('cr_favorites') || '[]');
 let activeTypes = new Set(); // 複数選択。空＝全て表示
 // カードが指定タイプに該当するか（type or 進化/英雄/チャンピオンのフラグ）
 function cardMatchesType(c, t) {
@@ -1046,9 +1047,11 @@ let costDesc = false; // コスト高い順に並べ替えるトグル
 let favSort = (() => { try { return JSON.parse(localStorage.getItem('cr_favsort') || 'false'); } catch(e) { return false; } })(); // ❤トグル：ONでお気に入りを先頭に。リロードでも維持
 
 function saveFavorites() {
-  try { localStorage.setItem('cr_favorites', JSON.stringify(favorites)); } catch(e) {}
-  // ログイン中はクラウドにも保存（端末間で維持）
-  if (window.CRAuth && CRAuth.getUser()) { CRAuth.saveFavorites(favorites); }
+  if (window.CRAuth && CRAuth.getUser && CRAuth.getUser()) {
+    CRAuth.saveFavorites(favorites);   // ログイン中＝アカウント(クラウド)だけに保存
+  } else {
+    try { localStorage.setItem('cr_favorites_anon', JSON.stringify(favorites)); } catch(e) {} // ログアウト中＝匿名ローカル
+  }
 }
 
 function isFav(name) { return favorites.includes(name); }
@@ -2226,18 +2229,18 @@ function showToast(msg, ms) {
 
 init();
 
-// ログイン時：クラウドのお気に入りとローカルをマージして維持（端末間同期）
-// auth.js（module）は後から読み込まれるので、CRAuthが現れるまで待ってから登録
+// お気に入りをログイン状態で切り分け（auth.jsは後から読み込まれるのでCRAuth待ち）
 (function hookFavorites() {
   if (!window.CRAuth) { setTimeout(hookFavorites, 100); return; }
-  let favMerged = false;
   CRAuth.onChange((user) => {
-    if (!user || favMerged) return;
-    favMerged = true;
-    const cloud = CRAuth.getCloudFavorites();
-    const merged = Array.from(new Set([...favorites, ...cloud]));
-    favorites = merged;
-    saveFavorites();        // ローカル＆クラウド両方へ
+    if (user) {
+      // ログイン：アカウント(クラウド)のお気に入りに切り替え
+      favorites = (CRAuth.getCloudFavorites() || []).slice();
+      try { localStorage.removeItem('cr_favorites'); } catch(e) {} // 旧・共有キーは廃止（ログアウト後の漏れ防止）
+    } else {
+      // ログアウト：匿名ローカルのお気に入りに戻す（前アカウントのお気に入りは持ち越さない）
+      favorites = JSON.parse(localStorage.getItem('cr_favorites_anon') || '[]');
+    }
     render();
   });
 })();
