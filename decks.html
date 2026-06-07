@@ -31,7 +31,12 @@
   .swipe-page { min-width:100%; padding:20px; }
   .page-title { font-family:var(--font-head); font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
   .page-sub { color:var(--text-muted); font-size:13px; margin-bottom:20px; line-height:1.7; }
-  .agg-note { font-size:11px; color:var(--text-dim); margin:-12px 0 16px; }
+  .agg-note { font-size:11px; color:var(--text-dim); margin:-12px 0 14px; }
+  .deck-tabs { display:flex; gap:8px; margin:0 0 16px; }
+  .deck-tab { flex:1; padding:11px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
+  .deck-tab.active { background:rgba(232,160,32,0.14); border-color:var(--accent); color:var(--accent); }
+  .stat-win { color:var(--accent); }
   .owned-filter { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
   .owned-toggle { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px;
     padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
@@ -85,6 +90,10 @@
       <h1 class="page-title">人気デッキ・デッキ探求</h1>
       <p class="page-sub" id="pageSub">世界上位ランカーの使用デッキを集計して掲載しています。</p>
       <p class="agg-note" id="aggNote"></p>
+      <div class="deck-tabs" id="deckTabs">
+        <button class="deck-tab active" data-tab="pop">📊 人気デッキ（使用率）</button>
+        <button class="deck-tab" data-tab="win">🏅 勝率ランキング</button>
+      </div>
       <div class="owned-filter">
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 自分のカードで組めるデッキだけ</button>
         <span id="ownedNote" class="owned-note"></span>
@@ -114,10 +123,13 @@ function slotModeOf(info, idx, name, evoSet, hasEvo) {
 }
 
 // ===== 所持カード（クラロワID連携）→「組めるデッキだけ」フィルター =====
-let ALL_DECKS = [];        // 取得した全デッキ
+let ALL_DECKS = [];        // 人気（使用率）デッキ
+let WIN_DECKS = [];        // 勝率ランキングデッキ
+let activeTab = 'pop';     // 'pop'=使用率 / 'win'=勝率
 let ownedSet = null;       // 解決済み所持カード名Set（未取得null）
 let onlyOwned = false;     // 絞り込みON/OFF
 let PLAYERS_TOTAL = 0;     // 集計した母数（使用率%の計算用）
+function currentList() { return activeTab === 'win' ? WIN_DECKS : ALL_DECKS; }
 
 // APIがカタカナで返した場合の別名保険（index.html と同じ）
 const OWNED_ALIAS = {
@@ -158,15 +170,24 @@ function deckBuildable(d) {
 }
 function applyDecks() {
   const note = document.getElementById('ownedNote');
+  const list = currentList();
   if (onlyOwned && ownedSet) {
-    const ok = ALL_DECKS.filter(deckBuildable);
+    const ok = list.filter(deckBuildable);
     renderDecks(ok);
-    if (note) note.textContent = ok.length + ' / ' + ALL_DECKS.length + ' デッキが今のカードで組めます';
+    if (note) note.textContent = ok.length + ' / ' + list.length + ' デッキが今のカードで組めます';
   } else {
-    renderDecks(ALL_DECKS);
+    renderDecks(list);
     if (note) note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
   }
 }
+// タブ切り替え
+document.querySelectorAll('.deck-tab').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    activeTab = btn.getAttribute('data-tab');
+    document.querySelectorAll('.deck-tab').forEach(b => b.classList.toggle('active', b === btn));
+    applyDecks();
+  });
+});
 // 所持カード情報はログイン中のみ有効。detail=null（ログアウト）で解除
 window.addEventListener('cr-owned-cards', (e) => { ownedSet = e.detail ? resolveOwned(e.detail) : null; applyDecks(); });
 (function pollOwned(){
@@ -203,14 +224,21 @@ function renderDecks(decks) {
   wrap.innerHTML = '';
   decks.forEach((d, idx) => {
     const avg = (d.slots.reduce((s,n)=> s + (CARD_INFO[n]?CARD_INFO[n].c:0), 0) / d.slots.length).toFixed(1);
-    // 使用人数＋使用率（countと母数があれば）。なければ平均コストのみ
-    const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
-    const headHtml = (pct != null)
-      ? ('<span class="stat-use">' + d.count + '人</span><span class="stat-sep">が使用</span>'
-         + '<span class="stat-pct">' + pct + '%</span>'
-         + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>')
-      : ('<span class="stat-avg">平均コスト <b>' + avg + '</b></span>'
-         + (d.sub ? '<span class="stat-sep">' + d.sub + '</span>' : ''));
+    let headHtml;
+    if (d.winRate != null) {
+      // 勝率タブ：勝率 ＋ 対戦数
+      headHtml = '<span class="stat-win">勝率 ' + d.winRate + '%</span>'
+        + '<span class="stat-sep">' + (d.games || 0) + '戦</span>'
+        + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>';
+    } else {
+      const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
+      headHtml = (pct != null)
+        ? ('<span class="stat-use">' + d.count + '人</span><span class="stat-sep">が使用</span>'
+           + '<span class="stat-pct">' + pct + '%</span>'
+           + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>')
+        : ('<span class="stat-avg">平均コスト <b>' + avg + '</b></span>'
+           + (d.sub ? '<span class="stat-sep">' + d.sub + '</span>' : ''));
+    }
     // forms[]（GASが実データから出す各スロットの形）優先。なければ旧ロジック
     const forms = Array.isArray(d.forms) ? d.forms : null;
     const hasEvo = ('evo' in d);
@@ -247,15 +275,18 @@ fetch('decks.json', { cache: 'no-store' })
   .then(j => {
     const hasData = j && Array.isArray(j.decks) && j.decks.length;
     ALL_DECKS = hasData ? j.decks : DECKS;
+    WIN_DECKS = (j && Array.isArray(j.winDecks)) ? j.winDecks : [];
     PLAYERS_TOTAL = (j && j.players) ? j.players : 0;
     const sample = (j && j.players) ? j.players : null;
-    // 順位の対象範囲(topPlayers)があれば「トップN（M人分集計）」、無ければ「上位ランカーM人」
     const srcText = (j && j.topPlayers)
       ? ('世界トップ' + j.topPlayers + 'ランカー' + (sample ? '（' + sample + '人分を集計）' : ''))
       : (sample ? ('世界上位ランカー' + sample + '人') : '世界上位ランカー');
     const hrs = (j && j.intervalHours) ? j.intervalHours : 6;
+    // 勝率タブが無ければ非表示
+    const winTabBtn = document.querySelector('.deck-tab[data-tab="win"]');
+    if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
     const sub = document.getElementById('pageSub');
-    if (sub) sub.innerHTML = '<b>' + srcText + '</b>の使用デッキを集計し、人気の上位<b>' + ALL_DECKS.length + '件</b>を掲載。<b>' + hrs + '時間ごと</b>に更新されます。ログインしてクラロワIDを設定しておくと、<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
+    if (sub) sub.innerHTML = '<b>' + srcText + '</b>の<b>直前の使用デッキ</b>を集計。<b>' + hrs + '時間ごと</b>に更新されます。「使用率」は使っている人数、「勝率」は実際の対戦結果から算出。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
