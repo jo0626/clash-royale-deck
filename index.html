@@ -32,6 +32,8 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { font-size: 14px; touch-action: manipulation; } /* ダブルタップ拡大無効（ピンチ拡大は可） */
   body { touch-action: manipulation; }
+  /* ダブルタップ拡大を全要素で無効化（ピンチ拡大は維持）。.right と .scrub-bar の touch-action:none は specificity で優先される */
+  * { touch-action: manipulation; }
   body {
     background: var(--bg);
     color: var(--text);
@@ -1900,9 +1902,10 @@ function initSlotScrub() {
     if (hint) { hint.remove(); hint = null; }
   };
 
-  let lastPointerX = 0;
+  let lastPointerX = 0, pressOnBtn = false;
   btn.addEventListener('pointerdown', (e) => {
     longFired = false;
+    pressOnBtn = true; // SLOT操作子から始まった押下だけ案内を出す
     lastPointerX = e.clientX;
     pressTimer = setTimeout(startScrub, 280); // 長押しでスクラブ開始
   });
@@ -1912,11 +1915,13 @@ function initSlotScrub() {
   }, { passive: false });
   document.addEventListener('pointerup', () => {
     clearTimeout(pressTimer);
-    if (scrubbing) { endScrub(); return; }
-    if (!longFired) showToast('📁を長押しして左右になぞるとデッキを切り替えられます'); // タップ時は使い方を案内
+    if (scrubbing) { endScrub(); pressOnBtn = false; return; }
+    // SLOT操作子の上でタップした時だけ案内（どこをタップしても出ないように）
+    if (pressOnBtn && !longFired) showToast('SLOTを長押しして左右になぞるとデッキを切り替えられます', 4500);
+    pressOnBtn = false;
   });
   // ボタン外でのpointercancel対策
-  document.addEventListener('pointercancel', () => { clearTimeout(pressTimer); if (scrubbing) endScrub(); });
+  document.addEventListener('pointercancel', () => { clearTimeout(pressTimer); pressOnBtn = false; if (scrubbing) endScrub(); });
 }
 
 // デッキ名入力（プレースホルダ表示・打つと消える）。OK=文字列 / キャンセル=null
@@ -1944,10 +1949,12 @@ function promptDeckName(placeholder) {
   });
 }
 
-function showToast(msg) {
+let _toastTimer = null;
+function showToast(msg, ms) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2200);
 }
 
 init();
