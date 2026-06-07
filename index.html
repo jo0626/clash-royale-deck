@@ -267,9 +267,11 @@
   .avg-label { font-size: 11px; color: var(--text-muted); }
   .avg-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
   .avg-sub { font-size: 11px; color: var(--text-muted); }
-  /* ドラッグ中の平均コスト・プレビュー表示（点滅で「仮」と分かるように） */
-  .deck-header.previewing .avg-val { color: #3a8ef0; }
-  .deck-header.previewing .avg-val::after { content: ' ▶'; font-size: 11px; color: #3a8ef0; }
+  /* ドラッグ中の平均コスト増減インジケータ（自作の三角アイコン＋差分） */
+  .avg-trend { display: inline-flex; align-items: center; gap: 2px; }
+  .avg-trend svg { display: block; }
+  .avg-trend .avg-diff { font-family: var(--font-head); font-weight: 700; font-size: 12px; }
+  .deck-header.previewing .avg-val { transition: color 0.1s; }
   /* 保存デッキ呼び出しボタン */
   /* デッキスロット表示（クリア/保存 と デッキ分析へ の中央）。数字だけでスロットと分かる見た目 */
   .slot-load-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
@@ -463,6 +465,8 @@
   .slot-chip { position: relative; }
   .slot-chip .cur-badge { position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
     font-size: 8px; font-weight: 700; background: var(--accent); color: #000; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+  /* 保存時に選択中のスロット */
+  .slot-chip.selected { border-color: var(--accent); border-width: 2px; box-shadow: 0 0 0 2px rgba(232,160,32,0.3) inset; background: rgba(232,160,32,0.16); }
   .btn {
     padding: 8px 12px; border-radius: 6px; font-family: var(--font-body);
     font-size: 12px; cursor: pointer; transition: all 0.12s; border: none;
@@ -770,6 +774,7 @@
       <div class="avg-row">
         <span class="avg-label">平均コスト</span>
         <span class="avg-val" id="avgVal">—</span>
+        <span class="avg-trend" id="avgTrend"></span>
         <span class="avg-sub" id="avgSub"></span>
       </div>
       <nav class="nav-icons deck-nav">
@@ -1303,6 +1308,18 @@ function championTargetSlot() {
   return -1;
 }
 
+// 通常カードを入れる空きスロット（特殊枠以外を優先）。なければ-1
+function firstNormalEmpty() {
+  const order = [3, 4, 5, 6, 7, 2, 0, 1];
+  for (const i of order) if (deck[i] === null) return i;
+  return -1;
+}
+function placeNormal(card) {
+  const idx = firstNormalEmpty();
+  if (idx === -1) { showToast('⚠ デッキは8枚まで'); return false; }
+  deck[idx] = card; return true;
+}
+
 function addToDeck(card) {
   if (deck.some(d => d && d.name === card.name)) return;
   if (card.champion) {
@@ -1310,13 +1327,47 @@ function addToDeck(card) {
     const idx = championTargetSlot();
     if (idx === -1) { openChampSwapDialog(card); return; }
     deck[idx] = card;
-  } else {
-    // 通常カード：スロット2・3以外の空きに入れる（ただし空いてれば入れる）
-    const emptyIdx = deck.findIndex((d, i) => d === null);
-    if (emptyIdx === -1) { showToast('⚠ デッキは8枚まで'); return; }
-    deck[emptyIdx] = card;
+    renderDeck(); render();
+    return;
   }
+  // タブに応じた専用スロット配置（進化タブ→進化枠 / ヒーロータブ→ヒーロー枠）
+  let special = -1;
+  if (activeTypes.has('evolved') && card.evolved) special = 0;       // 進化枠
+  else if (activeTypes.has('hero') && card.hero) special = 1;        // ヒーロー枠
+  if (special !== -1) {
+    if (deck[special] === null) { deck[special] = card; renderDeck(); render(); return; }
+    openSpecialSlotDialog(card, special); // 埋まってる→入れ替え or 通常
+    return;
+  }
+  if (!placeNormal(card)) return;
   renderDeck(); render();
+}
+
+// 進化/ヒーロー枠が埋まっている時：入れ替え or 通常カードとして入れる
+function openSpecialSlotDialog(card, slot) {
+  const label = slot === 0 ? '進化枠' : 'ヒーロー枠';
+  const occupant = deck[slot];
+  const ov = document.createElement('div');
+  ov.className = 'swap-overlay';
+  ov.innerHTML = `<div class="swap-box">
+    <div class="swap-title">${label}は「${occupant ? occupant.name : ''}」で埋まっています。<br>${card.name} をどうする？</div>
+    <div class="swap-options" style="flex-direction:column">
+      <button class="btn btn-primary" id="ssReplace" style="width:100%">${label}と入れ替える</button>
+      <button class="btn btn-ghost" id="ssNormal" style="width:100%">通常カードとして入れる</button>
+    </div>
+  </div>`;
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('#ssReplace').onclick = () => {
+    const old = deck[slot];
+    deck[slot] = card;
+    if (old) placeNormal(old); // 押し出されたカードは通常枠へ（空きがなければ消える）
+    ov.remove(); renderDeck(); render();
+  };
+  ov.querySelector('#ssNormal').onclick = () => {
+    if (placeNormal(card)) { renderDeck(); render(); }
+    ov.remove();
+  };
+  document.body.appendChild(ov);
 }
 
 // チャンピオン追加時、スロット2・3が非チャンピオンで埋まっている場合の入れ替えダイアログ
@@ -1751,9 +1802,44 @@ function showDeckStats(arr) {
     });
   }
 }
+// 自作の増減アイコン（ブランド配色・上昇=赤/下降=青の塗り三角）
+const TREND_UP_SVG   = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2.5 L14.5 13 L1.5 13 Z" fill="currentColor"/></svg>';
+const TREND_DOWN_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 13.5 L1.5 3 L14.5 3 Z" fill="currentColor"/></svg>';
+function avgOf(arr) { const f = arr.filter(d => d); return f.length ? f.reduce((s, c) => s + (c.cost || 0), 0) / f.length : 0; }
+
 // ドラッグ中の平均コスト等を仮の構成でプレビュー / 解除で実デッキに戻す
-function previewStats(hypArr) { _previewActive = true; showDeckStats(hypArr); document.querySelector('.deck-header')?.classList.add('previewing'); }
-function clearPreviewStats() { if (!_previewActive) return; _previewActive = false; showDeckStats(deck); document.querySelector('.deck-header')?.classList.remove('previewing'); }
+function previewStats(hypArr) {
+  const before = avgOf(deck), after = avgOf(hypArr);
+  _previewActive = true;
+  showDeckStats(hypArr);
+  const header = document.querySelector('.deck-header');
+  const trend = document.getElementById('avgTrend');
+  const val = document.getElementById('avgVal');
+  header && header.classList.add('previewing');
+  const diff = +(after - before).toFixed(2);
+  if (diff > 0) {        // コスト上昇＝赤
+    val.style.color = '#e05050';
+    trend.style.color = '#e05050';
+    trend.innerHTML = TREND_UP_SVG + '<span class="avg-diff">+' + diff.toFixed(2) + '</span>';
+  } else if (diff < 0) { // コスト下降＝青
+    val.style.color = '#3a8ef0';
+    trend.style.color = '#3a8ef0';
+    trend.innerHTML = TREND_DOWN_SVG + '<span class="avg-diff">' + diff.toFixed(2) + '</span>';
+  } else {               // 変化なし
+    val.style.color = '';
+    trend.innerHTML = '';
+  }
+}
+function clearPreviewStats() {
+  if (!_previewActive) return;
+  _previewActive = false;
+  showDeckStats(deck);
+  const val = document.getElementById('avgVal');
+  if (val) val.style.color = '';
+  const trend = document.getElementById('avgTrend');
+  if (trend) trend.innerHTML = '';
+  document.querySelector('.deck-header')?.classList.remove('previewing');
+}
 
 // 下部ボタンの活性状態を更新
 function updateActionButtons() {
@@ -1774,37 +1860,43 @@ async function openSlotSaveDialog() {
   let slots = [];
   try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
 
+  let selected = currentSlot || null; // 編集中スロットを初期選択
   const ov = document.createElement('div');
   ov.className = 'slot-pop';
   const chips = [1,2,3,4,5].map(i => {
     const s = slots.find(x => x.slot === i);
     const sub = s ? `${(s.slots||[]).length}枚` : '空き';
-    const isCur = currentSlot === i;          // 今編集中のスロット
-    return `<div class="slot-chip ${s?'':'empty'}${isCur?' current':''}" data-slot="${i}">
+    const isCur = currentSlot === i;
+    const isSel = selected === i;
+    return `<div class="slot-chip ${s?'':'empty'}${isCur?' current':''}${isSel?' selected':''}" data-slot="${i}">
       ${isCur ? '<span class="cur-badge">編集中</span>' : ''}
       <span class="num">${i}</span><span class="nm">${sub}</span>
     </div>`;
   }).join('');
-  const title = currentSlot
-    ? `スロット${currentSlot}を編集中。タップしたスロットに保存（${filled.length}枚）`
-    : `どのスロットに保存する？（${filled.length}枚）`;
   ov.innerHTML = `<div class="slot-pop-box">
-    <div class="slot-pop-title">${title}</div>
+    <div class="slot-pop-title">保存するスロットを選んで「保存」（${filled.length}枚）</div>
     <div class="slot-grid">${chips}</div>
+    <button class="btn btn-primary" id="slotSaveConfirm" style="width:100%;margin-top:4px"${selected?'':' disabled'}>保存</button>
   </div>`;
-  // キャンセルは「保存ボックス以外をタップ」でできるのでボタンは無し
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); }; // 外側タップでキャンセル
+  const confirmBtn = ov.querySelector('#slotSaveConfirm');
   ov.querySelectorAll('.slot-chip').forEach(o => {
-    o.onclick = async () => {
-      const slot = +o.dataset.slot;
-      ov.remove();
-      try {
-        await CRAuth.saveDeckToSlot(slot, 'スロット' + slot, filled); // 名前は付けない
-        currentSlot = slot; updateSlotLoadBtn();
-        openShareDialog(deck.slice(), 'スロット' + slot); // 保存直後にSNS共有を誘導
-      } catch (e) { showToast('保存に失敗しました'); }
+    o.onclick = () => {
+      selected = +o.dataset.slot;
+      ov.querySelectorAll('.slot-chip').forEach(c => c.classList.toggle('selected', +c.dataset.slot === selected));
+      confirmBtn.disabled = false;
     };
   });
+  confirmBtn.onclick = async () => {
+    if (!selected) { showToast('スロットを選んでください'); return; }
+    const slot = selected;
+    ov.remove();
+    try {
+      await CRAuth.saveDeckToSlot(slot, 'スロット' + slot, filled);
+      currentSlot = slot; updateSlotLoadBtn();
+      openShareDialog(deck.slice(), 'スロット' + slot);
+    } catch (e) { showToast('保存に失敗しました'); }
+  };
   document.body.appendChild(ov);
 }
 
