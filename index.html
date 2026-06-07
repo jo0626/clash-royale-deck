@@ -286,7 +286,20 @@
     background: var(--surface2); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 6px; color: var(--text); }
   .slot-chip .num { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
   .slot-chip .nm { font-size: 10px; color: var(--text-muted); text-align: center; line-height: 1.2; word-break: break-all; }
+  /* 保存スロット選択：スクロールせず5枠を一度に表示（パッと選べる） */
+  .slot-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 4px 0 10px; }
+  .slot-grid .slot-chip { width: auto; min-width: 0; min-height: 78px; padding: 8px 2px; }
+  .slot-grid .slot-chip .num { font-size: 22px; }
+  .slot-grid .slot-chip .nm { font-size: 8px; }
   .slot-chip.empty { opacity: 0.5; }
+  /* SNS共有ダイアログ */
+  .share-btns { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
+  .share-b { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border-radius: 8px;
+    font-size: 14px; font-weight: 700; cursor: pointer; border: none; text-decoration: none; font-family: inherit; }
+  .share-b.sns-native { background: var(--accent); color: #000; }
+  .share-b.sns-x { background: #000; color: #fff; border: 1px solid var(--border-hi); }
+  .share-b.sns-line { background: #06c755; color: #fff; }
+  .share-b.sns-copy { background: var(--surface2); color: var(--text); border: 1px solid var(--border-hi); }
   .slot-chip.current { border-color: var(--accent); background: rgba(232,160,32,0.12); }
   /* 📁長押しで出る横スクラブ操作バー（なぞるとデッキがリアルタイムに変わる） */
   .scrub-hint { position: fixed; left: 50%; transform: translateX(-50%); z-index: 1102;
@@ -1717,7 +1730,7 @@ async function openSlotSaveDialog() {
   }).join('');
   ov.innerHTML = `<div class="slot-pop-box">
     <div class="slot-pop-title">どのスロットに保存する？（現在 ${filled.length}枚）</div>
-    <div class="slot-strip">${chips}</div>
+    <div class="slot-grid">${chips}</div>
     <button class="btn btn-ghost" style="width:100%;margin-top:6px" id="slotSaveCancel">キャンセル</button>
   </div>`;
   ov.querySelector('#slotSaveCancel').onclick = () => ov.remove();
@@ -1729,12 +1742,48 @@ async function openSlotSaveDialog() {
       const name = await promptDeckName('デッキ' + slot);
       if (name === null) return; // キャンセル
       try {
-        await CRAuth.saveDeckToSlot(slot, name || ('デッキ' + slot), filled);
-        showToast('スロット' + slot + 'に保存しました');
+        const deckName = name || ('デッキ' + slot);
+        await CRAuth.saveDeckToSlot(slot, deckName, filled);
         currentSlot = slot; updateSlotLoadBtn();
+        openShareDialog(deck.slice(), deckName); // 保存直後にSNS共有を誘導
       } catch (e) { showToast('保存に失敗しました'); }
     };
   });
+  document.body.appendChild(ov);
+}
+
+// ===== 保存直後のSNS共有 =====
+function buildDeckShareUrl(deckArr) {
+  let names = (deckArr || []).map(c => c ? c.name : '');
+  while (names.length && names[names.length - 1] === '') names.pop();
+  const base = location.origin + location.pathname; // 例: https://crdeckbuilders.com/index.html
+  return base + '?deck=' + encodeURIComponent(names.join(','));
+}
+function openShareDialog(deckArr, deckName) {
+  const url = buildDeckShareUrl(deckArr);
+  const text = '【クラロワ】「' + (deckName || 'デッキ') + '」を作ったよ！ #クラロワ #CRDeckBuilders';
+  const ov = document.createElement('div');
+  ov.className = 'slot-pop';
+  const hasNative = !!navigator.share;
+  ov.innerHTML = `<div class="slot-pop-box">
+    <div class="slot-pop-title">✅ 保存しました！デッキを共有する？</div>
+    <div class="share-btns">
+      ${hasNative ? `<button class="share-b sns-native" id="shNative">📲 共有する</button>` : ``}
+      <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
+      <a class="share-b sns-line" id="shLine" target="_blank" rel="noopener">LINEで送る</a>
+      <button class="share-b sns-copy" id="shCopy">🔗 リンクをコピー</button>
+    </div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px" id="shClose">あとで</button>
+  </div>`;
+  ov.querySelector('#shClose').onclick = () => ov.remove();
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
+  ov.querySelector('#shLine').href = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(url);
+  const copyBtn = ov.querySelector('#shCopy');
+  copyBtn.onclick = () => { navigator.clipboard.writeText(url).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
+  if (hasNative) {
+    ov.querySelector('#shNative').onclick = () => { navigator.share({ title: 'CR Deck Builders', text, url }).catch(() => {}); };
+  }
   document.body.appendChild(ov);
 }
 
@@ -1792,6 +1841,7 @@ function initSlotScrub() {
   if (!btn) return;
   let pressTimer = null, longFired = false, scrubbing = false;
   let segSlots = [], bar = null, hint = null, lastIdx = -1;
+  let baseIdx = 0, startX = 0, stepPx = 54, movedFromStart = false;
 
   const startScrub = async () => {
     if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
@@ -1800,12 +1850,17 @@ function initSlotScrub() {
     try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
     segSlots = slots.filter(s => (s.slots || []).length > 0); // 空きスロットは除外
     if (!segSlots.length) { showToast('保存済みデッキがありません'); return; }
-    longFired = true; scrubbing = true; lastIdx = -1;
+    longFired = true; scrubbing = true; movedFromStart = false;
+    // 今いるスロットを起点に（いきなり別スロットへ飛ばさない）
+    baseIdx = segSlots.findIndex(s => s.slot === currentSlot);
+    if (baseIdx < 0) baseIdx = 0;
+    lastIdx = baseIdx;
+    startX = lastPointerX;
 
     bar = document.createElement('div');
     bar.className = 'scrub-bar';
     bar.innerHTML = segSlots.map((s, i) =>
-      `<div class="scrub-seg" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${s.name || ''}</span></div>`
+      `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${s.name || ''}</span></div>`
     ).join('');
     hint = document.createElement('div');
     hint.className = 'scrub-hint';
@@ -1815,21 +1870,22 @@ function initSlotScrub() {
     // スロット操作子の「すぐ上」に配置（指がバーを隠さない）
     const r = btn.getBoundingClientRect();
     const barH = bar.offsetHeight || 62;
+    const seg0 = bar.querySelector('.scrub-seg');
+    stepPx = seg0 ? (seg0.offsetWidth + 8) : 54; // 1スロット分の移動量
     bar.style.left = Math.round(r.left + r.width / 2) + 'px';
     bar.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
     hint.style.left = Math.round(r.left + r.width / 2) + 'px';
     hint.style.bottom = Math.round(window.innerHeight - r.top + 8 + barH + 6) + 'px';
-    updateScrub(lastPointerX);
+    // 起点では現在スロットを表示するだけ（デッキは変えない）
   };
 
+  // 起点からの相対移動でスロットを変える（今いる位置からスライド）
   const updateScrub = (clientX) => {
     if (!scrubbing || !bar) return;
-    const r = bar.getBoundingClientRect();
-    const n = segSlots.length;
-    let idx = Math.floor(((clientX - r.left) / r.width) * n);
-    idx = Math.max(0, Math.min(n - 1, idx));
+    const step = Math.round((clientX - startX) / stepPx);
+    let idx = Math.max(0, Math.min(segSlots.length - 1, baseIdx + step));
     if (idx === lastIdx) return;
-    lastIdx = idx;
+    lastIdx = idx; movedFromStart = true;
     bar.querySelectorAll('.scrub-seg').forEach((e, i) => e.classList.toggle('on', i === idx));
     const s = segSlots[idx];
     const cards = (s.slots || []).map(name => CARDS.find(c => c.name === name) || null);
@@ -1838,7 +1894,7 @@ function initSlotScrub() {
   };
 
   const endScrub = () => {
-    if (scrubbing && lastIdx >= 0) showToast('スロット' + segSlots[lastIdx].slot + 'を呼び出しました');
+    if (scrubbing && movedFromStart && lastIdx >= 0) showToast('スロット' + segSlots[lastIdx].slot + 'を呼び出しました');
     scrubbing = false;
     if (bar) { bar.remove(); bar = null; }
     if (hint) { hint.remove(); hint = null; }
