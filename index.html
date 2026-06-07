@@ -1305,13 +1305,13 @@ function getFiltered() {
     }
     return true;
   });
-  if (favSort) {
-    // お気に入りを先頭に（元の並び順は維持）
-    res = res.filter(c => isFav(c.name)).concat(res.filter(c => !isFav(c.name)));
-  }
   if (costDesc) {
     // コスト高い順（同コストは元の並び順を維持＝安定ソート）
     res = res.slice().sort((a, b) => b.cost - a.cost);
+  }
+  if (favSort) {
+    // お気に入りを先頭に（各グループ内の並び＝コスト順を維持）。コスト高い順でもお気に入りは常に最上段
+    res = res.filter(c => isFav(c.name)).concat(res.filter(c => !isFav(c.name)));
   }
   return res;
 }
