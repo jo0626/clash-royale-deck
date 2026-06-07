@@ -166,16 +166,34 @@ function applyDecks() {
     if (note) note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
   }
 }
-window.addEventListener('cr-owned-cards', (e) => { ownedSet = resolveOwned(e.detail); applyDecks(); });
+// 所持カード情報はログイン中のみ有効。detail=null（ログアウト）で解除
+window.addEventListener('cr-owned-cards', (e) => { ownedSet = e.detail ? resolveOwned(e.detail) : null; applyDecks(); });
 (function pollOwned(){
   if (!window.CRAuth) { setTimeout(pollOwned, 150); return; }
   const cached = CRAuth.getOwnedCards && CRAuth.getOwnedCards();
   if (cached) { ownedSet = resolveOwned(cached); applyDecks(); }
+  // ログイン状態を監視：ログアウトしたら絞り込みを解除
+  if (CRAuth.onChange) CRAuth.onChange((user) => {
+    if (!user) {
+      ownedSet = null; onlyOwned = false;
+      const t = document.getElementById('ownedToggle');
+      if (t) t.setAttribute('aria-pressed', 'false');
+      const n = document.getElementById('ownedNote'); if (n) n.textContent = '';
+      applyDecks();
+    }
+  });
 })();
 document.getElementById('ownedToggle').addEventListener('click', () => {
+  // 未ログインならログインを促す（IDはログインに紐づくため）
+  const loggedIn = window.CRAuth && CRAuth.getUser && CRAuth.getUser();
+  if (!loggedIn) {
+    if (window.CRAuth && CRAuth.signIn) CRAuth.signIn();
+    else document.getElementById('ownedNote').textContent = 'ログインすると使えます';
+    return;
+  }
   onlyOwned = !onlyOwned;
   document.getElementById('ownedToggle').setAttribute('aria-pressed', onlyOwned ? 'true' : 'false');
-  if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = 'ログインしてクラロワIDを登録すると使えます'; }
+  if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = '右上のアカウントからクラロワIDを登録すると使えます'; }
   applyDecks();
 });
 

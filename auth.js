@@ -63,6 +63,7 @@ let app, auth, db;
 let currentUser = null;
 let currentProfile = null;
 let _ownedCards = null; // クラロワID連携で取得した所持カード（日本語名の配列）
+let _crName = null;     // クラロワ ゲーム内の名前（プレイヤーAPIから取得）
 let _slotsCache = null; // 5スロットのキャッシュ（読み取り回数の節約）
 const changeCallbacks = [];
 
@@ -101,13 +102,17 @@ if (!isConfigured) {
       if (user) {
         currentProfile = await ensureProfile(user);
         setLoggedInUI(user, currentProfile);
-        writeHint({ displayName: user.displayName || "プレイヤー", photoURL: user.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
+        writeHint({ displayName: resolveDisplayName(user, currentProfile), photoURL: user.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
         CRAuth.refreshOwnedCards(); // ログイン時、IDがあれば所持カードを取得（基礎）
       } else {
         currentProfile = null;
         _slotsCache = null;
+        _ownedCards = null;   // ログアウトで所持カード情報を破棄（ログイン中だけ有効）
+        _crName = null;
         setLoggedOutUI(false); // ログイン可能状態
         clearHint();
+        closeMenu();          // アカウント詳細ホバーを自動で閉じる
+        window.dispatchEvent(new CustomEvent("cr-owned-cards", { detail: null })); // 「組めるデッキだけ」を解除
       }
       changeCallbacks.forEach(fn => { try { fn(user, currentProfile); } catch (e) {} });
     });
@@ -129,6 +134,7 @@ async function ensureProfile(user) {
       crTag: "",
       tier: "free",
       theme: "default",
+      nameMode: "account", // 表示名: "account"=Google/メール名, "game"=クラロワ ゲーム内名
       createdAt: FB.serverTimestamp(),
       updatedAt: FB.serverTimestamp(),
     };
@@ -184,7 +190,20 @@ const CRAuth = {
 
   // ── クラロワID連携の基礎：プレイヤータグから所持カードを取得 ──
   getCrTag() { return (currentProfile && currentProfile.crTag) || ""; },
+  getCrName() { return _crName || ""; }, // クラロワ ゲーム内の名前（取得済みなら）
   getOwnedCards() { return _ownedCards; }, // 取得済みなら日本語カード名の配列、未取得はnull
+
+  // 表示名モードを切り替え（"account" or "game"）
+  async setNameMode(mode) {
+    if (!currentUser || !FB) return;
+    const m = (mode === "game") ? "game" : "account";
+    await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { nameMode: m, updatedAt: FB.serverTimestamp() });
+    if (currentProfile) currentProfile.nameMode = m;
+    const nm = resolveDisplayName(currentUser, currentProfile);
+    applyAvatarUI({ displayName: nm, photoURL: currentUser.photoURL, tier: (currentProfile && currentProfile.tier) || "free" });
+    writeHint({ displayName: nm, photoURL: currentUser.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
+    refreshNameUI();
+  },
   async refreshOwnedCards() {
     const tag = CRAuth.getCrTag();
     if (!tag) { _ownedCards = null; return null; }
@@ -197,8 +216,10 @@ const CRAuth = {
       const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
       _ownedCards = Array.isArray(data.cards) ? data.cards : (Array.isArray(data) ? data : []);
+      if (data && typeof data.name === "string" && data.name) _crName = data.name; // ゲーム内名を保持
       try { localStorage.setItem("cr_owned_" + tag, JSON.stringify(_ownedCards)); } catch (e) {}
       window.dispatchEvent(new CustomEvent("cr-owned-cards", { detail: _ownedCards }));
+      refreshNameUI(); // ゲーム内名が取れたら表示名の選択肢を更新（モードがgameなら名前も反映）
       return _ownedCards;
     } catch (e) { console.error("[CRAuth] 所持カード取得失敗:", e); return null; }
   },
@@ -305,6 +326,15 @@ function injectAccountUI() {
     #crMenuBackdrop { position: fixed; inset: 0; z-index: 400; background: transparent; }
     .cr-menu .cr-hint { font-size: 11px; color: var(--text-muted, #6b7080); margin: 6px 0 2px; line-height: 1.5; }
     .cr-menu h4 { font-size: 13px; margin: 0 0 8px; color: var(--text, #e8eaf0); }
+    .cr-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .cr-name-row h4 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cr-name-edit { background: none; border: none; color: var(--text-muted,#6b7080); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 6px; line-height: 1; }
+    .cr-name-edit:hover { color: var(--text,#e8eaf0); background: var(--surface2,#1e2230); }
+    .cr-name-picker { display: none; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; }
+    .cr-name-picker.open { display: block; }
+    .cr-name-opt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text,#e8eaf0); padding: 5px 2px; cursor: pointer; }
+    .cr-name-opt input[type=radio] { accent-color: var(--accent,#e8a020); }
+    .cr-name-opt input[type=radio]:disabled + span { color: var(--text-dim,#3a3f50); }
     .cr-menu .cr-row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
     .cr-menu input { flex: 1; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
       border-radius: 6px; color: var(--text,#e8eaf0); padding: 6px 8px; font-size: 13px; outline: none; }
@@ -376,29 +406,84 @@ function applyAvatarUI(info) {
   chip.style.color = (tier === "free") ? "#fff" : "#000";
 }
 
+// 表示名の解決：mode="game" かつ ゲーム内名があればそれ、無ければアカウント名
+function accountNameOf(user) {
+  if (!user) return "プレイヤー";
+  if (user.displayName) return user.displayName;
+  if (user.email) return user.email.split("@")[0];
+  return "プレイヤー";
+}
+function resolveDisplayName(user, profile) {
+  const mode = (profile && profile.nameMode) || "account";
+  if (mode === "game") {
+    if (_crName) return _crName;
+    const h = readHint(); // ゲーム内名がまだ取れてない間は直近の表示名で代用（チラつき防止）
+    if (h && h.displayName) return h.displayName;
+  }
+  return accountNameOf(user);
+}
+
 function setLoggedInUI(user, profile) {
-  applyAvatarUI({ displayName: user.displayName, photoURL: user.photoURL, tier: (profile && profile.tier) || "free" });
+  applyAvatarUI({ displayName: resolveDisplayName(user, profile), photoURL: user.photoURL, tier: (profile && profile.tier) || "free" });
   buildMenu(user, profile);
+}
+
+// メニューを閉じる（ログアウト時などに使用）
+function closeMenu() {
+  const m = document.getElementById("crMenu");
+  if (m) m.classList.remove("open");
+  syncMenuBackdrop();
+}
+
+// 表示名まわりのUIだけを更新（メニューは作り直さない）
+function refreshNameUI() {
+  const full = resolveDisplayName(currentUser, currentProfile);
+  const nm = document.getElementById("crMenuName");
+  if (nm) nm.textContent = full;
+  const av = document.getElementById("crAvatarName");
+  if (av) av.textContent = (full || "プレイヤー").split(" ")[0];
+  const gLabel = document.getElementById("crNameGameLabel");
+  if (gLabel) gLabel.textContent = "ゲーム内の名前" + (_crName ? "（" + _crName + "）" : "（ID保存後に取得）");
+  const gRadio = document.getElementById("crNameGameRadio");
+  if (gRadio) gRadio.disabled = !_crName;
 }
 
 function buildMenu(user, profile) {
   const m = document.getElementById("crMenu");
+  const mode = (profile && profile.nameMode) || "account";
   // ※このエリアは今後随時拡張していく
   m.innerHTML = `
-    <h4>${user.displayName || "プレイヤー"}</h4>
+    <div class="cr-name-row">
+      <h4 id="crMenuName">${resolveDisplayName(user, profile)}</h4>
+      <button class="cr-name-edit" id="crNameEdit" title="表示名を変更">✎</button>
+    </div>
+    <div class="cr-name-picker" id="crNamePicker">
+      <label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>アカウント名（${accountNameOf(user)}）</span></label>
+      <label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span id="crNameGameLabel">ゲーム内の名前${_crName ? "（" + _crName + "）" : "（ID保存後に取得）"}</span></label>
+    </div>
     <div class="cr-row">
       <input id="crTagInput" placeholder="クラロワID 例 #ABC123" value="${(profile && profile.crTag) ? "#" + profile.crTag : ""}">
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
-    <div class="cr-hint" id="crTagHint">IDを登録すると、今後「持っているカードで組めるデッキだけ」表示などに使えます。</div>
+    <div class="cr-hint" id="crTagHint">IDを登録すると、「持っているカードで組めるデッキだけ」表示や、ゲーム内の名前の表示に使えます。</div>
     <div class="cr-divider"></div>
     <div class="cr-row"><button class="cr-mini cr-logout" id="crLogout">ログアウト</button></div>
   `;
+  // 表示名ピッカー
+  const accR = document.getElementById("crNameAccRadio");
+  const gameR = document.getElementById("crNameGameRadio");
+  if (accR) accR.checked = (mode === "account");
+  if (gameR) { gameR.checked = (mode === "game"); gameR.disabled = !_crName; }
+  document.getElementById("crNameEdit").onclick = () => {
+    document.getElementById("crNamePicker").classList.toggle("open");
+  };
+  [accR, gameR].forEach((r) => { if (r) r.onchange = () => { if (r.checked) CRAuth.setNameMode(r.value); }; });
+
   document.getElementById("crTagSave").onclick = async () => {
     const v = document.getElementById("crTagInput").value;
     await CRAuth.setCrTag(v);
     flash("crTagSave", "✓");
-    CRAuth.refreshOwnedCards(); // ID保存時に所持カードを取りに行く（基礎）
+    CRAuth.refreshOwnedCards(); // ID保存時に所持カード＋ゲーム内名を取りに行く
   };
   document.getElementById("crLogout").onclick = () => CRAuth.signOut();
 }
