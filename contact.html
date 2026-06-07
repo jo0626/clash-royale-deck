@@ -132,9 +132,33 @@
 </div>
 
 <script>
-  // 送信ボタンは後でフォームサービス（Googleフォーム/Formspree等）に接続予定
-  document.getElementById('submitBtn').onclick = () => {
-    alert('送信機能は準備中です。\nもうしばらくお待ちください！');
+  // ↓ デプロイした「問い合わせ受付GAS」のウェブアプリ /exec URL を貼る
+  const CONTACT_API = "";
+
+  const btn = document.getElementById('submitBtn');
+  btn.onclick = async () => {
+    const type = document.getElementById('type').value;
+    const name = document.getElementById('name').value.trim();
+    const message = document.getElementById('message').value.trim();
+    if (!message) { alert('内容をご記入ください'); return; }
+    if (!CONTACT_API) { alert('送信先が未設定です。少し待ってから、またはXからお願いします。'); return; }
+    const orig = btn.textContent;
+    btn.disabled = true; btn.textContent = '送信中…';
+    try {
+      // application/x-www-form-urlencoded（プリフライト不要）でGASのe.parameterへ
+      const body = new URLSearchParams({ type, name, message, page: 'contact.html' });
+      const res = await fetch(CONTACT_API, { method: 'POST', body });
+      let ok = res.ok;
+      try { const j = await res.json(); ok = (j.ok !== false); } catch (e) {}
+      if (!ok) throw new Error('ng');
+      btn.textContent = '✓ 送信しました';
+      document.getElementById('message').value = '';
+      document.getElementById('name').value = '';
+      setTimeout(() => { btn.disabled = false; btn.textContent = orig; }, 4000);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = orig;
+      alert('送信に失敗しました。お手数ですが X（@rea_fi_lia）からもお気軽にどうぞ。');
+    }
   };
 </script>
 
