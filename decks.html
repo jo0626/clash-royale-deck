@@ -37,19 +37,21 @@
     background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
   .deck-tab.active { background:rgba(232,160,32,0.14); border-color:var(--accent); color:var(--accent); }
   .stat-win { color:var(--accent); }
-  .filter-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-  .filter-row .owned-toggle { flex:none; white-space:nowrap; }
-  .filter-row .card-filter { flex:1; min-width:0; margin-bottom:0; }
+  .owned-filter { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
   .owned-toggle { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px;
-    padding:9px 13px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+    padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
   .owned-toggle[aria-pressed="true"] { background:rgba(232,160,32,0.16); border-color:var(--accent); color:var(--accent); }
   .filter-notes { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
   .filter-notes:empty { margin-bottom:0; }
   .owned-note { font-size:11px; color:var(--text-muted); }
-  .card-filter { position:relative; }
-  /* font-size:16px → iOSでフォーカス時に勝手にズームしない */
+  .card-filter { position:relative; margin-bottom:14px; }
+  /* font-size:16px → iOSでフォーカス時に勝手にズームしない。右に×ボタン分の余白 */
   .card-filter input { width:100%; background:var(--surface); border:1px solid var(--border-hi); border-radius:999px;
-    color:var(--text); padding:8px 12px; font-size:16px; outline:none; font-family:inherit; }
+    color:var(--text); padding:8px 38px 8px 12px; font-size:16px; outline:none; font-family:inherit; }
+  .card-clear { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:26px; height:26px;
+    border:none; border-radius:50%; background:var(--surface2); color:var(--text-muted); cursor:pointer;
+    font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center; font-family:inherit; }
+  .card-clear:hover { color:var(--text); background:var(--border-hi); }
   .card-filter input:focus { border-color:var(--accent); }
   .card-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px;
     background:rgba(232,160,32,0.16); border:1px solid var(--accent); color:var(--accent); font-size:12px; font-weight:700; cursor:pointer; }
@@ -116,15 +118,16 @@
         <button class="deck-tab active" data-tab="pop">📊 人気デッキ（使用率）</button>
         <button class="deck-tab" data-tab="win">🏅 勝率ランキング</button>
       </div>
-      <div class="filter-row">
+      <div class="owned-filter">
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 組めるデッキだけ表示</button>
-        <div class="card-filter">
-          <input id="cardSearch" type="text" placeholder="🔍 カード名・略称で絞り込み" autocomplete="off" spellcheck="false">
-          <div id="cardPop" class="card-pop"></div>
-        </div>
+        <span id="ownedNote" class="owned-note"></span>
+      </div>
+      <div class="card-filter">
+        <input id="cardSearch" type="text" placeholder="🔍 カード名・略称で絞り込み" autocomplete="off" spellcheck="false" enterkeyhint="search">
+        <button id="cardClear" class="card-clear" type="button" aria-label="クリア" style="display:none">✕</button>
+        <div id="cardPop" class="card-pop"></div>
       </div>
       <div class="filter-notes">
-        <span id="ownedNote" class="owned-note"></span>
         <span id="cardChip" class="card-chip" style="display:none"></span>
       </div>
       <div id="deckList"></div>
@@ -284,15 +287,29 @@ function renderCardPop(q) {
   }).join('');
   _cardPop.classList.add('open');
 }
-_cardSearch.addEventListener('input', () => renderCardPop(_cardSearch.value));
+const _cardClear = document.getElementById('cardClear');
+function _syncClear() { _cardClear.style.display = _cardSearch.value ? 'flex' : 'none'; }
+_cardSearch.addEventListener('input', () => { renderCardPop(_cardSearch.value); _syncClear(); });
 _cardSearch.addEventListener('focus', () => { if (_cardSearch.value.trim()) renderCardPop(_cardSearch.value); });
+// Enterで検索確定＝キーボードを閉じる（候補はそのまま表示）
+_cardSearch.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); _cardSearch.blur(); }
+});
+// ×：打った文字を消して、いかなる時もキーボードを閉じる
+_cardClear.addEventListener('click', () => {
+  _cardSearch.value = '';
+  renderCardPop('');
+  _syncClear();
+  _cardSearch.blur();
+});
 _cardPop.addEventListener('click', (e) => {
   const card = e.target.closest('.pop-card');
   if (!card) return;
   cardFilter = card.getAttribute('data-n');
   _cardChip.style.display = 'inline-flex';
   _cardChip.innerHTML = '「' + cardFilter + '」を含むデッキ <span class="x">✕</span>';
-  _cardSearch.value = ''; _cardPop.classList.remove('open'); _cardPop.innerHTML = '';
+  _cardSearch.value = ''; _syncClear(); _cardPop.classList.remove('open'); _cardPop.innerHTML = '';
+  _cardSearch.blur();
   applyDecks();
 });
 _cardChip.addEventListener('click', () => { cardFilter = null; _cardChip.style.display = 'none'; applyDecks(); });
