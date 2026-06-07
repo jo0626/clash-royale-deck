@@ -1331,7 +1331,7 @@ function render() {
       e.dataTransfer.effectAllowed = 'move';
     });
     div.addEventListener('dragend', e => { div.style.opacity = ''; dragSrcCard = null; });
-    div.onclick = () => toggleDeck(c);
+    div.onclick = () => { if (isDragging) return; toggleDeck(c); }; // ドラッグ中のタップは無視
     list.appendChild(div);
   });
 }
@@ -1645,6 +1645,7 @@ function cancelDrag() {
 function initTouchDnD() {
   // カード選択ゾーン
   document.getElementById('cardList').addEventListener('touchstart', e => {
+    if (isDragging || longPressTimer || e.touches.length > 1) return; // ドラッグ中/長押し待ち/2本指は無視（2枚目タップでバグらない）
     if (e.target.closest('.fav-btn')) return; // ハートタップ時はドラッグしない
     const card = e.target.closest('.card');
     if (!card || card.classList.contains('in-deck')) return;
@@ -1660,6 +1661,7 @@ function initTouchDnD() {
 
   // デッキスロット
   document.getElementById('deckSlots').addEventListener('touchstart', e => {
+    if (isDragging || longPressTimer || e.touches.length > 1) return; // ドラッグ中/長押し待ち/2本指は無視
     const slot = e.target.closest('.slot.filled');
     if (!slot) return;
     const idx = parseInt(slot.dataset.idx);
