@@ -6,12 +6,7 @@
 <title>CR Deck Builder</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
-  /* ページ遷移をスライドに（対応ブラウザのみ。非対応は通常遷移） */
-  @view-transition { navigation: auto; }
-  @keyframes cr-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-  @keyframes cr-slide-out-left { from { transform: translateX(0); } to { transform: translateX(-30%); opacity: .4; } }
-  ::view-transition-old(root) { animation: cr-slide-out-left .28s ease both; }
-  ::view-transition-new(root) { animation: cr-slide-in-right .28s ease both; }
+  /* ページ遷移は通常のリロード（スライド遷移は無効化） */
 
   :root {
     --bg: #0d0f14;
@@ -1158,7 +1153,14 @@ function init() {
   [1,2,3,4,5,6,7,8,9].forEach(c => {
     const b = document.createElement('button');
     b.className = 'cfbtn'; b.dataset.c = c; b.textContent = c; b.title = c + 'コスト';
-    b.onclick = () => { b.classList.toggle('active'); activeCosts.has(c) ? activeCosts.delete(c) : activeCosts.add(c); render(); };
+    b.onclick = () => {
+      // コストは単一選択：別のコストを押すと切り替わる。同じものを再度押すと解除
+      const wasActive = activeCosts.has(c);
+      activeCosts.clear();
+      cf.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      if (!wasActive) { activeCosts.add(c); b.classList.add('active'); }
+      render();
+    };
     cf.appendChild(b);
   });
 

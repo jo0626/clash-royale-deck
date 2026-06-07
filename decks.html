@@ -42,6 +42,22 @@
     padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
   .owned-toggle[aria-pressed="true"] { background:rgba(232,160,32,0.16); border-color:var(--accent); color:var(--accent); }
   .owned-note { font-size:11px; color:var(--text-muted); }
+  .card-filter { position:relative; margin-bottom:14px; }
+  .card-filter input { width:100%; background:var(--surface); border:1px solid var(--border-hi); border-radius:999px;
+    color:var(--text); padding:9px 14px; font-size:14px; outline:none; font-family:inherit; }
+  .card-filter input:focus { border-color:var(--accent); }
+  .card-chip { display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:5px 10px; border-radius:999px;
+    background:rgba(232,160,32,0.16); border:1px solid var(--accent); color:var(--accent); font-size:12px; font-weight:700; cursor:pointer; }
+  .card-chip .x { font-size:13px; }
+  .card-pop { display:none; position:absolute; z-index:50; top:46px; left:0; right:0; max-height:280px; overflow-y:auto;
+    background:var(--surface); border:1px solid var(--border-hi); border-radius:12px; padding:8px;
+    grid-template-columns:repeat(3,1fr); gap:6px; box-shadow:0 12px 30px rgba(0,0,0,.5); }
+  .card-pop.open { display:grid; }
+  .card-pop .pop-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:4px; cursor:pointer; text-align:center; transition:all .12s; }
+  .card-pop .pop-card:hover { border-color:var(--accent); }
+  .card-pop .pop-card img { width:100%; aspect-ratio:3/4; object-fit:contain; }
+  .card-pop .pop-card .nm { font-size:10px; color:var(--text-muted); margin-top:2px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card-pop .pop-empty { grid-column:1/-1; text-align:center; color:var(--text-muted); font-size:12px; padding:14px; }
   .deck-card.cant-build { opacity:0.5; }
   .deck-missing { font-size:11px; color:#e05050; margin-top:6px; }
   .deck-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; }
@@ -98,6 +114,11 @@
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 自分のカードで組めるデッキだけ</button>
         <span id="ownedNote" class="owned-note"></span>
       </div>
+      <div class="card-filter">
+        <input id="cardSearch" type="text" placeholder="🔍 カード名で絞り込み（例：ホグ）" autocomplete="off" spellcheck="false">
+        <span id="cardChip" class="card-chip" style="display:none"></span>
+        <div id="cardPop" class="card-pop"></div>
+      </div>
       <div id="deckList"></div>
       <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
     </div>
@@ -128,6 +149,7 @@ let WIN_DECKS = [];        // 勝率ランキングデッキ
 let activeTab = 'pop';     // 'pop'=使用率 / 'win'=勝率
 let ownedSet = null;       // 解決済み所持カード名Set（未取得null）
 let onlyOwned = false;     // 絞り込みON/OFF
+let cardFilter = null;     // 「このカードを含むデッキだけ」絞り込み（カード名 or null）
 let PLAYERS_TOTAL = 0;     // 集計した母数（使用率%の計算用）
 function currentList() { return activeTab === 'win' ? WIN_DECKS : ALL_DECKS; }
 
@@ -168,16 +190,19 @@ function deckBuildable(d) {
   if (!ownedSet) return true;
   return d.slots.every(n => ownedSet.has(n));
 }
+function passFilters(d) {
+  if (onlyOwned && ownedSet && !deckBuildable(d)) return false;
+  if (cardFilter && !d.slots.includes(cardFilter)) return false;
+  return true;
+}
 function applyDecks() {
   const note = document.getElementById('ownedNote');
   const list = currentList();
-  if (onlyOwned && ownedSet) {
-    const ok = list.filter(deckBuildable);
-    renderDecks(ok);
-    if (note) note.textContent = ok.length + ' / ' + list.length + ' デッキが今のカードで組めます';
-  } else {
-    renderDecks(list);
-    if (note) note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
+  const shown = list.filter(passFilters);
+  renderDecks(shown);
+  if (note) {
+    if (onlyOwned && ownedSet) note.textContent = shown.length + ' / ' + list.length + ' デッキ' + (cardFilter ? '（絞り込み中）' : 'が今のカードで組めます');
+    else note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
   }
 }
 // タブ切り替え
@@ -218,6 +243,38 @@ document.getElementById('ownedToggle').addEventListener('click', () => {
   if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = '右上のアカウントからクラロワIDを登録すると使えます'; }
   applyDecks();
 });
+
+// ===== カード名で検索 → そのカードを含むデッキだけ表示 =====
+const _cardSearch = document.getElementById('cardSearch');
+const _cardPop = document.getElementById('cardPop');
+const _cardChip = document.getElementById('cardChip');
+const _ALL_CARD_NAMES = Object.keys(CARD_INFO);
+function renderCardPop(q) {
+  q = (q || '').trim();
+  if (!q) { _cardPop.classList.remove('open'); _cardPop.innerHTML = ''; return; }
+  const matches = _ALL_CARD_NAMES.filter(n => n.indexOf(q) >= 0).slice(0, 12);
+  if (!matches.length) { _cardPop.innerHTML = '<div class="pop-empty">該当するカードがありません</div>'; _cardPop.classList.add('open'); return; }
+  _cardPop.innerHTML = matches.map(n => {
+    const info = CARD_INFO[n] || {};
+    return '<div class="pop-card" data-n="' + n.replace(/"/g, '&quot;') + '">'
+      + (info.i ? '<img src="' + info.i + '" alt="' + n + '" loading="lazy">' : '')
+      + '<div class="nm">' + n + '</div></div>';
+  }).join('');
+  _cardPop.classList.add('open');
+}
+_cardSearch.addEventListener('input', () => renderCardPop(_cardSearch.value));
+_cardSearch.addEventListener('focus', () => { if (_cardSearch.value.trim()) renderCardPop(_cardSearch.value); });
+_cardPop.addEventListener('click', (e) => {
+  const card = e.target.closest('.pop-card');
+  if (!card) return;
+  cardFilter = card.getAttribute('data-n');
+  _cardChip.style.display = 'inline-flex';
+  _cardChip.innerHTML = '「' + cardFilter + '」を含むデッキ <span class="x">✕</span>';
+  _cardSearch.value = ''; _cardPop.classList.remove('open'); _cardPop.innerHTML = '';
+  applyDecks();
+});
+_cardChip.addEventListener('click', () => { cardFilter = null; _cardChip.style.display = 'none'; applyDecks(); });
+document.addEventListener('click', (e) => { if (!e.target.closest('.card-filter')) _cardPop.classList.remove('open'); });
 
 function renderDecks(decks) {
   const wrap = document.getElementById('deckList');

@@ -7,12 +7,7 @@
 <meta name="description" content="作成したクラロワデッキを分析。平均コスト・コストカーブ、攻め/防衛/呪文のバランスなどを可視化して、デッキの強み弱みを把握できます。">
 <link rel="canonical" href="https://crdeckbuilders.com/strategy.html">
 <style>
-  /* ページ遷移をスライドに（対応ブラウザのみ。非対応は通常遷移） */
-  @view-transition { navigation: auto; }
-  @keyframes cr-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-  @keyframes cr-slide-out-left { from { transform: translateX(0); } to { transform: translateX(-30%); opacity: .4; } }
-  ::view-transition-old(root) { animation: cr-slide-out-left .28s ease both; }
-  ::view-transition-new(root) { animation: cr-slide-in-right .28s ease both; }
+  /* ページ遷移は通常のリロード（スライド遷移は無効化） */
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
   :root { --bg:#0d0f14; --surface:#161920; --surface2:#1e2230; --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.15); --text:#e8eaf0; --text-muted:#6b7080; --text-dim:#3a3f50; --accent:#e8a020; --accent2:#c0781a; --red:#e05050; --evo:#8b5cf6; --hero:#e8a020; --font-head:'Rajdhani',sans-serif; --font-body:'Noto Sans JP',sans-serif; }
   * { box-sizing:border-box; margin:0; padding:0; }
