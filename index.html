@@ -2174,6 +2174,48 @@ init();
   });
 })();
 
+// ===== クラロワID連携：所持カードをサイトのカード名に突き合わせる =====
+// API返却名（英語slug / 日本語 / ヨミ）をサイトのCARDS名へ解決する
+let ownedSiteCards = null; // 解決済みの所持カード名Set（未取得はnull）
+function _buildOwnedMaps() {
+  const slugMap = {}, nameMap = {};
+  CARDS.forEach(c => {
+    const m = (c.img || '').match(/cards\/([a-z0-9-]+)\.png/i);
+    if (m) slugMap[m[1].toLowerCase()] = c.name;          // 英語slug → カード名
+    nameMap[toKatakana(c.name.toLowerCase())] = c.name;   // 正式名
+    (c.yomi || '').split(/\s+/).forEach(y => { if (y) nameMap[toKatakana(y.toLowerCase())] = c.name; }); // ヨミも対象
+  });
+  return { slugMap, nameMap };
+}
+function resolveOwnedCards(rawNames) {
+  const { slugMap, nameMap } = _buildOwnedMaps();
+  const out = new Set();
+  const unmatched = [];
+  (rawNames || []).forEach(raw => {
+    const s = String(raw);
+    const slug = s.toLowerCase().replace(/[.　]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (slug && slugMap[slug]) { out.add(slugMap[slug]); return; }   // 英語名→slug一致
+    const k = toKatakana(s.toLowerCase().replace(/\s|　/g, ''));
+    if (nameMap[k]) { out.add(nameMap[k]); return; }                 // 日本語名/ヨミ一致
+    unmatched.push(raw);
+  });
+  if (unmatched.length) console.info('[owned] 未マッチ:', unmatched);
+  return out;
+}
+function applyOwned(raw) {
+  ownedSiteCards = resolveOwnedCards(raw);
+  console.info('[owned] 所持カード解決:', ownedSiteCards.size + '/' + (raw ? raw.length : 0) + '枚マッチ');
+  // ここで今後「組めるデッキだけ表示」などに利用していく
+  window.ownedSiteCards = ownedSiteCards;
+}
+window.addEventListener('cr-owned-cards', (e) => applyOwned(e.detail));
+// 既にログイン済みでキャッシュがあれば即反映
+(function pollOwned(){
+  if (!window.CRAuth) { setTimeout(pollOwned, 150); return; }
+  const cached = CRAuth.getOwnedCards && CRAuth.getOwnedCards();
+  if (cached) applyOwned(cached);
+})();
+
 // URLパラメータ ?deck=カード名,カード名,... でデッキを読み込む（攻略ページからのワンタップ用）
 function loadDeckFromQuery() {
   const p = new URLSearchParams(location.search).get('deck');

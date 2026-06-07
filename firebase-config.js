@@ -23,4 +23,4 @@ export const isConfigured =
 // GAS（Code.gs）に doGet(?tag=...) を用意して、その公開ウェブアプリURLをここに貼る。
 // 返却JSONの想定: { "cards": ["ナイト","大砲", ...] }（日本語カード名）
 // 空のうちは所持カード機能はオフ（サイトは普通に動く）。
-export const crPlayerApiUrl = "";
+export const crPlayerApiUrl = "https://script.google.com/macros/s/AKfycbwptf8Rh_6vXyMWxrVJoRD0IxQuEgadT5cy6Pk-r4i6_cZQAgYDmam8l5yO79kmwbXm/exec";
