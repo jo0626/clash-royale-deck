@@ -493,7 +493,7 @@
     .right { order: -1; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border); overflow: hidden; touch-action: none; }
     .left { flex: 1; overflow: hidden; overscroll-behavior-y: contain; }
 
-    .deck-header { padding: 8px 12px 5px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .deck-header { padding: 5px 12px 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 3px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
     .deck-title { font-size: 13px; flex-shrink: 0; }
     .avg-row { margin-top: 0; flex-shrink: 0; display: flex; align-items: baseline; gap: 4px; }
     .avg-label { display: inline; font-size: 9px; }
@@ -504,14 +504,14 @@
     .deck-slots {
       display: grid !important;
       grid-template-columns: repeat(4, 1fr);
-      gap: 5px; padding: 6px 10px;
+      gap: 5px; padding: 4px 10px;
       flex-direction: unset !important;
     }
     .slot {
-      width: 100%; height: 120px;
+      width: 100%; height: 100px;
       flex-direction: column; align-items: center;
       justify-content: flex-start;
-      padding: 6px 4px 6px; gap: 4px;
+      padding: 5px 4px 5px; gap: 3px;
     }
     .slot-num { display: none; }
     .slot-type { display: none; }
@@ -522,7 +522,7 @@
     }
     .slot-img {
       position: static; transform: none;
-      width: 80px; height: 80px;
+      width: 68px; height: 68px;
       opacity: 0.9; filter: saturate(1);
     }
     .slot-info {
@@ -539,11 +539,11 @@
       word-break: break-all;
     }
 
-    .deck-actions { padding: 6px 10px; gap: 6px; }
+    .deck-actions { padding: 5px 10px; gap: 6px; }
     .deck-actions .btn { padding: 7px 6px; font-size: 11px; }
     .da-left { gap: 6px; }
 
-    .controls { padding: 8px 10px; }
+    .controls { padding: 6px 10px; }
     .controls-row { gap: 6px; }
     /* ハートは折り返さず、同じ行の一番右上に固定 */
     .type-tabs { gap: 2px; flex-wrap: wrap; align-items: center; position: relative; padding-right: 26px; }
@@ -553,7 +553,7 @@
     .t-emoji { display: none; }
 
     .cfbtn { width: 24px; height: 24px; font-size: 11px; }
-    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 8px 10px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
+    .card-list { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 5px; padding: 5px 10px 8px; overscroll-behavior-y: auto; -webkit-overflow-scrolling: touch; }
     .card { padding: 9px 8px 11px; min-height: 94px; }
     .card-img { width: 76px; height: 76px; }
     .card-name { font-size: 10px; }
@@ -1843,7 +1843,7 @@ function initSlotScrub() {
   if (!btn) return;
   let pressTimer = null, longFired = false, scrubbing = false;
   let segSlots = [], bar = null, hint = null, lastIdx = -1;
-  let baseIdx = 0, startX = 0, stepPx = 54, movedFromStart = false;
+  let baseIdx = 0, startX = 0, stepPx = 38, movedFromStart = false;
 
   const startScrub = async () => {
     if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
@@ -1873,7 +1873,7 @@ function initSlotScrub() {
     const r = btn.getBoundingClientRect();
     const barH = bar.offsetHeight || 62;
     const seg0 = bar.querySelector('.scrub-seg');
-    stepPx = seg0 ? (seg0.offsetWidth + 8) : 54; // 1スロット分の移動量
+    stepPx = seg0 ? Math.round((seg0.offsetWidth + 8) * 0.7) : 38; // 1スロット分の移動量（少し狭め）
     bar.style.left = Math.round(r.left + r.width / 2) + 'px';
     bar.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
     hint.style.left = Math.round(r.left + r.width / 2) + 'px';
@@ -1902,16 +1902,21 @@ function initSlotScrub() {
     if (hint) { hint.remove(); hint = null; }
   };
 
-  let lastPointerX = 0, pressOnBtn = false;
+  let lastPointerX = 0, pressOnBtn = false, downX = 0;
   btn.addEventListener('pointerdown', (e) => {
     longFired = false;
     pressOnBtn = true; // SLOT操作子から始まった押下だけ案内を出す
-    lastPointerX = e.clientX;
-    pressTimer = setTimeout(startScrub, 280); // 長押しでスクラブ開始
+    lastPointerX = downX = e.clientX;
+    pressTimer = setTimeout(startScrub, 150); // 短い長押しでスクラブ開始
   });
   document.addEventListener('pointermove', (e) => {
     lastPointerX = e.clientX;
-    if (scrubbing) { e.preventDefault(); updateScrub(e.clientX); }
+    if (scrubbing) { e.preventDefault(); updateScrub(e.clientX); return; }
+    // 長押しを待たず、SLOT上から左右に少し動かしたら即スクラブ開始
+    if (pressOnBtn && !longFired && Math.abs(e.clientX - downX) > 6) {
+      clearTimeout(pressTimer);
+      startScrub();
+    }
   }, { passive: false });
   document.addEventListener('pointerup', () => {
     clearTimeout(pressTimer);
