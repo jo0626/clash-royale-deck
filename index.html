@@ -266,10 +266,13 @@
   .avg-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
   .avg-sub { font-size: 11px; color: var(--text-muted); }
   /* 保存デッキ呼び出しボタン */
-  .slot-load-btn { display: inline-flex; align-items: center; gap: 3px; background: var(--surface2); border: 1px solid var(--border-hi);
-    color: var(--text); border-radius: 8px; padding: 4px 9px; font-size: 13px; cursor: pointer; font-family: inherit;
+  /* デッキスロット表示（クリア/保存 と デッキ分析へ の中央）。数字だけでスロットと分かる見た目 */
+  .slot-load-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--surface2); border: 1px solid var(--border-hi); color: var(--text); border-radius: 8px;
+    width: 46px; min-height: 38px; padding: 3px 4px; cursor: pointer; font-family: inherit; line-height: 1;
     user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-  .slot-load-btn span { font-family: var(--font-head); font-weight: 700; color: var(--accent); user-select: none; -webkit-user-select: none; }
+  .slot-load-btn .sl-cap { font-size: 7px; letter-spacing: 1px; color: var(--text-muted); font-family: var(--font-head); }
+  .slot-load-btn #slotLoadNum { font-family: var(--font-head); font-weight: 700; font-size: 18px; color: var(--accent); }
   /* 4アイコンは平均コスト行の右端へ */
   .deck-header .deck-nav { display: flex; gap: 4px; margin-left: auto; }
   /* コストバーは行の下に全幅で */
@@ -286,9 +289,9 @@
   .slot-chip.empty { opacity: 0.5; }
   .slot-chip.current { border-color: var(--accent); background: rgba(232,160,32,0.12); }
   /* 📁長押しで出る横スクラブ操作バー（なぞるとデッキがリアルタイムに変わる） */
-  .scrub-hint { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); z-index: 1101;
+  .scrub-hint { position: fixed; left: 50%; transform: translateX(-50%); z-index: 1102;
     font-size: 11px; color: var(--text); background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
-  .scrub-bar { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 1101;
+  .scrub-bar { position: fixed; left: 50%; transform: translateX(-50%); z-index: 1101;
     background: var(--surface); border: 1px solid var(--border-hi); border-radius: 999px; padding: 8px 12px;
     display: flex; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); touch-action: none; user-select: none; -webkit-user-select: none; max-width: 94vw; overflow: hidden; }
   .scrub-seg { width: 46px; height: 46px; flex: 0 0 auto; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -745,7 +748,6 @@
         <span class="avg-val" id="avgVal">—</span>
         <span class="avg-sub" id="avgSub"></span>
       </div>
-      <button class="slot-load-btn" id="slotLoadBtn" title="保存したデッキを呼び出す">📁<span id="slotLoadNum">—</span></button>
       <nav class="nav-icons deck-nav">
         <a class="nav-icon active" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
         <a class="nav-icon" href="decks.html" title="人気デッキ・デッキ探求"><span class="nav-emoji">🏆</span></a>
@@ -763,6 +765,7 @@
         <button class="btn btn-ghost" id="clearBtn">クリア</button>
         <button class="btn btn-primary" id="saveBtn">保存</button>
       </div>
+      <button class="slot-load-btn" id="slotLoadBtn" title="タップで使い方／長押しでスロット切替"><span class="sl-cap">SLOT</span><span id="slotLoadNum">—</span></button>
       <a class="btn btn-analyze" id="analyzeBtn" href="strategy.html" aria-disabled="true">デッキ分析へ →</a>
     </div>
   </div>
@@ -1809,6 +1812,13 @@ function initSlotScrub() {
     hint.textContent = '指を離さず左右になぞってデッキ切替';
     document.body.appendChild(bar);
     document.body.appendChild(hint);
+    // スロット操作子の「すぐ上」に配置（指がバーを隠さない）
+    const r = btn.getBoundingClientRect();
+    const barH = bar.offsetHeight || 62;
+    bar.style.left = Math.round(r.left + r.width / 2) + 'px';
+    bar.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
+    hint.style.left = Math.round(r.left + r.width / 2) + 'px';
+    hint.style.bottom = Math.round(window.innerHeight - r.top + 8 + barH + 6) + 'px';
     updateScrub(lastPointerX);
   };
 
