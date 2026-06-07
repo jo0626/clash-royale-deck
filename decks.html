@@ -30,6 +30,13 @@
   .swipe-page { min-width:100%; padding:20px; }
   .page-title { font-family:var(--font-head); font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
   .page-sub { color:var(--text-muted); font-size:13px; margin-bottom:20px; line-height:1.7; }
+  .owned-filter { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .owned-toggle { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px;
+    padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .owned-toggle[aria-pressed="true"] { background:rgba(232,160,32,0.16); border-color:var(--accent); color:var(--accent); }
+  .owned-note { font-size:11px; color:var(--text-muted); }
+  .deck-card.cant-build { opacity:0.5; }
+  .deck-missing { font-size:11px; color:#e05050; margin-top:6px; }
   .deck-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:14px; }
   .deck-card-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
   .deck-rank { font-family:var(--font-head); font-size:20px; font-weight:700; color:var(--accent); min-width:30px; }
@@ -70,6 +77,10 @@
     <div class="swipe-page">
       <h1 class="page-title">人気デッキ・デッキ探求</h1>
       <p class="page-sub">現環境で定番・人気のアーキタイプを掲載。🟣進化・👑ヒーロー枠もビルダーと同じ表示で、「作成ツールで開く」でそのままの形で読み込まれます。</p>
+      <div class="owned-filter">
+        <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 自分のカードで組めるデッキだけ</button>
+        <span id="ownedNote" class="owned-note"></span>
+      </div>
       <div id="deckList"></div>
       <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
     </div>
@@ -92,6 +103,72 @@ function slotModeOf(info, idx) {
   if (idx === 2) { if (info.e) return 'evolved'; if (info.h) return 'hero'; return 'normal'; }
   return 'normal';
 }
+
+// ===== 所持カード（クラロワID連携）→「組めるデッキだけ」フィルター =====
+let ALL_DECKS = [];        // 取得した全デッキ
+let ownedSet = null;       // 解決済み所持カード名Set（未取得null）
+let onlyOwned = false;     // 絞り込みON/OFF
+
+// APIがカタカナで返した場合の別名保険（index.html と同じ）
+const OWNED_ALIAS = {
+  'ヴァルキリー':'バルキリー','エグゼキューショナー':'執行人ファルチェ','処刑人':'執行人ファルチェ','ナイトウィッチ':'ダークネクロ',
+  'ヴォイド':'ボイド','虚無':'ボイド','サスピシャスブッシュ':'ステルスブッシュ','怪しい茂み':'ステルスブッシュ','ボスバンディット':'ボスアサシン',
+  'ボス盗賊':'ボスアサシン','ザ・ログ':'ローリングウッド','ロイヤルリクルート':'見習い親衛隊','ロイヤル新兵':'見習い親衛隊','ロイヤルホッグ':'ロイヤルホグ',
+  'ダートゴブリン':'吹き矢ゴブリン','マザーウィッチ':'マザーネクロマンサー','バルーン':'エアバルーン','キャノン':'大砲','キャノンカート':'60式ムート',
+  'モルタル':'迫撃砲','アローズ':'矢の雨','マイナー':'ディガー','コウモリ':'コウモリの群れ','ミニオンホード':'ガーゴイルの群れ','メガミニオン':'メガガーゴイル',
+  'ミニオン':'ガーゴイル','スピアゴブリン':'槍ゴブリン','バーバリアンハット':'バーバリアンの小屋','炉':'オーブン','フライングマシン':'ホバリング砲',
+  'ゴブリンデモリッシャー':'ダイナマイトゴブリン','ホッグライダー':'ホグライダー','バンディット':'アサシン ユーノ','エレクトロドラゴン':'ライトニングドラゴン',
+  'マイティマイナー':'マイティディガー','ゴールデンナイト':'ゴールドナイト','ベイビードラゴン':'ベビードラゴン'
+};
+function _ownedMaps() {
+  const slugMap = {}, nameMap = {};
+  Object.entries(CARD_INFO).forEach(([name, info]) => {
+    const m = (info.i || '').match(/cards\/([a-z0-9-]+)\.png/i);
+    if (m) slugMap[m[1].toLowerCase()] = name;
+    nameMap[name] = name;
+  });
+  Object.entries(OWNED_ALIAS).forEach(([k, v]) => { nameMap[k] = v; });
+  return { slugMap, nameMap };
+}
+function resolveOwned(raw) {
+  const { slugMap, nameMap } = _ownedMaps();
+  const set = new Set();
+  (raw || []).forEach(r => {
+    const s = String(r);
+    const slug = s.toLowerCase().replace(/[.　]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    if (slug && slugMap[slug]) { set.add(slugMap[slug]); return; }
+    const jp = s.replace(/\s|　/g, '');
+    if (nameMap[jp]) set.add(nameMap[jp]);
+  });
+  return set;
+}
+function deckBuildable(d) {
+  if (!ownedSet) return true;
+  return d.slots.every(n => ownedSet.has(n));
+}
+function applyDecks() {
+  const note = document.getElementById('ownedNote');
+  if (onlyOwned && ownedSet) {
+    const ok = ALL_DECKS.filter(deckBuildable);
+    renderDecks(ok);
+    if (note) note.textContent = ok.length + ' / ' + ALL_DECKS.length + ' デッキが今のカードで組めます';
+  } else {
+    renderDecks(ALL_DECKS);
+    if (note) note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
+  }
+}
+window.addEventListener('cr-owned-cards', (e) => { ownedSet = resolveOwned(e.detail); applyDecks(); });
+(function pollOwned(){
+  if (!window.CRAuth) { setTimeout(pollOwned, 150); return; }
+  const cached = CRAuth.getOwnedCards && CRAuth.getOwnedCards();
+  if (cached) { ownedSet = resolveOwned(cached); applyDecks(); }
+})();
+document.getElementById('ownedToggle').addEventListener('click', () => {
+  onlyOwned = !onlyOwned;
+  document.getElementById('ownedToggle').setAttribute('aria-pressed', onlyOwned ? 'true' : 'false');
+  if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = 'ログインしてクラロワIDを登録すると使えます'; }
+  applyDecks();
+});
 
 function renderDecks(decks) {
   const wrap = document.getElementById('deckList');
@@ -122,8 +199,8 @@ function renderDecks(decks) {
 // decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
 fetch('decks.json', { cache: 'no-store' })
   .then(r => r.ok ? r.json() : null)
-  .then(j => { const dk = (j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS; renderDecks(dk); })
-  .catch(() => renderDecks(DECKS));
+  .then(j => { ALL_DECKS = (j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS; applyDecks(); })
+  .catch(() => { ALL_DECKS = DECKS; applyDecks(); });
 </script>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
