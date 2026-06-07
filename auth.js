@@ -64,6 +64,7 @@ let currentUser = null;
 let currentProfile = null;
 let _ownedCards = null; // クラロワID連携で取得した所持カード（日本語名の配列）
 let _crName = null;     // クラロワ ゲーム内の名前（プレイヤーAPIから取得）
+let _tagDraft = null;   // CRID入力の下書き（保存を押すまで保持。メニュー開閉で消えない）
 let _slotsCache = null; // 5スロットのキャッシュ（読み取り回数の節約）
 const changeCallbacks = [];
 
@@ -109,6 +110,7 @@ if (!isConfigured) {
         _slotsCache = null;
         _ownedCards = null;   // ログアウトで所持カード情報を破棄（ログイン中だけ有効）
         _crName = null;
+        _tagDraft = null;
         setLoggedOutUI(false); // ログイン可能状態
         clearHint();
         closeMenu();          // アカウント詳細ホバーを自動で閉じる
@@ -305,6 +307,7 @@ function injectAccountUI() {
       background: var(--accent, #e8a020); color: #000; font-weight: 700;
       border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer;
       font-family: inherit; font-size: 13px; white-space: nowrap;
+      position: relative; z-index: 600; /* バックドロップより前面＝再タップで閉じられる */
     }
     .cr-login-btn:disabled { opacity: .5; cursor: default; }
     .cr-avatar-btn {
@@ -312,6 +315,7 @@ function injectAccountUI() {
       background: var(--surface2, #1e2230); border: 1px solid var(--border-hi, rgba(255,255,255,.15));
       border-radius: 999px; padding: 4px 10px 4px 4px; cursor: pointer; color: var(--text, #e8eaf0);
       font-family: inherit; font-size: 13px;
+      position: relative; z-index: 600; /* バックドロップより前面＝名前を再タップで閉じられる */
     }
     .cr-avatar-btn img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
     .cr-tier-chip { font-size: 10px; padding: 1px 6px; border-radius: 999px; font-weight: 700; }
@@ -476,7 +480,7 @@ function buildMenu(user, profile) {
     </div>
     <div class="cr-row">
       <span class="cr-tag-prefix">#</span>
-      <input id="crTagInput" placeholder="ABC123" value="${(profile && profile.crTag) || ""}"
+      <input id="crTagInput" placeholder="ABC123" value="${_tagDraft != null ? _tagDraft : ((profile && profile.crTag) || "")}"
         autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12"
         inputmode="text" style="text-transform:uppercase">
       <button class="cr-mini" id="crTagSave">保存</button>
@@ -499,10 +503,12 @@ function buildMenu(user, profile) {
   const tagInput = document.getElementById("crTagInput");
   if (tagInput) tagInput.addEventListener("input", () => {
     tagInput.value = tagInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    _tagDraft = tagInput.value; // 下書きを保持（保存を押すまでメニュー開閉・他タップで消えない）
   });
   document.getElementById("crTagSave").onclick = async () => {
     const v = document.getElementById("crTagInput").value;
-    await CRAuth.setCrTag(v); // setCrTag 側でも # 除去・整形（APIには # を付けて呼ぶ）
+    await CRAuth.setCrTag(v); // アカウント(Firestore)に上書きで紐づけ。# は除去して保存、API呼び出し時に付与
+    _tagDraft = null;         // 保存できたので下書きは破棄（以降は保存済みの値を表示）
     flash("crTagSave", "✓");
     CRAuth.refreshOwnedCards(); // ID保存時に所持カード＋ゲーム内名を取りに行く
   };
