@@ -318,17 +318,20 @@ function injectAccountUI() {
     .cr-menu {
       position: absolute; top: 100%; right: 12px; margin-top: 6px; z-index: 500;
       background: var(--surface, #161920); border: 1px solid var(--border-hi, rgba(255,255,255,.15));
-      border-radius: 12px; padding: 12px; width: 260px; box-shadow: 0 12px 32px rgba(0,0,0,.5);
-      display: none;
+      border-radius: 12px; padding: 12px; width: 210px; box-shadow: 0 12px 32px rgba(0,0,0,.5);
+      display: none; touch-action: manipulation;
     }
+    .cr-menu * { touch-action: manipulation; }
     .cr-menu.open { display: block; }
     /* メニュー外タップ用の透明な受け皿（ヘッダーの重なり内・メニューより下） */
     #crMenuBackdrop { position: fixed; inset: 0; z-index: 400; background: transparent; }
     .cr-menu .cr-hint { font-size: 11px; color: var(--text-muted, #6b7080); margin: 6px 0 2px; line-height: 1.5; }
     .cr-menu h4 { font-size: 13px; margin: 0 0 8px; color: var(--text, #e8eaf0); }
-    .cr-name-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-    .cr-name-row h4 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cr-name-edit { background: none; border: none; color: var(--text-muted,#6b7080); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 6px; line-height: 1; }
+    .cr-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .cr-name-row h4 { margin: 0; font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cr-name-edit { flex: none; background: none; border: none; color: var(--text-muted,#6b7080); cursor: pointer;
+      font-size: 18px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+      border-radius: 8px; line-height: 1; }
     .cr-name-edit:hover { color: var(--text,#e8eaf0); background: var(--surface2,#1e2230); }
     .cr-name-picker { display: none; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; }
     .cr-name-picker.open { display: block; }
@@ -347,7 +350,7 @@ function injectAccountUI() {
       padding:6px 4px; border-bottom:1px solid var(--border,rgba(255,255,255,.07)); font-size:12px; color:var(--text,#e8eaf0); }
     .cr-deckitem .nm { flex:1; cursor:pointer; }
     .cr-deckitem .del { color:#e05050; cursor:pointer; background:none; border:none; font-size:13px; }
-    @media (max-width:720px){ .cr-menu{ right:8px; width: calc(100vw - 16px); max-width:300px; } }
+    @media (max-width:720px){ .cr-menu{ right:8px; width: 220px; max-width: calc(100vw - 16px); } }
     /* タイトル副題は常時表示・1行（チラつき防止のレイアウトは各ページのCSSで先に適用） */
     header .logo { white-space: nowrap; }
     header .logo span { display: block !important; white-space: nowrap; }
@@ -375,7 +378,7 @@ function injectAccountUI() {
   document.getElementById("crAvatarBtn").onclick = (e) => { e.stopPropagation(); toggleMenu(); };
   document.addEventListener("click", (e) => {
     const m = document.getElementById("crMenu");
-    if (m && m.classList.contains("open") && !e.target.closest("#cr-account")) m.classList.remove("open");
+    if (m && m.classList.contains("open") && !e.target.closest("#cr-account")) closeMenu();
   });
 }
 
@@ -387,6 +390,7 @@ function setLoggedOutUI(disabled) {
   ab.style.display = "none";
   lb.disabled = !!disabled;
   lb.textContent = disabled ? "🔑 ログイン（準備中）" : "🔑 ログイン";
+  closeMenu(); // ログアウト等でログインUIに戻したら、開いていたメニューを必ず閉じる
 }
 
 // アバター表示だけを更新（ヒントからの即時描画にも使う・メニューは作らない）
@@ -401,9 +405,14 @@ function applyAvatarUI(info) {
   const tier = info.tier || "free";
   const t = TIERS[tier] || TIERS.free;
   const chip = document.getElementById("crTierChip");
-  chip.textContent = t.label;
-  chip.style.background = t.color;
-  chip.style.color = (tier === "free") ? "#fff" : "#000";
+  if (tier === "free") {
+    chip.style.display = "none"; // 無料(ゲスト)はチップを出さない
+  } else {
+    chip.style.display = "";
+    chip.textContent = t.label;
+    chip.style.background = t.color;
+    chip.style.color = "#000";
+  }
 }
 
 // 表示名の解決：mode="game" かつ ゲーム内名があればそれ、無ければアカウント名
@@ -428,10 +437,12 @@ function setLoggedInUI(user, profile) {
   buildMenu(user, profile);
 }
 
-// メニューを閉じる（ログアウト時などに使用）
+// メニューを閉じる（ログアウト時などに使用）。名前選択ピッカーも一緒に閉じる
 function closeMenu() {
   const m = document.getElementById("crMenu");
   if (m) m.classList.remove("open");
+  const p = document.getElementById("crNamePicker");
+  if (p) p.classList.remove("open");
   syncMenuBackdrop();
 }
 
@@ -454,8 +465,8 @@ function buildMenu(user, profile) {
   // ※このエリアは今後随時拡張していく
   m.innerHTML = `
     <div class="cr-name-row">
-      <h4 id="crMenuName">${resolveDisplayName(user, profile)}</h4>
       <button class="cr-name-edit" id="crNameEdit" title="表示名を変更">✎</button>
+      <h4 id="crMenuName">${resolveDisplayName(user, profile)}</h4>
     </div>
     <div class="cr-name-picker" id="crNamePicker">
       <label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>アカウント名（${accountNameOf(user)}）</span></label>
@@ -491,6 +502,7 @@ function buildMenu(user, profile) {
 function toggleMenu() {
   const m = document.getElementById("crMenu");
   m.classList.toggle("open");
+  if (!m.classList.contains("open")) { const p = document.getElementById("crNamePicker"); if (p) p.classList.remove("open"); }
   syncMenuBackdrop();
 }
 // メニューを開いたら、画面全体に透明な受け皿を出して「外側タップで閉じる（その操作は他に波及しない）」を実現
