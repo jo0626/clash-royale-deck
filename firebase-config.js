@@ -17,3 +17,10 @@ export const firebaseConfig = {
 export const isConfigured =
   firebaseConfig.apiKey &&
   !firebaseConfig.apiKey.includes("ここに");
+
+// ── クラロワID（プレイヤータグ）から所持カードを取得するエンドポイント ──
+// 公式CR APIはトークン＋IP制限＋CORSのためブラウザから直叩き不可。
+// GAS（Code.gs）に doGet(?tag=...) を用意して、その公開ウェブアプリURLをここに貼る。
+// 返却JSONの想定: { "cards": ["ナイト","大砲", ...] }（日本語カード名）
+// 空のうちは所持カード機能はオフ（サイトは普通に動く）。
+export const crPlayerApiUrl = "";

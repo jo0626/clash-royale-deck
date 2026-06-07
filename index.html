@@ -422,6 +422,22 @@
   .swap-opt-name { font-size: 11px; font-weight: 500; }
   .swap-opt-slot { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
   .swap-cancel { width: 100%; }
+  /* これから→これへ レイアウト */
+  .swap-fromto { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 16px 0 4px; }
+  .ft-card { flex: 1; text-align: center; border: 1px solid var(--border); border-radius: 10px; padding: 10px 6px; background: var(--surface); }
+  .ft-card img { width: 64px; height: 64px; object-fit: contain; display: block; margin: 2px auto; }
+  .ft-card .ft-cap { font-size: 9px; color: var(--text-muted); }
+  .ft-card .ft-name { font-size: 11px; font-weight: 600; }
+  .ft-card.dim { opacity: 0.4; filter: grayscale(0.7); }
+  .ft-card.hot { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,160,32,0.35) inset; background: rgba(232,160,32,0.08); }
+  .ft-arrow { font-size: 22px; color: var(--accent); flex: 0 0 auto; font-weight: 700; }
+  /* どっちと入れ替える？（中央に入れる対象）レイアウト */
+  .swap-choose { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 14px 0 4px; }
+  .swap-choose .swap-opt { flex: 1; }
+  .swap-center { flex: 0 0 auto; width: 88px; text-align: center; border: 2px solid var(--accent); border-radius: 10px; padding: 8px 4px; background: rgba(232,160,32,0.1); }
+  .swap-center img { width: 60px; height: 60px; object-fit: contain; display: block; margin: 2px auto; }
+  .swap-center .ft-cap { font-size: 9px; color: var(--accent); font-weight: 700; }
+  .swap-center .ft-name { font-size: 10px; font-weight: 600; }
   .mode-toggle-btn {
     position: absolute; top: 4px; right: 4px;
     background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
@@ -1335,54 +1351,70 @@ function addToDeck(card) {
   if (activeTypes.has('evolved') && card.evolved) {
     if (deck[0] === null) deck[0] = card;
     else if (deck[2] === null) deck[2] = card;
-    else { openImageReplaceDialog(card, [0, 2], { allowNormal: true, relocateOld: true }); return; }
+    else { openImageReplaceDialog(card, [0, 2], { relocateOld: true }); return; }
     renderDeck(); render(); return;
   }
   if (activeTypes.has('hero') && card.hero) {
     if (deck[1] === null) deck[1] = card;
     else if (deck[2] === null) deck[2] = card;
-    else { openImageReplaceDialog(card, [1, 2], { allowNormal: true, relocateOld: true }); return; }
+    else { openImageReplaceDialog(card, [1, 2], { relocateOld: true }); return; }
     renderDeck(); render(); return;
   }
   if (!placeNormal(card)) return;
   renderDeck(); render();
 }
 
-// 入れ替え先を画像で選ぶダイアログ（チャンピオン/進化/ヒーロー共通）
-// idxs: 候補スロット, opts.allowNormal: 通常として入れる選択肢, opts.relocateOld: 押し出したカードを通常枠へ
+// 入れ替えダイアログ（チャンピオン/進化/ヒーロー共通・画像で視認性高め）
+// idxs: 候補スロット, opts.relocateOld: 押し出したカードを通常枠へ
 function openImageReplaceDialog(card, idxs, opts) {
   opts = opts || {};
+  const cardImg = card.img ? `<img src="${card.img}" alt="">` : '';
+  const doReplace = (i) => {
+    const old = deck[i];
+    deck[i] = card;
+    if (opts.relocateOld && old) placeNormal(old);
+    ov.remove(); renderDeck(); render();
+  };
   const ov = document.createElement('div');
   ov.className = 'swap-overlay';
-  const optsHtml = idxs.map(i => {
-    const d = deck[i];
-    return `<div class="swap-opt" data-idx="${i}">
-      ${d && d.img ? `<img src="${d.img}" alt="">` : ''}
-      <div class="swap-opt-name">${d ? d.name : ''}</div>
-      <div class="swap-opt-slot">スロット${i + 1}</div>
+
+  if (idxs.length === 1) {
+    // 「これから → これへ」：現在のカードを薄く、入れるカードを強調
+    const old = deck[idxs[0]];
+    ov.innerHTML = `<div class="swap-box">
+      <div class="swap-title">入れ替える？</div>
+      <div class="swap-fromto">
+        <div class="ft-card dim"><div class="ft-cap">いま</div>${old && old.img ? `<img src="${old.img}" alt="">` : ''}<div class="ft-name">${old ? old.name : ''}</div></div>
+        <div class="ft-arrow">➜</div>
+        <div class="ft-card hot"><div class="ft-cap">これに</div>${cardImg}<div class="ft-name">${card.name}</div></div>
+      </div>
+      <button class="btn btn-primary" id="irConfirm" style="width:100%;margin-top:12px">入れ替える</button>
+      <button class="btn btn-ghost" id="irCancel" style="width:100%;margin-top:6px">キャンセル</button>
     </div>`;
-  }).join('');
-  const title = idxs.length > 1
-    ? `${card.name} をどちらと入れ替える？`
-    : `現在の「${deck[idxs[0]].name}」を ${card.name} に入れ替える？`;
-  ov.innerHTML = `<div class="swap-box">
-    <div class="swap-title">${title}</div>
-    <div class="swap-options">${optsHtml}</div>
-    ${opts.allowNormal ? `<button class="btn btn-ghost" id="irNormal" style="width:100%;margin-top:8px">通常カードとして入れる</button>` : ``}
-    <button class="btn btn-ghost" id="irCancel" style="width:100%;margin-top:6px">キャンセル</button>
-  </div>`;
+    ov.querySelector('#irConfirm').onclick = () => doReplace(idxs[0]);
+  } else {
+    // 「どっちと入れ替える？」：中央に入れる対象、両脇に候補
+    const sideHtml = (i) => {
+      const d = deck[i];
+      return `<div class="swap-opt" data-idx="${i}">
+        ${d && d.img ? `<img src="${d.img}" alt="">` : ''}
+        <div class="swap-opt-name">${d ? d.name : ''}</div>
+        <div class="swap-opt-slot">スロット${i + 1}</div>
+      </div>`;
+    };
+    ov.innerHTML = `<div class="swap-box">
+      <div class="swap-title">${card.name} をどちらと入れ替える？</div>
+      <div class="swap-choose">
+        ${sideHtml(idxs[0])}
+        <div class="swap-center"><div class="ft-cap">入れる</div>${cardImg}<div class="ft-name">${card.name}</div></div>
+        ${sideHtml(idxs[1])}
+      </div>
+      <button class="btn btn-ghost" id="irCancel" style="width:100%;margin-top:10px">キャンセル</button>
+    </div>`;
+    ov.querySelectorAll('.swap-opt').forEach(o => { o.onclick = () => doReplace(+o.dataset.idx); });
+  }
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   ov.querySelector('#irCancel').onclick = () => ov.remove();
-  if (opts.allowNormal) ov.querySelector('#irNormal').onclick = () => { if (placeNormal(card)) { renderDeck(); render(); } ov.remove(); };
-  ov.querySelectorAll('.swap-opt').forEach(o => {
-    o.onclick = () => {
-      const i = +o.dataset.idx;
-      const old = deck[i];
-      deck[i] = card;
-      if (opts.relocateOld && old) placeNormal(old); // 押し出されたカードは通常枠へ
-      ov.remove(); renderDeck(); render();
-    };
-  });
   document.body.appendChild(ov);
 }
 

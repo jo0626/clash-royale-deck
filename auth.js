@@ -20,7 +20,7 @@
 //  （index.html には組み込み済み）
 // =============================================================
 
-import { firebaseConfig, isConfigured } from "./firebase-config.js";
+import { firebaseConfig, isConfigured, crPlayerApiUrl } from "./firebase-config.js";
 
 // ===== ダブルタップ拡大を全ページ・全要素で防止（ピンチ拡大は維持） =====
 // CSSのtouch-actionだけだと動的生成要素などで効かない場合があるためJSでも防ぐ
@@ -62,6 +62,7 @@ export const TIERS = {
 let app, auth, db;
 let currentUser = null;
 let currentProfile = null;
+let _ownedCards = null; // クラロワID連携で取得した所持カード（日本語名の配列）
 const changeCallbacks = [];
 
 // ---- ログイン状態のヒントをローカルに保存（ページ遷移時のチラつき防止） ----
@@ -100,6 +101,7 @@ if (!isConfigured) {
         currentProfile = await ensureProfile(user);
         setLoggedInUI(user, currentProfile);
         writeHint({ displayName: user.displayName || "プレイヤー", photoURL: user.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
+        CRAuth.refreshOwnedCards(); // ログイン時、IDがあれば所持カードを取得（基礎）
       } else {
         currentProfile = null;
         setLoggedOutUI(false); // ログイン可能状態
@@ -176,6 +178,27 @@ const CRAuth = {
     const clean = String(tag).trim().toUpperCase().replace(/^#/, "");
     await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { crTag: clean, updatedAt: FB.serverTimestamp() });
     if (currentProfile) currentProfile.crTag = clean;
+  },
+
+  // ── クラロワID連携の基礎：プレイヤータグから所持カードを取得 ──
+  getCrTag() { return (currentProfile && currentProfile.crTag) || ""; },
+  getOwnedCards() { return _ownedCards; }, // 取得済みなら日本語カード名の配列、未取得はnull
+  async refreshOwnedCards() {
+    const tag = CRAuth.getCrTag();
+    if (!tag) { _ownedCards = null; return null; }
+    if (!crPlayerApiUrl) {  // エンドポイント未設定（基礎のみ）。GASのdoGetを用意してURLを設定すると有効化
+      console.info("[CRAuth] crPlayerApiUrl 未設定のため所持カード取得はスキップ（基礎のみ実装）");
+      return null;
+    }
+    try {
+      const url = crPlayerApiUrl + (crPlayerApiUrl.includes("?") ? "&" : "?") + "tag=" + encodeURIComponent(tag);
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json();
+      _ownedCards = Array.isArray(data.cards) ? data.cards : (Array.isArray(data) ? data : []);
+      try { localStorage.setItem("cr_owned_" + tag, JSON.stringify(_ownedCards)); } catch (e) {}
+      window.dispatchEvent(new CustomEvent("cr-owned-cards", { detail: _ownedCards }));
+      return _ownedCards;
+    } catch (e) { console.error("[CRAuth] 所持カード取得失敗:", e); return null; }
   },
 
   async saveDeck(name, slots) {
@@ -269,6 +292,9 @@ function injectAccountUI() {
       display: none;
     }
     .cr-menu.open { display: block; }
+    /* メニュー外タップ用の透明な受け皿（ヘッダーの重なり内・メニューより下） */
+    #crMenuBackdrop { position: fixed; inset: 0; z-index: 400; background: transparent; }
+    .cr-menu .cr-hint { font-size: 11px; color: var(--text-muted, #6b7080); margin: 6px 0 2px; line-height: 1.5; }
     .cr-menu h4 { font-size: 13px; margin: 0 0 8px; color: var(--text, #e8eaf0); }
     .cr-menu .cr-row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
     .cr-menu input { flex: 1; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
@@ -344,70 +370,45 @@ function setLoggedInUI(user, profile) {
 
 function buildMenu(user, profile) {
   const m = document.getElementById("crMenu");
-  const hasDeck = !!window.CRDeckBridge;
+  // ※このエリアは今後随時拡張していく
   m.innerHTML = `
     <h4>${user.displayName || "プレイヤー"}</h4>
     <div class="cr-row">
       <input id="crTagInput" placeholder="クラロワID 例 #ABC123" value="${(profile && profile.crTag) ? "#" + profile.crTag : ""}">
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
-    ${hasDeck ? `
-    <div class="cr-row">
-      <input id="crDeckName" placeholder="このデッキの名前">
-      <button class="cr-mini" id="crDeckSave">保存</button>
-    </div>` : ""}
-    <div class="cr-divider"></div>
-    <h4>マイデッキ</h4>
-    <div class="cr-decklist" id="crDeckList"><div style="font-size:12px;color:#6b7080">読み込み中…</div></div>
+    <div class="cr-hint" id="crTagHint">IDを登録すると、今後「持っているカードで組めるデッキだけ」表示などに使えます。</div>
     <div class="cr-divider"></div>
     <div class="cr-row"><button class="cr-mini cr-logout" id="crLogout">ログアウト</button></div>
   `;
   document.getElementById("crTagSave").onclick = async () => {
-    await CRAuth.setCrTag(document.getElementById("crTagInput").value);
+    const v = document.getElementById("crTagInput").value;
+    await CRAuth.setCrTag(v);
     flash("crTagSave", "✓");
+    CRAuth.refreshOwnedCards(); // ID保存時に所持カードを取りに行く（基礎）
   };
   document.getElementById("crLogout").onclick = () => CRAuth.signOut();
-  if (hasDeck) {
-    document.getElementById("crDeckSave").onclick = async () => {
-      const slots = window.CRDeckBridge.getDeck().filter(Boolean);
-      if (!slots.length) { alert("デッキが空です"); return; }
-      const name = document.getElementById("crDeckName").value || "無題デッキ";
-      await CRAuth.saveDeck(name, slots);
-      document.getElementById("crDeckName").value = "";
-      flash("crDeckSave", "✓");
-      refreshDeckList();
-    };
-  }
-  refreshDeckList();
-}
-
-async function refreshDeckList() {
-  const el = document.getElementById("crDeckList");
-  if (!el) return;
-  const decks = await CRAuth.listDecks();
-  if (!decks.length) { el.innerHTML = `<div style="font-size:12px;color:#6b7080">まだ保存したデッキはありません</div>`; return; }
-  el.innerHTML = "";
-  decks.forEach(d => {
-    const row = document.createElement("div");
-    row.className = "cr-deckitem";
-    row.innerHTML = `<span class="nm">${d.name} <span style="color:#6b7080">(平均${Number(d.avg ?? 0).toFixed(2)})</span></span><button class="del">✕</button>`;
-    row.querySelector(".nm").onclick = () => {
-      if (window.CRDeckBridge && d.slots) {
-        const cards = window.CRDeckBridge.cards;
-        const slots = d.slots.map(n => cards.find(c => c.name === n) || null);
-        window.CRDeckBridge.setDeck(slots);
-        document.getElementById("crMenu").classList.remove("open");
-      }
-    };
-    row.querySelector(".del").onclick = async () => { await CRAuth.deleteDeck(d.id); refreshDeckList(); };
-    el.appendChild(row);
-  });
 }
 
 function toggleMenu() {
   const m = document.getElementById("crMenu");
   m.classList.toggle("open");
-  if (m.classList.contains("open")) refreshDeckList();
+  syncMenuBackdrop();
+}
+// メニューを開いたら、画面全体に透明な受け皿を出して「外側タップで閉じる（その操作は他に波及しない）」を実現
+function syncMenuBackdrop() {
+  const m = document.getElementById("crMenu");
+  let bd = document.getElementById("crMenuBackdrop");
+  const open = m && m.classList.contains("open");
+  if (open && !bd) {
+    bd = document.createElement("div");
+    bd.id = "crMenuBackdrop";
+    bd.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); m.classList.remove("open"); syncMenuBackdrop(); }, true);
+    // ヘッダーの重なり（stacking context）内に入れることで、メニューより下・他コンテンツより上に出す
+    (document.getElementById("cr-account") || document.body).appendChild(bd);
+  } else if (!open && bd) {
+    bd.remove();
+  }
 }
 
 function flash(btnId, txt) {
