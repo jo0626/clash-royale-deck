@@ -145,12 +145,11 @@
     const orig = btn.textContent;
     btn.disabled = true; btn.textContent = '送信中…';
     try {
-      // application/x-www-form-urlencoded（プリフライト不要）でGASのe.parameterへ
+      // GAS(Apps Script)はクロスオリジンのレスポンスを読めない(CORS)ので no-cors で送る。
+      // application/x-www-form-urlencoded（プリフライト不要）= doPostのe.parameterに入る。
       const body = new URLSearchParams({ type, name, message, page: 'contact.html' });
-      const res = await fetch(CONTACT_API, { method: 'POST', body });
-      let ok = res.ok;
-      try { const j = await res.json(); ok = (j.ok !== false); } catch (e) {}
-      if (!ok) throw new Error('ng');
+      await fetch(CONTACT_API, { method: 'POST', mode: 'no-cors', body });
+      // no-corsは応答が読めない(opaque)。送信できたら成功扱い（実際の受領はSlack通知で確認）
       btn.textContent = '✓ 送信しました';
       document.getElementById('message').value = '';
       document.getElementById('name').value = '';
