@@ -2022,7 +2022,8 @@ function buildDeckShareUrl(deckArr) {
 }
 function openShareDialog(deckArr, deckName) {
   const url = buildDeckShareUrl(deckArr);
-  const text = '【クラロワ】「' + (deckName || 'デッキ') + '」を作ったよ！ #クラロワ #CRDeckBuilders';
+  const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
+  const lineText = 'あなたのデッキを共有しましょう！';
   const ov = document.createElement('div');
   ov.className = 'slot-pop';
   const hasNative = !!navigator.share;
@@ -2038,12 +2039,14 @@ function openShareDialog(deckArr, deckName) {
   </div>`;
   ov.querySelector('#shClose').onclick = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
-  ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
-  ov.querySelector('#shLine').href = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(url);
+  // Twitter（X）：URLは t.co で自動的に短縮される
+  ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(url);
+  // LINE：Web版ではなくLINEアプリのメッセージ作成を開く（line.me/R/msg/text/）
+  ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + url);
   const copyBtn = ov.querySelector('#shCopy');
   copyBtn.onclick = () => { navigator.clipboard.writeText(url).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
   if (hasNative) {
-    ov.querySelector('#shNative').onclick = () => { navigator.share({ title: 'CR Deck Builders', text, url }).catch(() => {}); };
+    ov.querySelector('#shNative').onclick = () => { navigator.share({ title: 'CR Deck Builders', text: xText, url }).catch(() => {}); };
   }
   document.body.appendChild(ov);
 }
