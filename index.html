@@ -267,6 +267,9 @@
   .avg-label { font-size: 11px; color: var(--text-muted); }
   .avg-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1; }
   .avg-sub { font-size: 11px; color: var(--text-muted); }
+  /* ドラッグ中の平均コスト・プレビュー表示（点滅で「仮」と分かるように） */
+  .deck-header.previewing .avg-val { color: #3a8ef0; }
+  .deck-header.previewing .avg-val::after { content: ' ▶'; font-size: 11px; color: #3a8ef0; }
   /* 保存デッキ呼び出しボタン */
   /* デッキスロット表示（クリア/保存 と デッキ分析へ の中央）。数字だけでスロットと分かる見た目 */
   .slot-load-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
@@ -310,7 +313,7 @@
     background: var(--surface); border: 1px solid var(--border-hi); border-radius: 999px; padding: 8px 12px;
     display: flex; gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); touch-action: none; user-select: none; -webkit-user-select: none; max-width: 94vw; overflow: hidden; }
   .scrub-seg { width: 46px; height: 46px; flex: 0 0 auto; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-family: var(--font-head); font-weight: 700; color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border); transition: transform 0.1s, background 0.1s; pointer-events: none; }
+    font-family: var(--font-head); font-weight: 700; color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border); transition: transform 0.1s, background 0.1s; cursor: pointer; }
   .scrub-seg .sn { font-size: 18px; line-height: 1; }
   .scrub-seg .snm { font-size: 7px; max-width: 42px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .scrub-seg.on { background: var(--accent); color: #000; transform: scale(1.15); }
@@ -1148,9 +1151,15 @@ function init() {
   if (favTabEl) favTabEl.classList.toggle('active', favSort);
 
   const cardListEl = document.getElementById('cardList');
-  cardListEl.addEventListener('dragover', e => e.preventDefault());
+  cardListEl.addEventListener('dragover', e => {
+    e.preventDefault();
+    // デッキから1枚抜く場合の平均コストを仮表示
+    if (dragSrcIdx !== null) { const hyp = deck.slice(); hyp[dragSrcIdx] = null; previewStats(hyp); }
+  });
+  cardListEl.addEventListener('dragleave', () => clearPreviewStats());
   cardListEl.addEventListener('drop', e => {
     e.preventDefault();
+    clearPreviewStats();
     if (dragSrcIdx !== null) {
       deck[dragSrcIdx] = null;
       dragSrcIdx = null;
@@ -1362,6 +1371,7 @@ function onDragEnd(e) {
   document.querySelectorAll('.slot').forEach(s => {
     s.classList.remove('dragging', 'drag-over');
   });
+  clearPreviewStats();
   // カード選択ゾーン上でドロップ終了→キャンセル
   if (dragSrcIdx !== null) {
     const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -1375,19 +1385,33 @@ function onDragEnd(e) {
   dragSrcCard = null;
 }
 
+// ドラッグ中、その枠に置いた/入れ替えた場合の仮デッキを作る
+function hypotheticalDeck(destIdx) {
+  const hyp = deck.slice();
+  if (dragSrcCard) {
+    if (!deck.some(d => d && d.name === dragSrcCard.name)) hyp[destIdx] = dragSrcCard;
+  } else if (dragSrcIdx !== null && dragSrcIdx !== destIdx) {
+    const t = hyp[destIdx]; hyp[destIdx] = hyp[dragSrcIdx]; hyp[dragSrcIdx] = t;
+  }
+  return hyp;
+}
+
 function onDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   this.classList.add('drag-over');
+  if (dragSrcCard || dragSrcIdx !== null) previewStats(hypotheticalDeck(parseInt(this.dataset.idx))); // 平均コストを仮表示
 }
 
 function onDragLeave(e) {
   this.classList.remove('drag-over');
+  clearPreviewStats();
 }
 
 function onDrop(e) {
   e.preventDefault();
   this.classList.remove('drag-over');
+  clearPreviewStats();
   const destIdx = parseInt(this.dataset.idx);
   if (dragSrcCard) {
     const c = dragSrcCard;
@@ -1484,6 +1508,7 @@ function cancelDrag() {
   clearTimeout(longPressTimer);
   longPressTimer = null;
   isDragging = false;
+  clearPreviewStats();
   touchSrcCard = null;
   touchSrcIdx = null;
   if (touchClone) { touchClone.remove(); touchClone = null; }
@@ -1538,13 +1563,28 @@ function initTouchDnD() {
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
-    if (target) target.classList.add('drag-over');
+    const onCardListNow = el && el.closest('#cardList');
+    if (target) {
+      target.classList.add('drag-over');
+      // 置く/入れ替えた場合の平均コストを仮表示
+      const destIdx = parseInt(target.dataset.idx);
+      const hyp = deck.slice();
+      if (touchSrcCard) { if (!deck.some(d => d && d.name === touchSrcCard.name)) hyp[destIdx] = touchSrcCard; }
+      else if (touchSrcIdx !== null && touchSrcIdx !== destIdx) { const tmp = hyp[destIdx]; hyp[destIdx] = hyp[touchSrcIdx]; hyp[touchSrcIdx] = tmp; }
+      previewStats(hyp);
+    } else if (onCardListNow && touchSrcIdx !== null) {
+      // デッキから抜く場合の平均コストを仮表示
+      const hyp = deck.slice(); hyp[touchSrcIdx] = null; previewStats(hyp);
+    } else {
+      clearPreviewStats();
+    }
   }, {passive:false});
 
   document.addEventListener('touchend', e => {
     clearTimeout(longPressTimer);
     longPressTimer = null;
     if (!isDragging) return;
+    clearPreviewStats();
     const t = e.changedTouches[0];
     if (touchClone) { touchClone.remove(); touchClone = null; }
     document.querySelectorAll('.slot').forEach(s => { s.classList.remove('drag-over'); s.style.opacity = ''; });
@@ -1674,25 +1714,29 @@ function renderDeck() {
     slots.appendChild(div);
   }
 
-  document.getElementById('deckCount').textContent = deck.filter(d=>d).length + '/8';
   updateActionButtons();
-  if (deck.filter(d=>d).length > 0) {
-    const filled = deck.filter(d => d);
-    const avg = (filled.reduce((s,c) => s+c.cost, 0) / filled.length);
+  showDeckStats(deck); // 実デッキの統計を表示
+}
+
+// 平均コスト・枚数・コストバーを指定の8枠配列から表示（プレビューにも使う）
+let _previewActive = false;
+function showDeckStats(arr) {
+  const filled = arr.filter(d => d);
+  document.getElementById('deckCount').textContent = filled.length + '/8';
+  if (filled.length > 0) {
+    const avg = (filled.reduce((s, c) => s + (c.cost || 0), 0) / filled.length);
     document.getElementById('avgVal').textContent = avg.toFixed(2);
-    const cnt = deck.filter(d=>d).length;
-    document.getElementById('avgSub').textContent = cnt < 8 ? '（' + cnt + '枚）' : '';
+    document.getElementById('avgSub').textContent = filled.length < 8 ? '（' + filled.length + '枚）' : '';
   } else {
     document.getElementById('avgVal').textContent = '—';
     document.getElementById('avgSub').textContent = '';
   }
-
   const bar = document.getElementById('costBar');
   bar.innerHTML = '';
-  if (deck.filter(d=>d).length > 0) {
+  if (filled.length > 0) {
     const counts = {};
-    deck.filter(d=>d).forEach(c => counts[c.cost] = (counts[c.cost]||0) + 1);
-    Object.entries(counts).sort((a,b) => +a[0]-+b[0]).forEach(([cost, cnt]) => {
+    filled.forEach(c => counts[c.cost] = (counts[c.cost] || 0) + 1);
+    Object.entries(counts).sort((a, b) => +a[0] - +b[0]).forEach(([cost, cnt]) => {
       const seg = document.createElement('div');
       seg.className = 'bar-seg'; seg.style.flex = cnt;
       seg.style.background = COST_COLORS[cost] || '#888';
@@ -1701,6 +1745,9 @@ function renderDeck() {
     });
   }
 }
+// ドラッグ中の平均コスト等を仮の構成でプレビュー / 解除で実デッキに戻す
+function previewStats(hypArr) { _previewActive = true; showDeckStats(hypArr); document.querySelector('.deck-header')?.classList.add('previewing'); }
+function clearPreviewStats() { if (!_previewActive) return; _previewActive = false; showDeckStats(deck); document.querySelector('.deck-header')?.classList.remove('previewing'); }
 
 // 下部ボタンの活性状態を更新
 function updateActionButtons() {
@@ -1837,96 +1884,96 @@ async function openSlotLoadPicker() {
   if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
 }
 
-// ===== 📁長押し → 横スクラブ操作バー（なぞるとデッキがリアルタイムに変わる） =====
+// ===== SLOT操作：タップでバー表示／スロットタップで移動／左右スライドでも移動 =====
 function initSlotScrub() {
   const btn = document.getElementById('slotLoadBtn');
   if (!btn) return;
-  let pressTimer = null, longFired = false, scrubbing = false;
-  let segSlots = [], bar = null, hint = null, lastIdx = -1;
-  let baseIdx = 0, startX = 0, stepPx = 38, movedFromStart = false;
+  let segSlots = [], bar = null, hint = null;
+  let barOpen = false, isDown = false, dragging = false;
+  let baseIdx = 0, lastIdx = -1, startX = 0, downX = 0, lastPointerX = 0, stepPx = 38;
 
-  const startScrub = async () => {
+  function loadSlotByIndex(idx) {
+    const s = segSlots[idx]; if (!s) return;
+    const cards = (s.slots || []).map(name => CARDS.find(c => c.name === name) || null);
+    if (window.CRDeckBridge) window.CRDeckBridge.setDeck(cards, { silent: true });
+    currentSlot = s.slot; updateSlotLoadBtn();
+    bar && bar.querySelectorAll('.scrub-seg').forEach((e, i) => e.classList.toggle('on', i === idx));
+    lastIdx = idx;
+  }
+
+  function closeBar() {
+    barOpen = false; dragging = false;
+    if (bar) { bar.remove(); bar = null; }
+    if (hint) { hint.remove(); hint = null; }
+  }
+
+  async function openBar() {
     if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
     if (!CRAuth.getUser()) { showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return; }
     let slots = [];
     try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
-    segSlots = slots.filter(s => (s.slots || []).length > 0); // 空きスロットは除外
+    segSlots = slots.filter(s => (s.slots || []).length > 0); // 保存済み（空きでない）スロットだけ
     if (!segSlots.length) { showToast('保存済みデッキがありません'); return; }
-    longFired = true; scrubbing = true; movedFromStart = false;
-    // 今いるスロットを起点に（いきなり別スロットへ飛ばさない）
     baseIdx = segSlots.findIndex(s => s.slot === currentSlot);
     if (baseIdx < 0) baseIdx = 0;
-    lastIdx = baseIdx;
-    startX = lastPointerX;
+    lastIdx = baseIdx; startX = downX;
 
     bar = document.createElement('div');
     bar.className = 'scrub-bar';
     bar.innerHTML = segSlots.map((s, i) =>
       `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${s.name || ''}</span></div>`
     ).join('');
+    // 各スロットはタップでも移動できる
+    bar.querySelectorAll('.scrub-seg').forEach(seg => {
+      seg.addEventListener('click', () => { loadSlotByIndex(+seg.dataset.i); closeBar(); });
+    });
     hint = document.createElement('div');
     hint.className = 'scrub-hint';
     hint.textContent = '指を離さず左右になぞってデッキ切替';
     document.body.appendChild(bar);
     document.body.appendChild(hint);
-    // スロット操作子の「すぐ上」に配置（指がバーを隠さない）
     const r = btn.getBoundingClientRect();
     const barH = bar.offsetHeight || 62;
     const seg0 = bar.querySelector('.scrub-seg');
-    stepPx = seg0 ? Math.round((seg0.offsetWidth + 8) * 0.7) : 38; // 1スロット分の移動量（少し狭め）
+    stepPx = seg0 ? Math.round((seg0.offsetWidth + 8) * 0.7) : 38;
     bar.style.left = Math.round(r.left + r.width / 2) + 'px';
     bar.style.bottom = Math.round(window.innerHeight - r.top + 8) + 'px';
     hint.style.left = Math.round(r.left + r.width / 2) + 'px';
     hint.style.bottom = Math.round(window.innerHeight - r.top + 8 + barH + 6) + 'px';
-    // 起点では現在スロットを表示するだけ（デッキは変えない）
-  };
+    barOpen = true;
+  }
 
-  // 起点からの相対移動でスロットを変える（今いる位置からスライド）
   const updateScrub = (clientX) => {
-    if (!scrubbing || !bar) return;
+    if (!barOpen || !bar) return;
     const step = Math.round((clientX - startX) / stepPx);
     let idx = Math.max(0, Math.min(segSlots.length - 1, baseIdx + step));
     if (idx === lastIdx) return;
-    lastIdx = idx; movedFromStart = true;
-    bar.querySelectorAll('.scrub-seg').forEach((e, i) => e.classList.toggle('on', i === idx));
-    const s = segSlots[idx];
-    const cards = (s.slots || []).map(name => CARDS.find(c => c.name === name) || null);
-    if (window.CRDeckBridge) window.CRDeckBridge.setDeck(cards, { silent: true }); // リアルタイム反映（トーストなし）
-    currentSlot = s.slot; updateSlotLoadBtn();
+    loadSlotByIndex(idx);
   };
 
-  const endScrub = () => {
-    if (scrubbing && movedFromStart && lastIdx >= 0) showToast('スロット' + segSlots[lastIdx].slot + 'を呼び出しました');
-    scrubbing = false;
-    if (bar) { bar.remove(); bar = null; }
-    if (hint) { hint.remove(); hint = null; }
-  };
-
-  let lastPointerX = 0, pressOnBtn = false, downX = 0;
   btn.addEventListener('pointerdown', (e) => {
-    longFired = false;
-    pressOnBtn = true; // SLOT操作子から始まった押下だけ案内を出す
+    if (barOpen) { closeBar(); return; } // 開いてたら閉じる（トグル）
+    isDown = true; dragging = false;
     lastPointerX = downX = e.clientX;
-    pressTimer = setTimeout(startScrub, 150); // 短い長押しでスクラブ開始
+    openBar();
   });
   document.addEventListener('pointermove', (e) => {
     lastPointerX = e.clientX;
-    if (scrubbing) { e.preventDefault(); updateScrub(e.clientX); return; }
-    // 長押しを待たず、SLOT上から左右に少し動かしたら即スクラブ開始
-    if (pressOnBtn && !longFired && Math.abs(e.clientX - downX) > 6) {
-      clearTimeout(pressTimer);
-      startScrub();
-    }
+    if (!isDown) return;
+    if (!dragging && Math.abs(e.clientX - downX) > 6) dragging = true;
+    if (dragging && barOpen) { e.preventDefault(); updateScrub(e.clientX); }
   }, { passive: false });
   document.addEventListener('pointerup', () => {
-    clearTimeout(pressTimer);
-    if (scrubbing) { endScrub(); pressOnBtn = false; return; }
-    // SLOT操作子の上でタップした時だけ案内（どこをタップしても出ないように）
-    if (pressOnBtn && !longFired) showToast('SLOTを長押しして左右になぞるとデッキを切り替えられます', 4500);
-    pressOnBtn = false;
+    if (!isDown) return;
+    isDown = false;
+    if (dragging) closeBar();   // スライドして離したら確定して閉じる
+    // タップ（動かさず）の場合はバーを開いたまま（スロットをタップ or 外側タップで閉じる）
   });
-  // ボタン外でのpointercancel対策
-  document.addEventListener('pointercancel', () => { clearTimeout(pressTimer); pressOnBtn = false; if (scrubbing) endScrub(); });
+  // バーの外をタップしたら閉じる（SLOTボタン自身は上のtoggleで処理）
+  document.addEventListener('pointerdown', (e) => {
+    if (barOpen && !e.target.closest('.scrub-bar') && !e.target.closest('#slotLoadBtn')) closeBar();
+  });
+  document.addEventListener('pointercancel', () => { isDown = false; if (dragging) closeBar(); });
 }
 
 // デッキ名入力（プレースホルダ表示・打つと消える）。OK=文字列 / キャンセル=null
