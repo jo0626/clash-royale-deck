@@ -30,6 +30,7 @@
   .swipe-page { min-width:100%; padding:20px; }
   .page-title { font-family:var(--font-head); font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
   .page-sub { color:var(--text-muted); font-size:13px; margin-bottom:20px; line-height:1.7; }
+  .agg-note { font-size:11px; color:var(--text-dim); margin:-12px 0 16px; }
   .owned-filter { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
   .owned-toggle { background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px;
     padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
@@ -76,7 +77,8 @@
   <div class="swipe-track">
     <div class="swipe-page">
       <h1 class="page-title">人気デッキ・デッキ探求</h1>
-      <p class="page-sub">現環境で定番・人気のアーキタイプを掲載。🟣進化・👑ヒーロー枠もビルダーと同じ表示で、「作成ツールで開く」でそのままの形で読み込まれます。</p>
+      <p class="page-sub">パス・オブ・レジェンド<b>世界トップ100ランカー</b>の使用デッキを集計。🟣進化・👑ヒーロー枠もビルダーと同じ表示で、「作成ツールで開く」でそのまま読み込めます。</p>
+      <p class="agg-note" id="aggNote"></p>
       <div class="owned-filter">
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 自分のカードで組めるデッキだけ</button>
         <span id="ownedNote" class="owned-note"></span>
@@ -199,7 +201,19 @@ function renderDecks(decks) {
 // decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
 fetch('decks.json', { cache: 'no-store' })
   .then(r => r.ok ? r.json() : null)
-  .then(j => { ALL_DECKS = ((j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS).slice(0, 20); applyDecks(); }) // 最大20位まで掲載
+  .then(j => {
+    ALL_DECKS = ((j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS).slice(0, 20); // 最大20位まで掲載
+    const note = document.getElementById('aggNote');
+    if (note) {
+      if (j && j.updated) {
+        const d = new Date(j.updated);
+        note.textContent = '🏆 トップ100ランカー集計 ・ 最終更新 ' + d.toLocaleString('ja-JP', { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      } else {
+        note.textContent = '※ 集計データの取得に失敗したため、代表的な型を表示しています';
+      }
+    }
+    applyDecks();
+  })
   .catch(() => { ALL_DECKS = DECKS.slice(0, 20); applyDecks(); });
 </script>
 

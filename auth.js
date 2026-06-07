@@ -63,6 +63,7 @@ let app, auth, db;
 let currentUser = null;
 let currentProfile = null;
 let _ownedCards = null; // クラロワID連携で取得した所持カード（日本語名の配列）
+let _slotsCache = null; // 5スロットのキャッシュ（読み取り回数の節約）
 const changeCallbacks = [];
 
 // ---- ログイン状態のヒントをローカルに保存（ページ遷移時のチラつき防止） ----
@@ -104,6 +105,7 @@ if (!isConfigured) {
         CRAuth.refreshOwnedCards(); // ログイン時、IDがあれば所持カードを取得（基礎）
       } else {
         currentProfile = null;
+        _slotsCache = null;
         setLoggedOutUI(false); // ログイン可能状態
         clearHint();
       }
@@ -231,23 +233,30 @@ const CRAuth = {
     const s = Math.max(1, Math.min(5, slot | 0));
     const list = (cards || []).filter(Boolean);
     const avg = list.length ? (list.reduce((a, c) => a + (c.cost || 0), 0) / list.length) : 0;
-    await FB.setDoc(FB.doc(db, "users", currentUser.uid, "decks", "slot" + s), {
+    const data = {
       slot: s,
       name: name || ("デッキ" + s),
       slots: list.map(c => c.name),
       avg: Math.round(avg * 100) / 100,
       createdAt: FB.serverTimestamp(),
-    });
+    };
+    await FB.setDoc(FB.doc(db, "users", currentUser.uid, "decks", "slot" + s), data);
+    // キャッシュも更新（再読み込み＝Firestore読み取りを増やさない）
+    if (_slotsCache) {
+      _slotsCache = _slotsCache.filter(x => x.slot !== s).concat([{ id: "slot" + s, ...data }]).sort((a, b) => (a.slot || 0) - (b.slot || 0));
+    }
   },
 
-  // 5スロットの現在の中身を返す（{slot, name, slots[], avg} の配列）
-  async getSlots() {
+  // 5スロットの現在の中身を返す（キャッシュ優先で読み取り回数を節約）
+  async getSlots(force) {
     if (!currentUser || !FB) return [];
+    if (_slotsCache && !force) return _slotsCache;
     const snap = await FB.getDocs(FB.collection(db, "users", currentUser.uid, "decks"));
-    return snap.docs
+    _slotsCache = snap.docs
       .filter(d => /^slot[1-5]$/.test(d.id))
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.slot || 0) - (b.slot || 0));
+    return _slotsCache;
   },
 
   // ---- お気に入り（クラウド保存・端末間で維持） ----
