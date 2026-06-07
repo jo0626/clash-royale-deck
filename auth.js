@@ -318,6 +318,12 @@ function injectAccountUI() {
     .cr-deckitem .nm { flex:1; cursor:pointer; }
     .cr-deckitem .del { color:#e05050; cursor:pointer; background:none; border:none; font-size:13px; }
     @media (max-width:720px){ .cr-menu{ right:8px; width: calc(100vw - 16px); max-width:300px; } }
+    /* 全ページ共通ヘッダー：タイトル1段＋副題表示＋ナビアイコンはアカウントの下・右寄せ */
+    header { flex-wrap: wrap; align-items: flex-start; row-gap: 6px; }
+    header .logo { white-space: nowrap; }
+    header .logo span { display: block !important; white-space: nowrap; }
+    #cr-account { order: 1; }
+    header > nav.nav-icons { order: 2; flex-basis: 100%; display: flex; justify-content: flex-end; gap: 4px; margin-left: 0; }
   `;
   document.head.appendChild(style);
 
