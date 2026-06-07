@@ -210,10 +210,14 @@ fetch('decks.json', { cache: 'no-store' })
     const hasData = j && Array.isArray(j.decks) && j.decks.length;
     ALL_DECKS = hasData ? j.decks : DECKS;
     PLAYERS_TOTAL = (j && j.players) ? j.players : 0;
-    const players = (j && j.players) ? ('世界トップ' + j.players + 'ランカー') : '世界トップランカー';
+    const sample = (j && j.players) ? j.players : null;
+    // 順位の対象範囲(topPlayers)があれば「トップN（M人分集計）」、無ければ「上位ランカーM人」
+    const srcText = (j && j.topPlayers)
+      ? ('世界トップ' + j.topPlayers + 'ランカー' + (sample ? '（' + sample + '人分を集計）' : ''))
+      : (sample ? ('世界上位ランカー' + sample + '人') : '世界上位ランカー');
     const hrs = (j && j.intervalHours) ? j.intervalHours : 6;
     const sub = document.getElementById('pageSub');
-    if (sub) sub.innerHTML = 'パス・オブ・レジェンド<b>' + players + '</b>の使用デッキを<b>' + hrs + '時間ごと</b>に集計し、人気の上位<b>' + ALL_DECKS.length + '件</b>を掲載。ログイン＋クラロワID登録で「<b>自分のカードで組めるデッキだけ</b>」に絞り込めます。';
+    if (sub) sub.innerHTML = 'パス・オブ・レジェンド<b>' + srcText + '</b>の使用デッキを<b>' + hrs + '時間ごと</b>に集計し、人気の上位<b>' + ALL_DECKS.length + '件</b>を掲載。ログイン＋クラロワID登録で「<b>自分のカードで組めるデッキだけ</b>」に絞り込めます。';
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
