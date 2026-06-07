@@ -199,8 +199,8 @@ function renderDecks(decks) {
 // decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
 fetch('decks.json', { cache: 'no-store' })
   .then(r => r.ok ? r.json() : null)
-  .then(j => { ALL_DECKS = (j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS; applyDecks(); })
-  .catch(() => { ALL_DECKS = DECKS; applyDecks(); });
+  .then(j => { ALL_DECKS = ((j && Array.isArray(j.decks) && j.decks.length) ? j.decks : DECKS).slice(0, 20); applyDecks(); }) // 最大20位まで掲載
+  .catch(() => { ALL_DECKS = DECKS.slice(0, 20); applyDecks(); });
 </script>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->

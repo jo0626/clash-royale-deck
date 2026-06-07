@@ -429,7 +429,8 @@
   .ft-card .ft-cap { font-size: 9px; color: var(--text-muted); }
   .ft-card .ft-name { font-size: 11px; font-weight: 600; }
   .ft-card.dim { opacity: 0.4; filter: grayscale(0.7); }
-  .ft-card.hot { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,160,32,0.35) inset; background: rgba(232,160,32,0.08); }
+  .ft-card.hot { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(232,160,32,0.35) inset; background: rgba(232,160,32,0.08); cursor: pointer; }
+  @media (hover: hover) { .ft-card.hot:hover { background: rgba(232,160,32,0.16); } }
   .ft-arrow { font-size: 22px; color: var(--accent); flex: 0 0 auto; font-weight: 700; }
   /* どっちと入れ替える？（中央に入れる対象）レイアウト */
   .swap-choose { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 14px 0 4px; }
@@ -1400,21 +1401,19 @@ function openImageReplaceDialog(card, idxs, opts) {
   ov.className = 'swap-overlay';
 
   if (idxs.length === 1) {
-    // 「これから → これへ」：現在のカードを薄く、入れるカードを強調
+    // 「いま → これに」：今のカードを薄く、入れるカードを強調。入れるカードをタップで確定
     const old = deck[idxs[0]];
     ov.innerHTML = `<div class="swap-box">
       <div class="swap-title">入れ替える？</div>
       <div class="swap-fromto">
         <div class="ft-card dim"><div class="ft-cap">いま</div>${old && old.img ? `<img src="${old.img}" alt="">` : ''}<div class="ft-name">${old ? old.name : ''}</div></div>
         <div class="ft-arrow">➜</div>
-        <div class="ft-card hot"><div class="ft-cap">これに</div>${cardImg}<div class="ft-name">${card.name}</div></div>
+        <div class="ft-card hot" id="ftConfirm"><div class="ft-cap">これに</div>${cardImg}<div class="ft-name">${card.name}</div></div>
       </div>
-      <button class="btn btn-primary" id="irConfirm" style="width:100%;margin-top:12px">入れ替える</button>
-      <button class="btn btn-ghost" id="irCancel" style="width:100%;margin-top:6px">キャンセル</button>
     </div>`;
-    ov.querySelector('#irConfirm').onclick = () => doReplace(idxs[0]);
+    ov.querySelector('#ftConfirm').onclick = () => doReplace(idxs[0]);
   } else {
-    // 「どっちと入れ替える？」：中央に入れる対象、両脇に候補
+    // 「どっちと入れ替える？」：中央に入れる対象、両脇に候補。候補カードをタップで確定
     const sideHtml = (i) => {
       const d = deck[i];
       const img = slotCardImg(d, i); // その枠に表示される姿（進化/ヒーロー）
@@ -1431,12 +1430,10 @@ function openImageReplaceDialog(card, idxs, opts) {
         <div class="swap-center"><div class="ft-cap">入れる</div>${cardImg}<div class="ft-name">${card.name}</div></div>
         ${sideHtml(idxs[1])}
       </div>
-      <button class="btn btn-ghost" id="irCancel" style="width:100%;margin-top:10px">キャンセル</button>
     </div>`;
     ov.querySelectorAll('.swap-opt').forEach(o => { o.onclick = () => doReplace(+o.dataset.idx); });
   }
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
-  ov.querySelector('#irCancel').onclick = () => ov.remove();
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); }; // ポップアップ外タップでキャンセル
   document.body.appendChild(ov);
 }
 
