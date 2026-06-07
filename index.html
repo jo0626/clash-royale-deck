@@ -457,6 +457,12 @@
     background: linear-gradient(135deg, #3a8ef0, #2a6fd0); color: #fff; font-weight: 700;
   }
   #analyzeBtn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; filter: saturate(0.5); }
+  /* 下部ボタンのテキストは選択不可（長押しで選択メニューが出ないように） */
+  .deck-actions .btn, #analyzeBtn { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  /* 保存スロットグリッドの「編集中」バッジ */
+  .slot-chip { position: relative; }
+  .slot-chip .cur-badge { position: absolute; top: -7px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; font-weight: 700; background: var(--accent); color: #000; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
   .btn {
     padding: 8px 12px; border-radius: 6px; font-family: var(--font-body);
     font-size: 12px; cursor: pointer; transition: all 0.12s; border: none;
@@ -1772,29 +1778,30 @@ async function openSlotSaveDialog() {
   ov.className = 'slot-pop';
   const chips = [1,2,3,4,5].map(i => {
     const s = slots.find(x => x.slot === i);
-    const nm = s ? `${s.name}` : '空き';
-    return `<div class="slot-chip ${s?'':'empty'}" data-slot="${i}">
-      <span class="num">${i}</span><span class="nm">${nm}</span>
+    const sub = s ? `${(s.slots||[]).length}枚` : '空き';
+    const isCur = currentSlot === i;          // 今編集中のスロット
+    return `<div class="slot-chip ${s?'':'empty'}${isCur?' current':''}" data-slot="${i}">
+      ${isCur ? '<span class="cur-badge">編集中</span>' : ''}
+      <span class="num">${i}</span><span class="nm">${sub}</span>
     </div>`;
   }).join('');
+  const title = currentSlot
+    ? `スロット${currentSlot}を編集中。タップしたスロットに保存（${filled.length}枚）`
+    : `どのスロットに保存する？（${filled.length}枚）`;
   ov.innerHTML = `<div class="slot-pop-box">
-    <div class="slot-pop-title">どのスロットに保存する？（現在 ${filled.length}枚）</div>
+    <div class="slot-pop-title">${title}</div>
     <div class="slot-grid">${chips}</div>
-    <button class="btn btn-ghost" style="width:100%;margin-top:6px" id="slotSaveCancel">キャンセル</button>
   </div>`;
-  ov.querySelector('#slotSaveCancel').onclick = () => ov.remove();
+  // キャンセルは「保存ボックス以外をタップ」でできるのでボタンは無し
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
   ov.querySelectorAll('.slot-chip').forEach(o => {
     o.onclick = async () => {
       const slot = +o.dataset.slot;
       ov.remove();
-      const name = await promptDeckName('デッキ' + slot);
-      if (name === null) return; // キャンセル
       try {
-        const deckName = name || ('デッキ' + slot);
-        await CRAuth.saveDeckToSlot(slot, deckName, filled);
+        await CRAuth.saveDeckToSlot(slot, 'スロット' + slot, filled); // 名前は付けない
         currentSlot = slot; updateSlotLoadBtn();
-        openShareDialog(deck.slice(), deckName); // 保存直後にSNS共有を誘導
+        openShareDialog(deck.slice(), 'スロット' + slot); // 保存直後にSNS共有を誘導
       } catch (e) { showToast('保存に失敗しました'); }
     };
   });
@@ -1921,7 +1928,7 @@ function initSlotScrub() {
     bar = document.createElement('div');
     bar.className = 'scrub-bar';
     bar.innerHTML = segSlots.map((s, i) =>
-      `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${s.name || ''}</span></div>`
+      `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${(s.slots||[]).length}枚</span></div>`
     ).join('');
     // 各スロットはタップでも移動できる
     bar.querySelectorAll('.scrub-seg').forEach(seg => {
