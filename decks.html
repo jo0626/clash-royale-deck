@@ -286,7 +286,7 @@ fetch('decks.json', { cache: 'no-store' })
     const winTabBtn = document.querySelector('.deck-tab[data-tab="win"]');
     if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
     const sub = document.getElementById('pageSub');
-    if (sub) sub.innerHTML = '<b>' + srcText + '</b>の<b>直前の使用デッキ</b>を集計。<b>' + hrs + '時間ごと</b>に更新されます。「使用率」は使っている人数、「勝率」は実際の対戦結果から算出。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
+    if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b><b>' + srcText + '</b>の<b>直前の使用デッキ</b>を集計し、「使用率」は使っている人数、「勝率」は実際の対戦結果から算出。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
