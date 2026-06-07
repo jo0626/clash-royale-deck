@@ -339,8 +339,10 @@ function injectAccountUI() {
     .cr-name-opt input[type=radio] { accent-color: var(--accent,#e8a020); }
     .cr-name-opt input[type=radio]:disabled + span { color: var(--text-dim,#3a3f50); }
     .cr-menu .cr-row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
-    .cr-menu input { flex: 1; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
+    .cr-menu input { flex: 1; min-width: 0; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
       border-radius: 6px; color: var(--text,#e8eaf0); padding: 6px 8px; font-size: 13px; outline: none; }
+    .cr-menu .cr-tag-prefix { color: var(--text-muted,#6b7080); font-weight: 700; font-size: 14px; }
+    .cr-menu button.cr-mini { flex: none; white-space: nowrap; }
     .cr-menu button.cr-mini { background: var(--surface2,#1e2230); border: 1px solid var(--border-hi,rgba(255,255,255,.15));
       color: var(--text,#e8eaf0); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: inherit; }
     .cr-menu .cr-divider { height:1px; background: var(--border,rgba(255,255,255,.07)); margin: 10px 0; }
@@ -473,7 +475,10 @@ function buildMenu(user, profile) {
       <label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span id="crNameGameLabel">ゲーム内の名前${_crName ? "（" + _crName + "）" : "（ID保存後に取得）"}</span></label>
     </div>
     <div class="cr-row">
-      <input id="crTagInput" placeholder="クラロワID 例 #ABC123" value="${(profile && profile.crTag) ? "#" + profile.crTag : ""}">
+      <span class="cr-tag-prefix">#</span>
+      <input id="crTagInput" placeholder="ABC123" value="${(profile && profile.crTag) || ""}"
+        autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12"
+        inputmode="text" style="text-transform:uppercase">
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
     <div class="cr-hint" id="crTagHint">IDを登録すると、「持っているカードで組めるデッキだけ」表示や、ゲーム内の名前の表示に使えます。</div>
@@ -490,9 +495,14 @@ function buildMenu(user, profile) {
   };
   [accR, gameR].forEach((r) => { if (r) r.onchange = () => { if (r.checked) CRAuth.setNameMode(r.value); }; });
 
+  // 入力は自動で大文字＋英数字のみ（#不要・小文字や記号は弾く）
+  const tagInput = document.getElementById("crTagInput");
+  if (tagInput) tagInput.addEventListener("input", () => {
+    tagInput.value = tagInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  });
   document.getElementById("crTagSave").onclick = async () => {
     const v = document.getElementById("crTagInput").value;
-    await CRAuth.setCrTag(v);
+    await CRAuth.setCrTag(v); // setCrTag 側でも # 除去・整形（APIには # を付けて呼ぶ）
     flash("crTagSave", "✓");
     CRAuth.refreshOwnedCards(); // ID保存時に所持カード＋ゲーム内名を取りに行く
   };
@@ -502,7 +512,9 @@ function buildMenu(user, profile) {
 function toggleMenu() {
   const m = document.getElementById("crMenu");
   m.classList.toggle("open");
-  if (!m.classList.contains("open")) { const p = document.getElementById("crNamePicker"); if (p) p.classList.remove("open"); }
+  // 開く時も閉じる時も、名前選択ピッカーは常に閉じた状態にする
+  const p = document.getElementById("crNamePicker");
+  if (p) p.classList.remove("open");
   syncMenuBackdrop();
 }
 // メニューを開いたら、画面全体に透明な受け皿を出して「外側タップで閉じる（その操作は他に波及しない）」を実現
