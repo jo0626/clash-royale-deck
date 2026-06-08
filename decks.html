@@ -95,7 +95,74 @@
   .footer-signature { text-align:center; padding:24px 0; font-family:'Courier New',Courier,monospace; color:#888; letter-spacing:1px; border-top:1px solid var(--border); margin-top:40px; }
   .footer-signature .by-text { font-size:11px; opacity:0.6; margin-right:4px; }
   .footer-signature .creator-name { font-size:13px; font-weight:bold; color:#eaeaea; letter-spacing:3px; text-shadow:0 0 8px rgba(255,255,255,0.4); }
-  @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; } }
+  /* ▼ 急上昇デッキ用のスタッツ表記 */
+  .stat-trend { color:#ff8a3c; font-weight:700; }
+  .stat-trend .arrow { font-size:13px; }
+  .stat-flat { color:var(--text-muted); }
+
+  /* ▼ トップのデッキ/カード切替（既存 .seg-tabs を流用） */
+  .seg-tab .seg-emoji { margin-right:5px; }
+
+  /* ▼ カード単体ランキング */
+  .crank-tabs { display:flex; gap:8px; margin:0 0 14px; }
+  .crank-tab { flex:1; padding:11px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
+  .crank-tab.active { background:rgba(232,160,32,0.14); border-color:var(--accent); color:var(--accent); }
+  .crank-hint { font-size:11px; color:var(--text-dim); margin:-6px 0 12px; line-height:1.6; }
+  .crank-list { display:flex; flex-direction:column; gap:5px; }
+  .crank-row { display:flex; align-items:center; gap:10px; padding:7px 10px; background:var(--surface); border:1px solid var(--border);
+    border-radius:10px; cursor:pointer; transition:all 0.12s; }
+  .crank-row:hover { border-color:var(--border-hi); }
+  .crank-row.sel { border-color:var(--accent); background:rgba(232,160,32,0.10); }
+  .crank-rank { font-family:var(--font-head); font-weight:700; font-size:15px; color:var(--text-muted); min-width:28px; text-align:center; }
+  .crank-row.sel .crank-rank { color:var(--accent); }
+  .crank-ico { width:40px; height:48px; flex-shrink:0; display:flex; align-items:flex-end; justify-content:center; position:relative; }
+  .crank-ico img { width:100%; height:100%; object-fit:contain; }
+  .crank-ico .pip { position:absolute; top:0; left:0; font-size:9px; font-weight:700; background:rgba(0,0,0,0.6); color:#fff; border-radius:4px; padding:0 3px; }
+  .crank-name { flex:1; font-size:13px; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .crank-stat { text-align:right; flex-shrink:0; }
+  .crank-stat .big { font-size:15px; font-weight:700; }
+  .crank-stat.use .big { color:var(--text); }
+  .crank-stat.win .big { color:var(--accent); }
+  .crank-stat .sub { font-size:10px; color:var(--text-muted); display:block; line-height:1.3; }
+  .crank-bar { width:54px; height:5px; background:rgba(255,255,255,0.06); border-radius:3px; overflow:hidden; flex-shrink:0; }
+  .crank-bar > i { display:block; height:100%; border-radius:3px; }
+  .crank-check { width:22px; flex-shrink:0; text-align:center; font-size:14px; color:var(--text-dim); }
+  .crank-row.sel .crank-check { color:var(--accent); }
+
+  /* ▼ メタマップ（分布図） */
+  .mm-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:26px 0 4px; flex-wrap:wrap; }
+  .mm-title { font-family:var(--font-head); font-size:17px; font-weight:700; letter-spacing:1px; }
+  .mm-clear { background:var(--surface); border:1px solid var(--border-hi); color:var(--text-muted); border-radius:999px;
+    padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .mm-clear:hover { color:var(--text); }
+  .mm-hint { font-size:11px; color:var(--text-dim); margin:0 0 10px; line-height:1.6; }
+  .metamap { position:relative; width:100%; height:300px; background:var(--surface);
+    border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .mm-q { position:absolute; width:50%; height:50%; opacity:0.05; }
+  .mm-q.tl { top:0; left:0; background:#1d9e75; }
+  .mm-q.tr { top:0; right:0; background:#378add; }
+  .mm-q.bl { bottom:0; left:0; background:#888780; }
+  .mm-q.br { bottom:0; right:0; background:#d85a30; }
+  .mm-axis { position:absolute; background:rgba(255,255,255,0.14); }
+  .mm-axis.v { left:50%; top:0; bottom:0; width:1px; }
+  .mm-axis.h { top:50%; left:0; right:0; height:1px; }
+  .mm-qlabel { position:absolute; font-size:9px; font-weight:700; color:var(--text-dim); padding:5px 7px; line-height:1.3; pointer-events:none; }
+  .mm-qlabel.tl { top:0; left:0; color:#3ec79b; }
+  .mm-qlabel.tr { top:0; right:0; text-align:right; color:#6fb4ee; }
+  .mm-qlabel.bl { bottom:0; left:0; color:#9a988f; }
+  .mm-qlabel.br { bottom:0; right:0; text-align:right; color:#e8895f; }
+  .mm-axlabel { position:absolute; font-size:10px; color:var(--text-muted); pointer-events:none; }
+  .mm-axlabel.x { right:8px; bottom:6px; }
+  .mm-axlabel.y { left:6px; top:6px; }
+  .mm-pt { position:absolute; transform:translate(-50%,-50%); width:34px; height:40px; transition:left .35s ease, top .35s ease; }
+  .mm-pt img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
+  .mm-pt .lab { position:absolute; top:38px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-size:9px; font-weight:700; color:var(--text); background:rgba(0,0,0,0.55); border-radius:4px; padding:0 4px; }
+  .mm-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:12px; text-align:center; padding:20px; }
+
+  @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; }
+    .crank-name { font-size:12px; } .crank-bar { display:none; } .metamap { height:260px; } .mm-pt { width:30px; height:36px; } }
 </style>
 </head>
 <body>
@@ -110,15 +177,22 @@
   </nav>
 </header>
 
+<div class="seg-tabs" id="topSeg">
+  <button class="seg-tab active" data-seg="decks"><span class="seg-emoji">🏆</span>デッキ</button>
+  <button class="seg-tab" data-seg="cards"><span class="seg-emoji">🃏</span>カード</button>
+</div>
+
 <div class="swipe-viewport">
   <div class="swipe-track">
     <div class="swipe-page">
+    <section id="secDecks">
       <h1 class="page-title">人気デッキ・デッキ探求</h1>
       <p class="page-sub" id="pageSub">世界上位ランカーの使用デッキを集計して掲載しています。</p>
       <p class="agg-note" id="aggNote"></p>
       <div class="deck-tabs" id="deckTabs">
-        <button class="deck-tab active" data-tab="pop">📊 人気デッキ（使用率）</button>
-        <button class="deck-tab" data-tab="win">🏅 勝率ランキング</button>
+        <button class="deck-tab active" data-tab="pop">📊 使用率</button>
+        <button class="deck-tab" data-tab="win">🏅 勝率</button>
+        <button class="deck-tab" data-tab="trend">🔥 急上昇</button>
       </div>
       <div class="owned-filter">
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 組めるデッキだけ表示</button>
@@ -134,6 +208,27 @@
       </div>
       <div id="deckList"></div>
       <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
+    </section>
+
+    <section id="secCards" style="display:none">
+      <h1 class="page-title">カードメタ</h1>
+      <p class="page-sub">環境で何が強いか、カード単位で。使用率と勝率、そして「人気だが勝ててない／地味だが勝てる」のギャップが見える。</p>
+      <p class="agg-note" id="cardsNote"></p>
+      <div class="crank-tabs" id="crankTabs">
+        <button class="crank-tab active" data-ctab="use">📊 使用率ランキング</button>
+        <button class="crank-tab" data-ctab="win">🏅 勝率ランキング</button>
+      </div>
+      <p class="crank-hint" id="crankHint"></p>
+      <div id="crankList" class="crank-list"></div>
+
+      <div class="mm-head">
+        <span class="mm-title">📍 分布図マップ</span>
+        <button class="mm-clear" id="mmClear" type="button">選択をクリア</button>
+      </div>
+      <p class="mm-hint">上のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
+      <div id="metaMap" class="metamap"></div>
+      <p class="note">※ 勝率は直近3日間の対戦結果を累積して算出（更新ごとに最古を捨てて巡回）。</p>
+    </section>
     </div>
   </div>
 </div>
@@ -161,12 +256,13 @@ function slotModeOf(info, idx, name, evoSet, hasEvo) {
 // ===== 所持カード（クラロワID連携）→「組めるデッキだけ」フィルター =====
 let ALL_DECKS = [];        // 人気（使用率）デッキ
 let WIN_DECKS = [];        // 勝率ランキングデッキ
-let activeTab = 'pop';     // 'pop'=使用率 / 'win'=勝率
+let TREND_DECKS = [];      // 急上昇（前回比で使用が伸びたデッキ）
+let activeTab = 'pop';     // 'pop'=使用率 / 'win'=勝率 / 'trend'=急上昇
 let ownedSet = null;       // 解決済み所持カード名Set（未取得null）
 let onlyOwned = false;     // 絞り込みON/OFF
 let cardFilter = null;     // 「このカードを含むデッキだけ」絞り込み（カード名 or null）
 let PLAYERS_TOTAL = 0;     // 集計した母数（使用率%の計算用）
-function currentList() { return activeTab === 'win' ? WIN_DECKS : ALL_DECKS; }
+function currentList() { return activeTab === 'win' ? WIN_DECKS : activeTab === 'trend' ? TREND_DECKS : ALL_DECKS; }
 
 // APIがカタカナで返した場合の別名保険（index.html と同じ）
 const OWNED_ALIAS = {
@@ -327,7 +423,14 @@ function renderDecks(decks) {
   decks.forEach((d, idx) => {
     const avg = (d.slots.reduce((s,n)=> s + (CARD_INFO[n]?CARD_INFO[n].c:0), 0) / d.slots.length).toFixed(1);
     let headHtml;
-    if (d.winRate != null) {
+    if (d.delta != null) {
+      // 急上昇タブ：前回比の伸び ＋ 現在の使用人数
+      const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
+      const sign = d.delta > 0 ? '+' : '';
+      headHtml = '<span class="stat-trend"><span class="arrow">▲</span> ' + sign + d.delta + '人 急上昇</span>'
+        + '<span class="stat-sep">今' + (d.count != null ? d.count + '人' : '') + (pct != null ? ' / ' + pct + '%' : '') + '</span>'
+        + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>';
+    } else if (d.winRate != null) {
       // 勝率タブ：勝率 ＋ 対戦数
       headHtml = '<span class="stat-win">勝率 ' + d.winRate + '%</span>'
         + '<span class="stat-sep">' + (d.games || 0) + '戦</span>'
@@ -371,6 +474,123 @@ function renderDecks(decks) {
   });
 }
 
+// ============ 急上昇デッキ ＆ カードメタ（使用率/勝率ランキング＋分布図） ============
+let CARDS_DATA = [];            // カード単体集計（GASの j.cards / なければサンプル）
+const _mmSel = new Set();       // 分布図に表示するカード名
+let _ctab = 'use';              // 'use'=使用率 / 'win'=勝率
+const WIN_MIN_GAMES = 20;       // 勝率ランキングの最低対戦数（少数試合のブレ除去）
+
+// --- GASが trending / cards を出すまでのサンプル ---
+const TREND_SAMPLE = (function () {
+  const pick = DECKS.slice(0, 6);
+  const counts = [14, 11, 9, 8, 6, 5], deltas = [9, 7, 5, 4, 3, 2];
+  return pick.map((d, i) => ({ name: d.name, slots: d.slots, evo: d.evo, champ: d.champ, count: counts[i], delta: deltas[i] }));
+})();
+const CARDS_SAMPLE = [
+  ['ローリングウッド',64,53,820],['アイススピリット',58,52,910],['スケルトン',55,51,880],
+  ['ファイアボール',47,52,700],['大砲',31,54,520],['ホグライダー',28,51,470],
+  ['マスケット銃士',26,52,430],['ナイト',25,50,610],['ザップ',22,49,540],
+  ['コウモリの群れ',21,53,360],['ポイズン',19,52,300],['トルネード',17,55,280],
+  ['ディガー',16,53,260],['迫撃砲',9,56,140],['巨大クロスボウ',6,57,110],
+  ['エレクトロジャイアント',7,49,120],['メガナイト',20,47,420],['ペッカ',15,48,250],
+  ['ゴーレム',5,46,90],['エリクサーゴーレム',6,45,95],['プリンセス',14,54,230],
+  ['インフェルノタワー',13,53,210],['エアバルーン',12,55,200],['ラヴァハウンド',8,50,130]
+].map(a => ({ name: a[0], use: a[1], win: a[2], games: a[3] }));
+
+// --- トップ：デッキ / カード 切替 ---
+document.querySelectorAll('#topSeg .seg-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const seg = btn.getAttribute('data-seg');
+    document.querySelectorAll('#topSeg .seg-tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('secDecks').style.display = seg === 'cards' ? 'none' : '';
+    document.getElementById('secCards').style.display = seg === 'cards' ? '' : 'none';
+  });
+});
+
+function _cardImg(name) { const i = CARD_INFO[name]; return i ? (i.i || '') : ''; }
+function _cardCost(name) { const i = CARD_INFO[name]; return i ? i.c : ''; }
+
+// --- カード50位ランキング ---
+function renderCrank() {
+  const wrap = document.getElementById('crankList');
+  const hint = document.getElementById('crankHint');
+  let list = CARDS_DATA.slice();
+  if (_ctab === 'win') {
+    list = list.filter(c => (c.games || 0) >= WIN_MIN_GAMES);
+    list.sort((a, b) => (b.win || 0) - (a.win || 0) || (b.games || 0) - (a.games || 0));
+    hint.textContent = '直近3日の対戦結果から算出（' + WIN_MIN_GAMES + '戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。';
+  } else {
+    list.sort((a, b) => (b.use || 0) - (a.use || 0));
+    hint.textContent = 'トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
+  }
+  list = list.slice(0, 50);
+  const maxUse = Math.max(1, ...CARDS_DATA.map(c => c.use || 0));
+  wrap.innerHTML = list.map((c, i) => {
+    const sel = _mmSel.has(c.name);
+    const big = _ctab === 'win' ? (c.win != null ? c.win + '%' : '—') : (c.use != null ? c.use + '%' : '—');
+    const sub = _ctab === 'win' ? ((c.games || 0) + '戦 ・ 使用' + (c.use != null ? c.use + '%' : '—'))
+                                : ('勝率 ' + (c.win != null ? c.win + '%' : '—'));
+    const barPct = _ctab === 'win' ? Math.max(0, Math.min(100, c.win || 0)) : Math.round((c.use || 0) / maxUse * 100);
+    const barCol = _ctab === 'win' ? '#e8a020' : '#3a8ef0';
+    return '<div class="crank-row' + (sel ? ' sel' : '') + '" data-n="' + String(c.name).replace(/"/g, '&quot;') + '">'
+      + '<span class="crank-rank">' + (i + 1) + '</span>'
+      + '<span class="crank-ico"><span class="pip">' + _cardCost(c.name) + '</span>'
+        + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '" loading="lazy">' : '') + '</span>'
+      + '<span class="crank-name">' + c.name + '</span>'
+      + '<span class="crank-bar"><i style="width:' + barPct + '%;background:' + barCol + '"></i></span>'
+      + '<span class="crank-stat ' + _ctab + '"><span class="big">' + big + '</span><span class="sub">' + sub + '</span></span>'
+      + '<span class="crank-check">' + (sel ? '✓' : '＋') + '</span>'
+      + '</div>';
+  }).join('');
+}
+document.querySelectorAll('#crankTabs .crank-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    _ctab = btn.getAttribute('data-ctab');
+    document.querySelectorAll('#crankTabs .crank-tab').forEach(b => b.classList.toggle('active', b === btn));
+    renderCrank();
+  });
+});
+document.getElementById('crankList').addEventListener('click', (e) => {
+  const row = e.target.closest('.crank-row'); if (!row) return;
+  const n = row.getAttribute('data-n');
+  if (_mmSel.has(n)) _mmSel.delete(n); else _mmSel.add(n);
+  renderCrank(); renderMetaMap();
+});
+document.getElementById('mmClear').addEventListener('click', () => { _mmSel.clear(); renderCrank(); renderMetaMap(); });
+
+// --- 分布図マップ（選んだカードだけプロット） ---
+function renderMetaMap() {
+  const map = document.getElementById('metaMap');
+  const uses = CARDS_DATA.map(c => c.use || 0);
+  const wins = CARDS_DATA.map(c => c.win || 0).filter(v => v > 0);
+  const uMax = Math.max(1, ...uses);
+  const wMin = Math.min(...wins, 45), wMax = Math.max(...wins, 55);
+  const pad = 9;
+  const fx = u => pad + (u / uMax) * (100 - 2 * pad);
+  const fy = w => (100 - pad) - ((w - wMin) / Math.max(1, wMax - wMin)) * (100 - 2 * pad);
+  const base =
+      '<div class="mm-q tl"></div><div class="mm-q tr"></div><div class="mm-q bl"></div><div class="mm-q br"></div>'
+    + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
+    + '<div class="mm-qlabel tl">地味だが勝てる</div><div class="mm-qlabel tr">環境トップ</div>'
+    + '<div class="mm-qlabel bl">不遇</div><div class="mm-qlabel br">人気だが勝てない</div>'
+    + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">↑ 勝率</div>';
+  const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
+  const sel = [..._mmSel].map(n => byName[n]).filter(Boolean);
+  if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます</div>'; return; }
+  const pts = sel.map(c => {
+    const x = fx(c.use || 0), y = fy(c.win || 0);
+    return '<div class="mm-pt" style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + '%" title="' + c.name + ' 使用' + (c.use || 0) + '% / 勝率' + (c.win || 0) + '%">'
+      + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '">' : '')
+      + '<span class="lab">' + c.name + '</span></div>';
+  }).join('');
+  map.innerHTML = base + pts;
+}
+function initCardMeta(isSample) {
+  const note = document.getElementById('cardsNote');
+  if (note) note.textContent = isSample ? '※ サンプル表示です（集計データ連携の準備中）' : '';
+  renderCrank(); renderMetaMap();
+}
+
 // decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
 fetch('decks.json', { cache: 'no-store' })
   .then(r => r.ok ? r.json() : null)
@@ -378,6 +598,11 @@ fetch('decks.json', { cache: 'no-store' })
     const hasData = j && Array.isArray(j.decks) && j.decks.length;
     ALL_DECKS = hasData ? j.decks : DECKS;
     WIN_DECKS = (j && Array.isArray(j.winDecks)) ? j.winDecks : [];
+    const trendReal = j && Array.isArray(j.trending) && j.trending.length;
+    TREND_DECKS = trendReal ? j.trending : TREND_SAMPLE;
+    const cardsReal = j && Array.isArray(j.cards) && j.cards.length;
+    CARDS_DATA = cardsReal ? j.cards : CARDS_SAMPLE;
+    initCardMeta(!cardsReal);
     PLAYERS_TOTAL = (j && j.players) ? j.players : 0;
     const sample = (j && j.players) ? j.players : null;
     const srcText = (j && j.topPlayers)
@@ -400,7 +625,7 @@ fetch('decks.json', { cache: 'no-store' })
     }
     applyDecks();
   })
-  .catch(() => { ALL_DECKS = DECKS; applyDecks(); });
+  .catch(() => { ALL_DECKS = DECKS; TREND_DECKS = TREND_SAMPLE; CARDS_DATA = CARDS_SAMPLE; initCardMeta(true); applyDecks(); });
 </script>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
