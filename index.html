@@ -1287,10 +1287,18 @@ function init() {
     // render()で一覧が作り直されるので、次フレームで元の位置へ
     requestAnimationFrame(() => { cardListEl.scrollTop = listScrollMemo; });
   };
-  // フォーカス時、iOSが入力欄を画面内へ寄せようとするスクロールを打ち消す（チラつき防止）
-  // ページ自体は固定レイアウト(body position:fixed)なのでスクロール0に固定してよい
-  const lockTop = () => { window.scrollTo(0, 0); const se = document.scrollingElement; if (se) se.scrollTop = 0; };
-  searchEl.addEventListener('focus', () => { lockTop(); requestAnimationFrame(lockTop); setTimeout(lockTop, 60); });
+  // iOSのフォーカス時チラつき対策：
+  // 祖先が全てoverflow:hiddenなので、iOSは入力欄を見せようとビジュアルビューポート自体を
+  // 一瞬ずらして戻す（＝チラつき）。これは window.scrollTo では止められない。
+  // pointerdownを横取りし、スクロールを伴わない focus({preventScroll:true}) で自前フォーカスして根絶する。
+  // （未フォーカス時のみ横取り。2回目以降はネイティブのカーソル移動をそのまま通す）
+  searchEl.addEventListener('pointerdown', (e) => {
+    if (document.activeElement !== searchEl) {
+      e.preventDefault();
+      try { searchEl.focus({ preventScroll: true }); }
+      catch (_) { searchEl.focus(); }
+    }
+  });
   // Enter/改行（確定後）でキーボードを閉じる
   searchEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
