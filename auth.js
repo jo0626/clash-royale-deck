@@ -344,10 +344,10 @@ function injectAccountUI() {
       font-size: 18px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
       border-radius: 8px; line-height: 1; }
     .cr-name-edit:hover { color: var(--text,#e8eaf0); background: var(--surface2,#1e2230); }
-    .cr-name-picker { display: none; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; }
-    .cr-name-picker.open { display: block; }
-    .cr-name-opt { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text,#e8eaf0); padding: 5px 2px; cursor: pointer; }
-    .cr-name-opt input[type=radio] { accent-color: var(--accent,#e8a020); }
+    .cr-name-picker { display: block; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+    .cr-name-pick-label { font-size: 11px; color: var(--text-muted,#6b7080); margin: 0 0 4px; font-weight: 700; }
+    .cr-name-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text,#e8eaf0); padding: 6px 2px; cursor: pointer; }
+    .cr-name-opt input[type=radio] { accent-color: var(--accent,#e8a020); width:16px; height:16px; flex:none; margin:0; }
     .cr-name-opt input[type=radio]:disabled + span { color: var(--text-dim,#3a3f50); }
     .cr-menu .cr-row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
     .cr-menu input { flex: 1; min-width: 0; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
@@ -459,6 +459,31 @@ function closeMenu() {
   syncMenuBackdrop();
 }
 
+function esc_(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+// 表示名の選択肢を描画。ゲーム内名(_crName)はID入力後に取得できたら選択肢を追加（それまではアカウント名の一択）
+function renderNamePicker() {
+  const p = document.getElementById("crNamePicker");
+  if (!p) return;
+  const user = currentUser, profile = currentProfile;
+  const mode = (profile && profile.nameMode) || "account";
+  let html = '<div class="cr-name-pick-label">表示名</div>'
+    + '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>アカウント名（' + esc_(accountNameOf(user)) + "）</span></label>";
+  if (_crName) {
+    html += '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span>ゲーム内の名前（' + esc_(_crName) + "）</span></label>";
+  }
+  p.innerHTML = html;
+  const accR = document.getElementById("crNameAccRadio");
+  const gameR = document.getElementById("crNameGameRadio");
+  if (accR) accR.checked = !(mode === "game" && _crName);
+  if (gameR) gameR.checked = (mode === "game");
+  [accR, gameR].forEach((r) => { if (r) r.onchange = () => { if (r.checked) CRAuth.setNameMode(r.value); }; });
+  const hint = document.getElementById("crTagHint");
+  if (hint) hint.textContent = _crName
+    ? "クラロワIDを登録済み。上で表示名を切り替えられます。"
+    : "クラロワIDを入力すると、ゲーム内の名前を表示名に選べます。";
+}
+
 // 表示名まわりのUIだけを更新（メニューは作り直さない）
 function refreshNameUI() {
   const full = resolveDisplayName(currentUser, currentProfile);
@@ -466,10 +491,7 @@ function refreshNameUI() {
   if (nm) nm.textContent = full;
   const av = document.getElementById("crAvatarName");
   if (av) av.textContent = (full || "プレイヤー").split(" ")[0];
-  const gLabel = document.getElementById("crNameGameLabel");
-  if (gLabel) gLabel.textContent = "ゲーム内の名前" + (_crName ? "（" + _crName + "）" : "（ID保存後に取得）");
-  const gRadio = document.getElementById("crNameGameRadio");
-  if (gRadio) gRadio.disabled = !_crName;
+  renderNamePicker(); // ID保存でゲーム内名が取れたら選択肢を更新
 }
 
 function buildMenu(user, profile) {
@@ -478,33 +500,22 @@ function buildMenu(user, profile) {
   // ※このエリアは今後随時拡張していく
   m.innerHTML = `
     <div class="cr-name-row">
-      <button class="cr-name-edit" id="crNameEdit" title="表示名を変更">✎</button>
-      <h4 id="crMenuName">${resolveDisplayName(user, profile)}</h4>
+      <h4 id="crMenuName">${esc_(resolveDisplayName(user, profile))}</h4>
     </div>
-    <div class="cr-name-picker" id="crNamePicker">
-      <label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>アカウント名（${accountNameOf(user)}）</span></label>
-      <label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span id="crNameGameLabel">ゲーム内の名前${_crName ? "（" + _crName + "）" : "（ID保存後に取得）"}</span></label>
-    </div>
+    <div class="cr-name-picker" id="crNamePicker"></div>
     <div class="cr-row">
       <span class="cr-tag-prefix">#</span>
-      <input id="crTagInput" placeholder="ABC123" value="${_tagDraft != null ? _tagDraft : ((profile && profile.crTag) || "")}"
+      <input id="crTagInput" placeholder="ABC123" value="${esc_(_tagDraft != null ? _tagDraft : ((profile && profile.crTag) || ""))}"
         autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12"
         inputmode="text" style="text-transform:uppercase">
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
-    <div class="cr-hint" id="crTagHint">IDを登録すると、「持っているカードで組めるデッキだけ」表示や、ゲーム内の名前の表示に使えます。</div>
+    <div class="cr-hint" id="crTagHint"></div>
     <div class="cr-divider"></div>
     <div class="cr-row"><button class="cr-mini cr-logout" id="crLogout">ログアウト</button></div>
   `;
-  // 表示名ピッカー
-  const accR = document.getElementById("crNameAccRadio");
-  const gameR = document.getElementById("crNameGameRadio");
-  if (accR) accR.checked = (mode === "account");
-  if (gameR) { gameR.checked = (mode === "game"); gameR.disabled = !_crName; }
-  document.getElementById("crNameEdit").onclick = () => {
-    document.getElementById("crNamePicker").classList.toggle("open");
-  };
-  [accR, gameR].forEach((r) => { if (r) r.onchange = () => { if (r.checked) CRAuth.setNameMode(r.value); }; });
+  // 表示名ピッカー（ID未入力ならアカウント名の一択、取得後にゲーム内名を追加）
+  renderNamePicker();
 
   // 入力は自動で大文字＋英数字のみ（#不要・小文字や記号は弾く）
   const tagInput = document.getElementById("crTagInput");
