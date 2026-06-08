@@ -180,6 +180,16 @@
   .mm-pt .lab { position:absolute; top:38px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:9px; font-weight:700; color:var(--text); background:rgba(0,0,0,0.55); border-radius:4px; padding:0 4px; }
   .mm-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:12px; text-align:center; padding:20px; }
+  /* 4領域はタップで拡大できる（全体表示時） */
+  .metamap:not(.mm-zoomed) .mm-q { cursor:pointer; }
+  .metamap:not(.mm-zoomed) .mm-q:hover { opacity:0.12; }
+  /* ズーム時：中央線を強調・拡大マーカー・戻る/タイトル */
+  .mm-axis.zoom { background:var(--accent); opacity:0.6; }
+  .mm-axis.v.zoom { width:2px; } .mm-axis.h.zoom { height:2px; }
+  .metamap.mm-zoomed .mm-pt { width:44px; height:53px; }
+  .mm-zline { position:absolute; font-size:9px; font-weight:700; color:var(--accent); background:rgba(13,15,20,0.55); border-radius:5px; padding:1px 5px; pointer-events:none; }
+  .mm-back { position:absolute; top:6px; left:6px; z-index:5; background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .mm-ztitle { position:absolute; top:8px; right:8px; font-size:12px; font-weight:700; color:var(--accent); pointer-events:none; }
 
   @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; }
     .crank-name { font-size:12px; } .crank-bar { display:none; } .metamap { height:260px; } .mm-pt { width:21px; height:25px; } }
@@ -525,6 +535,7 @@ function renderDecks(decks) {
 // ============ 急上昇デッキ ＆ カードメタ（使用率/勝率ランキング＋分布図） ============
 let CARDS_DATA = [];            // カード単体集計（GASの j.cards / なければサンプル）
 const _mmSel = new Set();       // 分布図に表示するカード名
+let _mmZoom = null;             // ズーム中の象限（'tl'/'tr'/'bl'/'br' or null＝全体）
 let _ctab = 'use';              // 'use'=使用率 / 'win'=勝率
 const WIN_MIN_GAMES = 20;       // 勝率ランキングの最低対戦数（少数試合のブレ除去）
 
@@ -616,7 +627,7 @@ function renderCrank() {
       big = '▲' + (c.rise || 0); sub = '使用 ' + useTxt + ' ・ 勝率 ' + winTxt;
       barPct = Math.round((c.rise || 0) / maxRise * 100); barCol = '#ff8a3c'; statCls = 'win';
     } else {
-      big = useTxt; sub = '勝率 ' + winTxt;
+      big = useTxt; sub = '勝率 ' + winTxt + ' ・ ' + (c.games || 0) + '戦';
       barPct = Math.round((c.use || 0) / maxUse * 100); barCol = '#3a8ef0'; statCls = 'use';
     }
     return '<div class="crank-row' + (sel ? ' sel' : '') + '" data-n="' + String(c.name).replace(/"/g, '&quot;') + '">'
@@ -648,6 +659,12 @@ document.getElementById('mmAll').addEventListener('click', () => {
   // 全て表示も「20戦以上の信頼できるカード」だけプロット（マップの母集団と一致）
   CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES) _mmSel.add(c.name); });
   renderCrank(); renderMetaMap();
+});
+// マップの4領域タップでその象限を拡大（カードや戻るボタンの上は除く）
+document.getElementById('metaMap').addEventListener('click', (e) => {
+  if (_mmZoom) return;
+  const q = e.target.closest('.mm-q');
+  if (q) { _mmZoom = q.getAttribute('data-q'); renderMetaMap(); }
 });
 
 // --- メタマップの開閉（ログイン中はアカウントに保存／ログアウト時は開くがデフォルト） ---
@@ -693,25 +710,62 @@ function renderMetaMap() {
     return (lt + eq / 2) / vals.length;
   }
   const clamp = v => Math.max(pad, Math.min(100 - pad, v));
-  const fx = u => clamp(pad + rankFrac(useVals, u) * (100 - 2 * pad));
-  const fy = w => clamp((100 - pad) - rankFrac(winVals, w) * (100 - 2 * pad));
+  const rfx = u => rankFrac(useVals, u); // 使用率の順位 0..1
+  const rfy = w => rankFrac(winVals, w); // 勝率の順位 0..1
+  const QLABEL = { tl: '目立たないが勝ってる', tr: '安定', bl: 'チャレンジング', br: '人気だが勝ってない' };
+  const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
+  const sel = [..._mmSel].map(n => byName[n]).filter(c => c && c.use != null && c.win != null);
+
+  map.classList.toggle('mm-zoomed', !!_mmZoom);
+
+  // 点を描くヘルパー（rx,ry は 0..1 の正規化座標、上ほど勝率高）
+  const ptHtml = (c, rx, ry, lab) => {
+    const x = clamp(pad + rx * (100 - 2 * pad));
+    const y = clamp((100 - pad) - ry * (100 - 2 * pad));
+    return '<div class="mm-pt" style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + '%" title="' + c.name + ' 使用' + (c.use || 0) + '% / 勝率' + (c.win || 0) + '%">'
+      + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '">' : '')
+      + (lab ? '<span class="lab">' + c.name + '</span>' : '') + '</div>';
+  };
+
+  // ===== ズーム表示（1象限を拡大。中央線が端に来て、線からの近さが見える） =====
+  if (_mmZoom) {
+    const Q = _mmZoom, right = (Q === 'tr' || Q === 'br'), top = (Q === 'tl' || Q === 'tr');
+    const inQ = c => (right ? rfx(c.use) >= 0.5 : rfx(c.use) < 0.5) && (top ? rfy(c.win) >= 0.5 : rfy(c.win) < 0.5);
+    const cards = sel.filter(inQ);
+    // 象限内の順位を 0..1 に引き伸ばす
+    const sx = c => { let r = rfx(c.use); return right ? (r - 0.5) * 2 : r * 2; };
+    const sy = c => { let r = rfy(c.win); return top ? (r - 0.5) * 2 : r * 2; };
+    // 中央線（＝この象限の内側の辺）を強調表示
+    const vEdge = right ? pad : (100 - pad);   // 縦の中央線が来る辺
+    const hEdge = top ? (100 - pad) : pad;     // 横の中央線が来る辺
+    let base =
+        '<div class="mm-axis v zoom" style="left:' + vEdge + '%"></div>'
+      + '<div class="mm-axis h zoom" style="top:' + hEdge + '%"></div>'
+      + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">←中央線（使用率）</div>'
+      + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">中央線（勝率）</div>'
+      + '<button class="mm-back" id="mmBack" type="button">← 全体に戻る</button>'
+      + '<div class="mm-ztitle">' + QLABEL[Q] + '</div>';
+    if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; bindBack(); return; }
+    map.innerHTML = base + cards.map(c => ptHtml(c, sx(c), sy(c), true)).join('');
+    bindBack();
+    return;
+  }
+
+  // ===== 全体表示 =====
   const base =
-      '<div class="mm-q tl"></div><div class="mm-q tr"></div><div class="mm-q bl"></div><div class="mm-q br"></div>'
+      '<div class="mm-q tl" data-q="tl"></div><div class="mm-q tr" data-q="tr"></div><div class="mm-q bl" data-q="bl"></div><div class="mm-q br" data-q="br"></div>'
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
     + '<div class="mm-qlabel tl">目立たないが勝ってる</div><div class="mm-qlabel tr">安定</div>'
     + '<div class="mm-qlabel bl">チャレンジング</div><div class="mm-qlabel br">人気だが勝ってない</div>'
     + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">勝率 ↑</div>';
-  const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
-  const sel = [..._mmSel].map(n => byName[n]).filter(c => c && c.use != null && c.win != null);
-  if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます</div>'; return; }
+  if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます<br><span style="font-size:10px;color:var(--text-dim)">（4つの領域をタップすると拡大）</span></div>'; return; }
   const showLab = sel.length <= 12; // 多いとラベルが被るので、選択が少ないときだけ名前を出す
-  const pts = sel.map(c => {
-    const x = fx(c.use), y = fy(c.win);
-    return '<div class="mm-pt" style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + '%" title="' + c.name + ' 使用' + (c.use || 0) + '% / 勝率' + (c.win || 0) + '%">'
-      + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '">' : '')
-      + (showLab ? '<span class="lab">' + c.name + '</span>' : '') + '</div>';
-  }).join('');
+  const pts = sel.map(c => ptHtml(c, rfx(c.use), rfy(c.win), showLab)).join('');
   map.innerHTML = base + pts;
+}
+function bindBack() {
+  const b = document.getElementById('mmBack');
+  if (b) b.addEventListener('click', (e) => { e.stopPropagation(); _mmZoom = null; renderMetaMap(); });
 }
 function initCardMeta(isSample) {
   const note = document.getElementById('cardsNote');
