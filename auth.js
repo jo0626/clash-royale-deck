@@ -199,6 +199,7 @@ const CRAuth = {
   // ── クラロワID連携の基礎：プレイヤータグから所持カードを取得 ──
   getCrTag() { return (currentProfile && currentProfile.crTag) || ""; },
   getCrName() { return _crName || ""; }, // クラロワ ゲーム内の名前（取得済みなら）
+  getDisplayName() { return currentUser ? resolveDisplayName(currentUser, currentProfile) : ""; }, // 表示名（未ログインは空）
   getOwnedCards() { return _ownedCards; }, // 取得済みなら日本語カード名の配列、未取得はnull
 
   // 表示名モードを切り替え（"account" or "game"）

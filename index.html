@@ -316,6 +316,10 @@
     justify-content: center; font-family: var(--font-head); text-shadow: 0 1px 1px rgba(0,0,0,0.5); }
   .sdk-bdg { position: absolute; top: 1px; right: 2px; font-size: 10px; }
   .share-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px; line-height: 1.5; }
+  .share-by { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--text);
+    margin: 0 0 10px; cursor: pointer; }
+  .share-by input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .share-by b { color: var(--accent); }
   /* 保存デッキ呼び出しボタン */
   /* デッキスロット表示（クリア/保存 と デッキ分析へ の中央）。数字だけでスロットと分かる見た目 */
   .slot-load-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2089,11 +2093,16 @@ function openShareDialog(deckArr, deckName) {
     return `<div class="${cls}"><span class="sdk-pip" style="background:${pip}">${c.cost}</span>${bdg ? `<span class="sdk-bdg">${bdg}</span>` : ''}<img src="${img}" alt="${c.name}" loading="lazy"></div>`;
   }).join('');
 
+  // ログイン中なら「share by 〇〇」を入れるか選べる（画像にクリエイター名が載る）
+  const byName = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
+  const byNameEsc = byName.replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
+
   const ov = document.createElement('div');
   ov.className = 'slot-pop';
   ov.innerHTML = `<div class="slot-pop-box">
     <div class="slot-pop-title">✅ 保存しました！このデッキを共有する？</div>
     <div class="share-deck">${preview}</div>
+    ${byName ? `<label class="share-by"><input type="checkbox" id="shBy" checked> 画像に <b>share by ${byNameEsc}</b> を入れる</label>` : ''}
     <div class="share-btns">
       <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
       <a class="share-b sns-line" id="shLine" target="_blank" rel="noopener">LINEで送る</a>
@@ -2102,12 +2111,18 @@ function openShareDialog(deckArr, deckName) {
     <div class="share-hint">閉じるときはこの外側をタップ</div>
   </div>`;
   ov.onclick = (e) => { if (e.target === ov) ov.remove(); }; // 外側タップで閉じる（「あとで」ボタンは廃止）
-  // Twitter（X）：URLは t.co で自動的に短縮される
-  ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(url);
-  // LINE：LINEアプリのメッセージ作成を開く
-  ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + url);
+
+  const shBy = ov.querySelector('#shBy');
+  const finalUrl = () => url + (shBy && shBy.checked && byName ? '&by=' + encodeURIComponent(byName) : '');
+  const syncLinks = () => {
+    const u = finalUrl();
+    ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(u);
+    ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + u);
+  };
+  if (shBy) shBy.addEventListener('change', syncLinks);
+  syncLinks();
   const copyBtn = ov.querySelector('#shCopy');
-  copyBtn.onclick = () => { navigator.clipboard.writeText(url).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
+  copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
   document.body.appendChild(ov);
 }
 
