@@ -28,6 +28,12 @@
   .seg-tabs { display:flex; gap:4px; max-width:900px; margin:20px auto 0; padding:0 20px; }
   .seg-tab { flex:1; padding:12px; text-align:center; cursor:pointer; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-weight:700; font-size:14px; color:var(--text-muted); transition:all 0.15s; font-family:var(--font-head); letter-spacing:1px; }
   .seg-tab.active { background:rgba(232,160,32,0.12); border-color:var(--accent); color:var(--accent); }
+  /* 初期描画のチラつき防止：JS実行前に html[data-seg] で正しいタブ/セクションを確定させる */
+  #secCards { display:none; }
+  html[data-seg="cards"] #secDecks { display:none; }
+  html[data-seg="cards"] #secCards { display:block; }
+  html[data-seg="cards"] #topSeg .seg-tab[data-seg="cards"],
+  html[data-seg="decks"] #topSeg .seg-tab[data-seg="decks"] { background:rgba(232,160,32,0.12); border-color:var(--accent); color:var(--accent); }
   /* overflow:visible にして position:sticky（分布図マップの上部固定）を効かせる。横スワイプは未使用 */
   .swipe-viewport { overflow:visible; max-width:900px; margin:0 auto; }
   .swipe-track { display:flex; transition:transform 0.3s ease; }
@@ -170,6 +176,7 @@
   @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; }
     .crank-name { font-size:12px; } .crank-bar { display:none; } .metamap { height:260px; } .mm-pt { width:21px; height:25px; } }
 </style>
+<script>/* 初期描画前にURLハッシュからタブを確定（デッキが一瞬光るチラつき防止） */document.documentElement.setAttribute('data-seg', (location.hash.slice(1) === 'cards') ? 'cards' : 'decks');</script>
 </head>
 <body>
 
@@ -184,7 +191,7 @@
 </header>
 
 <div class="seg-tabs" id="topSeg">
-  <button class="seg-tab active" data-seg="decks"><span class="seg-emoji">🏆</span>デッキ</button>
+  <button class="seg-tab" data-seg="decks"><span class="seg-emoji">🏆</span>デッキ</button>
   <button class="seg-tab" data-seg="cards"><span class="seg-emoji">🃏</span>カード</button>
 </div>
 
@@ -217,7 +224,7 @@
       <p class="note">※ メタは随時変わります。代表的な型を掲載しています。</p>
     </section>
 
-    <section id="secCards" style="display:none">
+    <section id="secCards">
       <h1 class="page-title">カード人気・メタ</h1>
       <p class="page-sub">環境での使用率と勝率、そして「人気だが勝てない／地味だが勝てる」などをマップで表示。</p>
       <p class="agg-note" id="cardsNote"></p>
@@ -544,6 +551,7 @@ setTimeout(setHeaderH, 300); // フォント確定後に再計測
 // --- トップ：デッキ / カード 切替（URLハッシュに状態を保持＝リロード・直リンクで同じタブが開く） ---
 function setSeg(seg) {
   seg = (seg === 'cards') ? 'cards' : 'decks';
+  document.documentElement.setAttribute('data-seg', seg); // CSSによる初期表示と一致させる
   document.querySelectorAll('#topSeg .seg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-seg') === seg));
   document.getElementById('secDecks').style.display = seg === 'cards' ? 'none' : '';
   document.getElementById('secCards').style.display = seg === 'cards' ? '' : 'none';
