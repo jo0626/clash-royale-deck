@@ -215,7 +215,7 @@ function updateDecks() {
   function finalizeDeck(r) {
     var champName = null, champBest = 0;
     r.cards.forEach(function (n) { var c = (r.votes[n] || {}).champ || 0; if (c > champBest) { champBest = c; champName = n; } });
-    var thr = Math.max(2, r.count * 0.25); // 上位2枚かつ25%以上が特殊装備したカードを採用
+    var thr = Math.max(1, r.count * 0.25); // 上位2枚かつ25%以上が特殊装備（下限1＝低サンプルの急上昇でも進化/ヒーローを拾う。count≧8の人気デッキは影響なし）
     var scored = r.cards.map(function (n) {
       var v = r.votes[n] || {};
       return { n: n, score: (v.evo || 0) + (v.hero || 0) + (v.both || 0), e: (v.evo || 0), h: (v.hero || 0) };

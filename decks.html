@@ -314,6 +314,12 @@ function applyDecks() {
   const list = currentList();
   const shown = list.filter(passFilters);
   renderDecks(shown);
+  // 急上昇がまだ空（前回スナップショット未蓄積）のときは集計中を表示
+  if (activeTab === 'trend' && list.length === 0) {
+    document.getElementById('deckList').innerHTML =
+      '<div class="coming-soon"><div class="big">🔥</div>急上昇は集計中です'
+      + '<div class="note" style="margin-top:8px">前回データとの差分が取れる、数回の更新後に表示されます</div></div>';
+  }
   if (note) {
     if (onlyOwned && ownedSet) note.textContent = shown.length + ' / ' + list.length + ' デッキ' + (cardFilter ? '（絞り込み中）' : 'が今のカードで組めます');
     else note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
@@ -619,7 +625,7 @@ fetch('decks.json', { cache: 'no-store' })
     ALL_DECKS = hasData ? j.decks : DECKS;
     WIN_DECKS = (j && Array.isArray(j.winDecks)) ? j.winDecks : [];
     const trendReal = j && Array.isArray(j.trending) && j.trending.length;
-    TREND_DECKS = trendReal ? j.trending : TREND_SAMPLE;
+    TREND_DECKS = trendReal ? j.trending : []; // 内蔵サンプルは形(forms)を持たず崩れるので使わない。空なら「集計中」表示
     const cardsReal = j && Array.isArray(j.cards) && j.cards.length;
     CARDS_DATA = cardsReal ? j.cards : CARDS_SAMPLE;
     initCardMeta(!cardsReal);
@@ -646,7 +652,7 @@ fetch('decks.json', { cache: 'no-store' })
     updateDeckTabDesc();
     applyDecks();
   })
-  .catch(() => { ALL_DECKS = DECKS; TREND_DECKS = TREND_SAMPLE; CARDS_DATA = CARDS_SAMPLE; initCardMeta(true); updateDeckTabDesc(); applyDecks(); });
+  .catch(() => { ALL_DECKS = DECKS; TREND_DECKS = []; CARDS_DATA = CARDS_SAMPLE; initCardMeta(true); updateDeckTabDesc(); applyDecks(); });
 </script>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
