@@ -126,7 +126,7 @@ function updateDecks() {
   if (!token) throw new Error('CR_TOKEN 未設定');
   var topN = parseInt(prop('TOP_PLAYERS', '1000'), 10);
   var outN = parseInt(prop('TOP_DECKS', '50'), 10);
-  var intervalHours = parseInt(prop('INTERVAL_HOURS', '12'), 10);
+  var intervalHours = parseInt(prop('INTERVAL_HOURS', '6'), 10);
 
   var ranking = crGet('/locations/global/pathoflegend/players?limit=' + topN, token);
   var players = (ranking.items || []).slice(0, topN);
@@ -412,5 +412,5 @@ function createTriggers() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'updateDecks') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('updateDecks').timeBased().everyHours(12).create();
+  ScriptApp.newTrigger('updateDecks').timeBased().everyHours(6).create();
 }
