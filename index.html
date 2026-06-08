@@ -302,6 +302,20 @@
   .avg-trend svg { display: block; }
   .avg-trend .avg-diff { font-family: var(--font-head); font-weight: 700; font-size: 12px; }
   .deck-header.previewing .avg-val { transition: color 0.1s; }
+  /* 共有ポップのデッキプレビュー */
+  .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
+  .sdk-card { position: relative; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden;
+    background: var(--surface2); border: 1px solid var(--border); }
+  .sdk-card.empty { background: rgba(255,255,255,0.03); }
+  .sdk-card img { width: 100%; height: 100%; object-fit: contain; }
+  .sdk-card.evo { border-color: #8b5cf6; box-shadow: inset 0 0 7px rgba(139,92,246,0.5); }
+  .sdk-card.hero { border-color: #e8a020; box-shadow: inset 0 0 7px rgba(232,160,32,0.5); }
+  .sdk-card.champ { border-color: #f0c54a; box-shadow: inset 0 0 7px rgba(240,197,74,0.55); }
+  .sdk-pip { position: absolute; top: 2px; left: 2px; min-width: 14px; height: 14px; padding: 0 3px;
+    border-radius: 4px; font-size: 9px; font-weight: 700; color: #fff; display: flex; align-items: center;
+    justify-content: center; font-family: var(--font-head); text-shadow: 0 1px 1px rgba(0,0,0,0.5); }
+  .sdk-bdg { position: absolute; top: 1px; right: 2px; font-size: 10px; }
+  .share-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px; line-height: 1.5; }
   /* 保存デッキ呼び出しボタン */
   /* デッキスロット表示（クリア/保存 と デッキ分析へ の中央）。数字だけでスロットと分かる見た目 */
   .slot-load-btn { flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2059,30 +2073,36 @@ function openShareDialog(deckArr, deckName) {
   const url = buildDeckShareUrl(deckArr);
   const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
   const lineText = 'あなたのデッキを共有しましょう！';
+  // デッキのプレビュー（8枚を4×2＝コの字順で。進化⚡/ヒーロー👑/チャンピオン🏆も表示）
+  const preview = (deckArr || []).slice(0, 8).map((c, i) => {
+    if (!c) return '<div class="sdk-card empty"></div>';
+    const img = slotCardImg(c, i);
+    const mode = slotMode(c, i);
+    const cls = 'sdk-card' + (mode === 'evolved' ? ' evo' : '') + (c.champion ? ' champ' : (mode === 'hero' ? ' hero' : ''));
+    const pip = COST_COLORS[Math.min(c.cost, 9)] || '#888';
+    const bdg = mode === 'evolved' ? '⚡' : c.champion ? '🏆' : mode === 'hero' ? '👑' : '';
+    return `<div class="${cls}"><span class="sdk-pip" style="background:${pip}">${c.cost}</span>${bdg ? `<span class="sdk-bdg">${bdg}</span>` : ''}<img src="${img}" alt="${c.name}" loading="lazy"></div>`;
+  }).join('');
+
   const ov = document.createElement('div');
   ov.className = 'slot-pop';
-  const hasNative = !!navigator.share;
   ov.innerHTML = `<div class="slot-pop-box">
-    <div class="slot-pop-title">✅ 保存しました！デッキを共有する？</div>
+    <div class="slot-pop-title">✅ 保存しました！このデッキを共有する？</div>
+    <div class="share-deck">${preview}</div>
     <div class="share-btns">
-      ${hasNative ? `<button class="share-b sns-native" id="shNative">📲 共有する</button>` : ``}
       <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
       <a class="share-b sns-line" id="shLine" target="_blank" rel="noopener">LINEで送る</a>
       <button class="share-b sns-copy" id="shCopy">🔗 リンクをコピー</button>
     </div>
-    <button class="btn btn-ghost" style="width:100%;margin-top:8px" id="shClose">あとで</button>
+    <div class="share-hint">閉じるときはこの外側をタップ</div>
   </div>`;
-  ov.querySelector('#shClose').onclick = () => ov.remove();
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+  ov.onclick = (e) => { if (e.target === ov) ov.remove(); }; // 外側タップで閉じる（「あとで」ボタンは廃止）
   // Twitter（X）：URLは t.co で自動的に短縮される
   ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(url);
-  // LINE：Web版ではなくLINEアプリのメッセージ作成を開く（line.me/R/msg/text/）
+  // LINE：LINEアプリのメッセージ作成を開く
   ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + url);
   const copyBtn = ov.querySelector('#shCopy');
   copyBtn.onclick = () => { navigator.clipboard.writeText(url).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
-  if (hasNative) {
-    ov.querySelector('#shNative').onclick = () => { navigator.share({ title: 'CR Deck Builders', text: xText, url }).catch(() => {}); };
-  }
   document.body.appendChild(ov);
 }
 
