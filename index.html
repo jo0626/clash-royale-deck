@@ -2070,7 +2070,12 @@ function buildDeckShareUrl(deckArr) {
   return base + '?deck=' + encodeURIComponent(names.join(','));
 }
 function openShareDialog(deckArr, deckName) {
-  const url = buildDeckShareUrl(deckArr);
+  // 共有リンクは Cloudflare Worker の /share（SNSにデッキ画像が展開される）。グレードはログイン中のtier。
+  const names8 = (deckArr || []).slice(0, 8).map(c => (c ? c.name : ''));
+  while (names8.length && names8[names8.length - 1] === '') names8.pop();
+  const grade = (window.CRAuth && CRAuth.getProfile && CRAuth.getProfile() && CRAuth.getProfile().tier) || 'free';
+  const url = 'https://crdeckbuilders.com/share?deck=' + encodeURIComponent(names8.join(',')) +
+    '&g=' + encodeURIComponent(grade) + (deckName ? '&n=' + encodeURIComponent(deckName) : '');
   const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
   const lineText = 'あなたのデッキを共有しましょう！';
   // デッキのプレビュー（8枚を4×2＝コの字順で。進化⚡/ヒーロー👑/チャンピオン🏆も表示）
