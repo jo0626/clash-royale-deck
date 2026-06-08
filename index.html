@@ -2087,11 +2087,13 @@ function buildDeckShareUrl(deckArr) {
 }
 function openShareDialog(deckArr, deckName) {
   // 共有リンクは Cloudflare Worker の /share（SNSにデッキ画像が展開される）。グレードはログイン中のtier。
-  const names8 = (deckArr || []).slice(0, 8).map(c => (c ? c.name : ''));
-  while (names8.length && names8[names8.length - 1] === '') names8.pop();
+  // 共有リンクは短くするため、カードを英字スラッグ(hog-rider等)で渡す（日本語名のURLエンコードは巨大化するため）。
+  // Worker側(/share・/ogimg)でスラッグ→日本語に戻す。旧リンク（日本語名）も引き続き動く。
+  const slugOf = c => { const m = ((c && c.img) || '').match(/cards\/([a-z0-9-]+)\./); return m ? m[1] : ''; };
+  const slugs = (deckArr || []).slice(0, 8).map(c => (c ? slugOf(c) : ''));
+  while (slugs.length && slugs[slugs.length - 1] === '') slugs.pop();
   const grade = (window.CRAuth && CRAuth.getProfile && CRAuth.getProfile() && CRAuth.getProfile().tier) || 'free';
-  const url = 'https://crdeckbuilders.com/share?deck=' + encodeURIComponent(names8.join(',')) +
-    '&g=' + encodeURIComponent(grade); // デッキ名（スロット名）は載せない
+  const url = 'https://crdeckbuilders.com/share?deck=' + slugs.join(',') + '&g=' + grade; // スラッグなのでURLエンコード不要＝短い
   const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
   const lineText = 'あなたのデッキを共有しましょう！';
   // デッキのプレビュー（8枚を4×2＝コの字順で。進化⚡/ヒーロー👑/チャンピオン🏆も表示）
