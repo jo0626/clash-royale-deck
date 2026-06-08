@@ -141,6 +141,7 @@
   .mm-clear { background:var(--surface); border:1px solid var(--border-hi); color:var(--text-muted); border-radius:999px;
     padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
   .mm-clear:hover { color:var(--text); }
+  .mm-btns { display:flex; gap:6px; flex-shrink:0; }
   .mm-hint { font-size:11px; color:var(--text-dim); margin:0 0 10px; line-height:1.6; }
   .metamap { position:relative; width:100%; height:300px; background:var(--surface);
     border:1px solid var(--border); border-radius:12px; overflow:hidden; }
@@ -223,10 +224,10 @@
 
       <div class="mm-sticky">
         <div class="mm-head">
-          <span class="mm-title">📍 分布図マップ</span>
-          <button class="mm-clear" id="mmClear" type="button">選択をクリア</button>
+          <span class="mm-title"><svg width="15" height="15" viewBox="0 0 16 16" style="vertical-align:-2px;margin-right:5px" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="#e8a020" stroke-width="1.4"/><line x1="8" y1="2" x2="8" y2="14" stroke="#e8a020" stroke-width="1" opacity="0.45"/><line x1="2" y1="8" x2="14" y2="8" stroke="#e8a020" stroke-width="1" opacity="0.45"/><circle cx="11" cy="5" r="2" fill="#e8a020"/></svg>メタマップ</span>
+          <span class="mm-btns"><button class="mm-clear" id="mmAll" type="button">全て表示</button><button class="mm-clear" id="mmClear" type="button">選択をクリア</button></span>
         </div>
-        <p class="mm-hint">下のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
+        <p class="mm-hint">下のランキングでカードをタップすると、ここに表示されます。横=使用率の順位／縦=勝率の順位。</p>
         <div id="metaMap" class="metamap"></div>
       </div>
 
@@ -619,17 +620,27 @@ document.getElementById('crankList').addEventListener('click', (e) => {
   renderCrank(); renderMetaMap();
 });
 document.getElementById('mmClear').addEventListener('click', () => { _mmSel.clear(); renderCrank(); renderMetaMap(); });
+document.getElementById('mmAll').addEventListener('click', () => {
+  CARDS_DATA.forEach(c => { if (c.use != null && c.win != null) _mmSel.add(c.name); });
+  renderCrank(); renderMetaMap();
+});
 
 // --- 分布図マップ（選んだカードだけプロット） ---
 function renderMetaMap() {
   const map = document.getElementById('metaMap');
-  const uses = CARDS_DATA.map(c => c.use || 0);
-  const wins = CARDS_DATA.map(c => c.win || 0).filter(v => v > 0);
-  const uMax = Math.max(1, ...uses);
-  const wMin = Math.min(...wins, 45), wMax = Math.max(...wins, 55);
+  // 使用率は分散して低い側に潰れるので、軸は「順位(パーセンタイル)」で配置＝中央値が真ん中、左右に散る。
+  // 同点は中間順位を共有。実際の%はツールチップで表示。
+  const useVals = CARDS_DATA.filter(c => c.use != null).map(c => c.use);
+  const winVals = CARDS_DATA.filter(c => c.win != null).map(c => c.win);
   const pad = 9;
-  const fx = u => pad + (u / uMax) * (100 - 2 * pad);
-  const fy = w => (100 - pad) - ((w - wMin) / Math.max(1, wMax - wMin)) * (100 - 2 * pad);
+  function rankFrac(vals, v) {
+    if (!vals.length) return 0.5;
+    let lt = 0, eq = 0;
+    for (const x of vals) { if (x < v) lt++; else if (x === v) eq++; }
+    return (lt + eq / 2) / vals.length;
+  }
+  const fx = u => pad + rankFrac(useVals, u) * (100 - 2 * pad);
+  const fy = w => (100 - pad) - rankFrac(winVals, w) * (100 - 2 * pad);
   const base =
       '<div class="mm-q tl"></div><div class="mm-q tr"></div><div class="mm-q bl"></div><div class="mm-q br"></div>'
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
@@ -637,10 +648,10 @@ function renderMetaMap() {
     + '<div class="mm-qlabel bl">不遇</div><div class="mm-qlabel br">人気だが勝てない</div>'
     + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">↑ 勝率</div>';
   const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
-  const sel = [..._mmSel].map(n => byName[n]).filter(Boolean);
+  const sel = [..._mmSel].map(n => byName[n]).filter(c => c && c.use != null && c.win != null);
   if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます</div>'; return; }
   const pts = sel.map(c => {
-    const x = fx(c.use || 0), y = fy(c.win || 0);
+    const x = fx(c.use), y = fy(c.win);
     return '<div class="mm-pt" style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + '%" title="' + c.name + ' 使用' + (c.use || 0) + '% / 勝率' + (c.win || 0) + '%">'
       + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '">' : '')
       + '<span class="lab">' + c.name + '</span></div>';
