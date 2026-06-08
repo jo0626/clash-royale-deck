@@ -74,6 +74,10 @@ const HINT_KEY = "cr_user_hint";
 function readHint() { try { return JSON.parse(localStorage.getItem(HINT_KEY) || "null"); } catch (e) { return null; } }
 function writeHint(h) { try { localStorage.setItem(HINT_KEY, JSON.stringify(h)); } catch (e) {} }
 function clearHint() { try { localStorage.removeItem(HINT_KEY); } catch (e) {} }
+// クラロワ ゲーム内名をタグ単位でキャッシュ（再読み込み後も即「2択」表示できるように）
+function cachedName(tag) { try { return tag ? (localStorage.getItem("cr_name_" + tag) || null) : null; } catch (e) { return null; } }
+function setCachedName(tag, name) { try { if (tag && name) localStorage.setItem("cr_name_" + tag, name); } catch (e) {} }
+function clearCachedName(tag) { try { if (tag) localStorage.removeItem("cr_name_" + tag); } catch (e) {} }
 
 // ---- まずUIを必ず出す（Firebaseの読み込みを待たない） ---------------
 injectAccountUI();
@@ -104,6 +108,7 @@ if (!isConfigured) {
       currentUser = user;
       if (user) {
         currentProfile = await ensureProfile(user);
+        _crName = cachedName(currentProfile && currentProfile.crTag); // 再読込でも即2択表示
         setLoggedInUI(user, currentProfile);
         writeHint({ displayName: resolveDisplayName(user, currentProfile), photoURL: user.photoURL || "", tier: (currentProfile && currentProfile.tier) || "free" });
         CRAuth.refreshOwnedCards(); // ログイン時、IDがあれば所持カードを取得（基礎）
@@ -191,9 +196,19 @@ const CRAuth = {
 
   async setCrTag(tag) {
     if (!currentUser || !FB) return;
-    const clean = String(tag).trim().toUpperCase().replace(/^#/, "");
-    await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { crTag: clean, updatedAt: FB.serverTimestamp() });
-    if (currentProfile) currentProfile.crTag = clean;
+    const clean = String(tag).trim().toUpperCase().replace(/^#/, "").replace(/[^A-Z0-9]/g, "");
+    const prevTag = (currentProfile && currentProfile.crTag) || "";
+    const patch = { crTag: clean, updatedAt: FB.serverTimestamp() };
+    if (!clean) patch.nameMode = "account"; // ID解除時はゲーム内名が使えないのでアカウント名へ
+    await FB.updateDoc(FB.doc(db, "users", currentUser.uid), patch);
+    if (currentProfile) { currentProfile.crTag = clean; if (!clean) currentProfile.nameMode = "account"; }
+    if (clean !== prevTag) { clearCachedName(prevTag); _crName = null; } // タグ変更/解除で旧ゲーム内名は破棄
+    if (!clean) {
+      // 登録抹消：所持カード・ゲーム内名をクリアし、メニュー/アバターを作り直す
+      _ownedCards = null;
+      window.dispatchEvent(new CustomEvent("cr-owned-cards", { detail: null }));
+      setLoggedInUI(currentUser, currentProfile);
+    }
   },
 
   // ── クラロワID連携の基礎：プレイヤータグから所持カードを取得 ──
@@ -225,7 +240,7 @@ const CRAuth = {
       const res = await fetch(url, { cache: "no-store" });
       const data = await res.json();
       _ownedCards = Array.isArray(data.cards) ? data.cards : (Array.isArray(data) ? data : []);
-      if (data && typeof data.name === "string" && data.name) _crName = data.name; // ゲーム内名を保持
+      if (data && typeof data.name === "string" && data.name) { _crName = data.name; setCachedName(tag, _crName); } // ゲーム内名を保持＋キャッシュ
       try { localStorage.setItem("cr_owned_" + tag, JSON.stringify(_ownedCards)); } catch (e) {}
       window.dispatchEvent(new CustomEvent("cr-owned-cards", { detail: _ownedCards }));
       refreshNameUI(); // ゲーム内名が取れたら表示名の選択肢を更新（モードがgameなら名前も反映）
@@ -351,7 +366,7 @@ function injectAccountUI() {
     .cr-name-opt input[type=radio]:disabled + span { color: var(--text-dim,#3a3f50); }
     .cr-menu .cr-row { display: flex; gap: 6px; align-items: center; margin: 8px 0; }
     .cr-menu input { flex: 1; min-width: 0; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07));
-      border-radius: 6px; color: var(--text,#e8eaf0); padding: 6px 8px; font-size: 13px; outline: none; }
+      border-radius: 6px; color: var(--text,#e8eaf0); padding: 6px 8px; font-size: 16px; outline: none; }
     .cr-menu .cr-tag-prefix { color: var(--text-muted,#6b7080); font-weight: 700; font-size: 14px; }
     .cr-menu button.cr-mini { flex: none; white-space: nowrap; }
     .cr-menu button.cr-mini { background: var(--surface2,#1e2230); border: 1px solid var(--border-hi,rgba(255,255,255,.15));
@@ -468,9 +483,9 @@ function renderNamePicker() {
   const user = currentUser, profile = currentProfile;
   const mode = (profile && profile.nameMode) || "account";
   let html = '<div class="cr-name-pick-label">表示名</div>'
-    + '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>アカウント名（' + esc_(accountNameOf(user)) + "）</span></label>";
+    + '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>' + esc_(accountNameOf(user)) + "</span></label>";
   if (_crName) {
-    html += '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span>ゲーム内の名前（' + esc_(_crName) + "）</span></label>";
+    html += '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span>' + esc_(_crName) + "</span></label>";
   }
   p.innerHTML = html;
   const accR = document.getElementById("crNameAccRadio");
@@ -480,8 +495,8 @@ function renderNamePicker() {
   [accR, gameR].forEach((r) => { if (r) r.onchange = () => { if (r.checked) CRAuth.setNameMode(r.value); }; });
   const hint = document.getElementById("crTagHint");
   if (hint) hint.textContent = _crName
-    ? "クラロワIDを登録済み。上で表示名を切り替えられます。"
-    : "クラロワIDを入力すると、ゲーム内の名前を表示名に選べます。";
+    ? "「保存」で更新／空にして「保存」で登録を解除できます。"
+    : "クラロワIDを入力して「保存」すると、所持カードの絞り込みやゲーム内の名前の表示に使えます。";
 }
 
 // 表示名まわりのUIだけを更新（メニューは作り直さない）
@@ -505,7 +520,7 @@ function buildMenu(user, profile) {
     <div class="cr-name-picker" id="crNamePicker"></div>
     <div class="cr-row">
       <span class="cr-tag-prefix">#</span>
-      <input id="crTagInput" placeholder="ABC123" value="${esc_(_tagDraft != null ? _tagDraft : ((profile && profile.crTag) || ""))}"
+      <input id="crTagInput" placeholder="ABC123" value="${esc_((profile && profile.crTag) || "")}"
         autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12"
         inputmode="text" style="text-transform:uppercase">
       <button class="cr-mini" id="crTagSave">保存</button>
@@ -519,16 +534,15 @@ function buildMenu(user, profile) {
 
   // 入力は自動で大文字＋英数字のみ（#不要・小文字や記号は弾く）
   const tagInput = document.getElementById("crTagInput");
+  // 入力中は見た目だけ整形（大文字・英数字）。保存を押すまで登録内容は一切書き換えない（下書きは保持しない）
   if (tagInput) tagInput.addEventListener("input", () => {
     tagInput.value = tagInput.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    _tagDraft = tagInput.value; // 下書きを保持（保存を押すまでメニュー開閉・他タップで消えない）
   });
   document.getElementById("crTagSave").onclick = async () => {
     const v = document.getElementById("crTagInput").value;
-    await CRAuth.setCrTag(v); // アカウント(Firestore)に上書きで紐づけ。# は除去して保存、API呼び出し時に付与
-    _tagDraft = null;         // 保存できたので下書きは破棄（以降は保存済みの値を表示）
+    await CRAuth.setCrTag(v); // 「保存」を押した時だけ登録を更新。空なら登録抹消
     flash("crTagSave", "✓");
-    CRAuth.refreshOwnedCards(); // ID保存時に所持カード＋ゲーム内名を取りに行く
+    if (v.trim()) CRAuth.refreshOwnedCards(); // 登録時のみ所持カード＋ゲーム内名を取得
   };
   document.getElementById("crLogout").onclick = () => CRAuth.signOut();
 }
@@ -536,9 +550,11 @@ function buildMenu(user, profile) {
 function toggleMenu() {
   const m = document.getElementById("crMenu");
   m.classList.toggle("open");
-  // 開く時も閉じる時も、名前選択ピッカーは常に閉じた状態にする
-  const p = document.getElementById("crNamePicker");
-  if (p) p.classList.remove("open");
+  if (m.classList.contains("open")) {
+    // 開くたびに入力欄を保存済みの値へ戻す（未保存の編集は破棄。登録は「保存」時だけ変わる）
+    const ti = document.getElementById("crTagInput");
+    if (ti) ti.value = (currentProfile && currentProfile.crTag) || "";
+  }
   syncMenuBackdrop();
 }
 // メニューを開いたら、画面全体に透明な受け皿を出して「外側タップで閉じる（その操作は他に波及しない）」を実現

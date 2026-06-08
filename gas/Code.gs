@@ -158,7 +158,12 @@ function updateDecks() {
   function tally(map, cards, won) {
     var d = classifyDeck(cards);
     if (!d) return false;
-    var key = d.jp.slice().sort().join('|');
+    // デッキ識別キー：8枚の集合（順不同）＋ 特殊カード(進化/ヒーロー/チャンピオン)の集合（順不同）。
+    //   → 残り5枚の並びは無視・特殊スロット同士の入れ替えも無視。
+    //     ただし「どのカードを進化させたか」が違えば別デッキとして集計する。
+    var special = [];
+    d.jp.forEach(function (n, idx) { if (d.fm[idx] !== 'norm') special.push(n); });
+    var key = d.jp.slice().sort().join('|') + '#' + special.slice().sort().join('|');
     var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {} });
     e.count++;
     if (won === true) e.wins++;
