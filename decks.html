@@ -190,6 +190,13 @@
   .mm-zline { position:absolute; font-size:9px; font-weight:700; color:var(--accent); background:rgba(13,15,20,0.55); border-radius:5px; padding:1px 5px; pointer-events:none; }
   .mm-back { position:absolute; top:6px; left:6px; z-index:5; background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
   .mm-ztitle { position:absolute; top:8px; right:8px; font-size:12px; font-weight:700; color:var(--accent); pointer-events:none; }
+  /* プロット本体（左・下に軸メモリ用の余白） */
+  .mm-plot { position:absolute; left:34px; right:6px; top:6px; bottom:18px; }
+  .mm-tick { position:absolute; font-size:9px; font-weight:700; color:var(--text-muted); pointer-events:none; white-space:nowrap; }
+  .mm-tick.y { left:0; width:30px; text-align:right; }
+  .mm-tick.y-top { top:4px; } .mm-tick.y-mid { top:50%; transform:translateY(-50%); } .mm-tick.y-bot { bottom:16px; }
+  .mm-tick.x { bottom:3px; }
+  .mm-tick.x-left { left:34px; } .mm-tick.x-mid { left:50%; transform:translateX(-50%); } .mm-tick.x-right { right:6px; }
 
   @media (max-width:720px) { .logo { font-size:16px; } .nav-icon { width:30px; height:30px; } .nav-icon .nav-emoji { font-size:15px; } .page-title { font-size:19px; } .deck-cards-grid { gap:4px; max-width:none; }
     .crank-name { font-size:12px; } .crank-bar { display:none; } .metamap { height:260px; } .mm-pt { width:21px; height:25px; } }
@@ -666,7 +673,8 @@ document.getElementById('metaMap').addEventListener('click', (e) => {
   if (!_mmSel.size) return;             // 何も選択してないときは拡大しない
   if (e.target.closest('.mm-empty')) return;
   const map = document.getElementById('metaMap');
-  const r = map.getBoundingClientRect();
+  const plot = map.querySelector('.mm-plot') || map; // プロット領域（余白を除いた本体）で象限判定
+  const r = plot.getBoundingClientRect();
   if (!r.width || !r.height) return;
   const px = (e.clientX - r.left) / r.width;   // 0=左, 1=右
   const py = (e.clientY - r.top) / r.height;   // 0=上, 1=下
@@ -720,6 +728,14 @@ function renderMetaMap() {
   const clamp = v => Math.max(pad, Math.min(100 - pad, v));
   const rfx = u => rankFrac(useVals, u); // 使用率の順位 0..1
   const rfy = w => rankFrac(winVals, w); // 勝率の順位 0..1
+  // 軸メモリ用の実数値（母集団の最小・中央値・最大）。順位配置なので 端=min/max、真ん中=中央値。
+  const stats = arr => {
+    if (!arr.length) return { min: 0, med: 0, max: 0 };
+    const s = arr.slice().sort((a, b) => a - b);
+    const m = s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+    return { min: s[0], med: Math.round(m * 10) / 10, max: s[s.length - 1] };
+  };
+  const uS = stats(useVals), wS = stats(winVals);
   const QLABEL = { tl: '目立たないが勝ってる', tr: '安定', bl: 'チャレンジング', br: '人気だが勝ってない' };
   const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
   const sel = [..._mmSel].map(n => byName[n]).filter(c => c && c.use != null && c.win != null);
@@ -749,8 +765,8 @@ function renderMetaMap() {
     let base =
         '<div class="mm-axis v zoom" style="left:' + vEdge + '%"></div>'
       + '<div class="mm-axis h zoom" style="top:' + hEdge + '%"></div>'
-      + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">←中央線（使用率）</div>'
-      + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">中央線（勝率）</div>'
+      + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">中央 使用率' + uS.med + '%</div>'
+      + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">中央 勝率' + wS.med + '%</div>'
       + '<button class="mm-back" id="mmBack" type="button">← 全体に戻る</button>'
       + '<div class="mm-ztitle">' + QLABEL[Q] + '</div>';
     if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; bindBack(); return; }
@@ -766,10 +782,21 @@ function renderMetaMap() {
     + '<div class="mm-qlabel tl">目立たないが勝ってる</div><div class="mm-qlabel tr">安定</div>'
     + '<div class="mm-qlabel bl">チャレンジング</div><div class="mm-qlabel br">人気だが勝ってない</div>'
     + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">勝率 ↑</div>';
-  if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます<br><span style="font-size:10px;color:var(--text-dim)">（4つの領域をタップすると拡大）</span></div>'; return; }
+  // 軸メモリ（実数値）：左の余白に勝率(上=max/中=中央値/下=min)、下の余白に使用率(左=min/中=中央値/右=max)
+  const ticks =
+      '<div class="mm-tick y y-top">' + wS.max + '%</div>'
+    + '<div class="mm-tick y y-mid">' + wS.med + '%</div>'
+    + '<div class="mm-tick y y-bot">' + wS.min + '%</div>'
+    + '<div class="mm-tick x x-left">' + uS.min + '%</div>'
+    + '<div class="mm-tick x x-mid">' + uS.med + '%</div>'
+    + '<div class="mm-tick x x-right">' + uS.max + '%</div>';
+  if (!sel.length) {
+    map.innerHTML = '<div class="mm-plot">' + base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます<br><span style="font-size:10px;color:var(--text-dim)">（4つの領域をタップすると拡大）</span></div></div>' + ticks;
+    return;
+  }
   const showLab = sel.length <= 12; // 多いとラベルが被るので、選択が少ないときだけ名前を出す
   const pts = sel.map(c => ptHtml(c, rfx(c.use), rfy(c.win), showLab)).join('');
-  map.innerHTML = base + pts;
+  map.innerHTML = '<div class="mm-plot">' + base + pts + '</div>' + ticks;
 }
 function bindBack() {
   const b = document.getElementById('mmBack');
