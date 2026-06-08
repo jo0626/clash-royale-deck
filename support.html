@@ -106,6 +106,10 @@
   .g-hidden .grade-gem { background: linear-gradient(135deg, #3a3f50, #20232c); }
   .g-hidden .grade-name { color: var(--text-dim); }
 
+  .prep-banner { margin: 4px 0 16px; padding: 12px 16px; border-radius: 10px; font-size: 13px; text-align: center;
+    background: rgba(232,160,32,.12); border: 1px solid rgba(232,160,32,.4); color: #f0c54a; }
+  .donate-btn.is-disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.3); pointer-events: none; }
+
   .note { margin-top: 32px; padding: 16px; background: var(--surface); border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
 
   .footer-signature {
@@ -144,16 +148,21 @@
     いただいた支援は、<b>サーバーの防衛（維持費）</b>・カードデータの更新・新機能の開発に使わせていただきます。
   </p>
 
-  <!-- ▼ 寄付リンク（Stripe Payment Link 本番URL ＋ OFUSE）。差し替え時はこの href を更新 -->
+  <!-- ▼ 準備中バナー -->
+  <div class="prep-banner">🔧 支援機能は現在<b>準備中</b>です。もう少しだけお待ちください！</div>
+
+  <!-- ▼ 寄付リンク（準備中につき無効化。再開時はコメント内の href に戻す）
+       Stripe: https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00
+       OFUSE : https://ofuse.me/o?uid=186138 -->
   <div class="donate-buttons">
-    <a class="donate-btn" href="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00" target="_blank" rel="noopener">
+    <span class="donate-btn is-disabled" aria-disabled="true">
       <span class="emoji">💧</span>
-      <span class="label">エリクサーを供給する<small>カード / Apple Pay / Google Pay ・ 登録不要でその場で支援</small></span>
-    </a>
-    <a class="donate-btn" href="https://ofuse.me/o?uid=186138" target="_blank" rel="noopener">
+      <span class="label">エリクサーを供給する<small>準備中</small></span>
+    </span>
+    <span class="donate-btn is-disabled" aria-disabled="true">
       <span class="emoji">🛡️</span>
-      <span class="label">防衛資金を送る（OFUSE）<small>応援メッセージを添えて支援できます</small></span>
-    </a>
+      <span class="label">防衛資金を送る（OFUSE）<small>準備中</small></span>
+    </span>
   </div>
 
   <div class="grade-section">
