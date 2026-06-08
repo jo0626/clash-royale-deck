@@ -6,6 +6,8 @@
 <title>クラロワ 人気デッキ検索・最強デッキ一覧｜デッキ探求 | CR Deck Builders</title>
 <meta name="description" content="クラロワの人気デッキ・最強デッキをコスト・カード・タイプなど様々な角度から探せる。気になるデッキの原型を見つけて、ワンタップで作成ツールに読み込み。">
 <link rel="canonical" href="https://crdeckbuilders.com/decks.html">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
   :root { --bg:#0d0f14; --surface:#161920; --surface2:#1e2230; --border:rgba(255,255,255,0.07); --border-hi:rgba(255,255,255,0.15); --text:#e8eaf0; --text-muted:#6b7080; --text-dim:#3a3f50; --accent:#e8a020; --accent2:#c0781a; --red:#e05050; --evo:#8b5cf6; --hero:#e8a020; --font-head:'Rajdhani',sans-serif; --font-body:'Noto Sans JP',sans-serif; }
@@ -244,9 +246,13 @@ window.addEventListener('cr-owned-cards', (e) => { ownedSet = e.detail ? resolve
   });
 })();
 document.getElementById('ownedToggle').addEventListener('click', () => {
-  // 未ログインならログインを促す（IDはログインに紐づくため）
+  // 未ログインならログインを促す（IDはログインに紐づくため）。読み込み中は誤判定しない
   const loggedIn = window.CRAuth && CRAuth.getUser && CRAuth.getUser();
   if (!loggedIn) {
+    if (window.CRAuth && CRAuth.hasSession && CRAuth.hasSession()) {
+      document.getElementById('ownedNote').textContent = 'ログイン確認中です。少し待ってからもう一度';
+      return;
+    }
     if (window.CRAuth && CRAuth.signIn) CRAuth.signIn();
     else document.getElementById('ownedNote').textContent = 'ログインすると使えます';
     return;

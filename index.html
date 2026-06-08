@@ -10,6 +10,12 @@
 <link rel="canonical" href="https://crdeckbuilders.com/">
 <meta name="robots" content="index,follow">
 <meta name="theme-color" content="#0d0f14">
+<!-- ファビコン（検索結果・タブのアイコン） -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
 <!-- OGP（SNSシェア時の見た目） -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CR Deck Builders">
@@ -1994,7 +2000,10 @@ async function openSlotSaveDialog() {
   const filled = deck.filter(Boolean);
   if (filled.length === 0) { showToast('デッキが空です'); return; }
   if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
-  if (!CRAuth.getUser()) { showToast('保存にはログインが必要です'); CRAuth.signIn(); return; }
+  if (!CRAuth.getUser()) {
+    if (CRAuth.hasSession && CRAuth.hasSession()) { showToast('ログイン確認中です。少し待ってからもう一度'); return; } // ラグ中は未ログイン扱いにしない
+    showToast('保存にはログインが必要です'); CRAuth.signIn(); return;
+  }
 
   let slots = [];
   try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
@@ -2085,7 +2094,10 @@ function updateSlotLoadBtn() {
 }
 async function openSlotLoadPicker() {
   if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
-  if (!CRAuth.getUser()) { showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return; }
+  if (!CRAuth.getUser()) {
+    if (CRAuth.hasSession && CRAuth.hasSession()) { showToast('ログイン確認中です。少し待ってからもう一度'); return; }
+    showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return;
+  }
   let slots = [];
   try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
   if (!slots.length) { showToast('保存済みデッキがありません'); return; }
@@ -2150,7 +2162,10 @@ function initSlotScrub() {
 
   async function openBar() {
     if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
-    if (!CRAuth.getUser()) { showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return; }
+    if (!CRAuth.getUser()) {
+    if (CRAuth.hasSession && CRAuth.hasSession()) { showToast('ログイン確認中です。少し待ってからもう一度'); return; }
+    showToast('呼び出しにはログインが必要です'); CRAuth.signIn(); return;
+  }
     let slots = [];
     try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
     segSlots = slots.filter(s => (s.slots || []).length > 0); // 保存済み（空きでない）スロットだけ

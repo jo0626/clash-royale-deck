@@ -62,6 +62,7 @@ export const TIERS = {
 let app, auth, db;
 let currentUser = null;
 let currentProfile = null;
+let _authReady = false; // Firebaseの認証状態が初回解決したか（解決前はラグ＝ログイン判定が確定しない）
 let _ownedCards = null; // クラロワID連携で取得した所持カード（日本語名の配列）
 let _crName = null;     // クラロワ ゲーム内の名前（プレイヤーAPIから取得）
 let _tagDraft = null;   // CRID入力の下書き（保存を押すまで保持。メニュー開閉で消えない）
@@ -99,6 +100,7 @@ if (!isConfigured) {
     fb.setPersistence(auth, fb.browserLocalPersistence).catch(() => {});
 
     fb.onAuthStateChanged(auth, async (user) => {
+      _authReady = true; // 認証の初回解決が済んだ
       currentUser = user;
       if (user) {
         currentProfile = await ensureProfile(user);
@@ -181,6 +183,10 @@ const CRAuth = {
   async signOut() { if (auth && FB) await FB.signOut(auth); },
   getUser() { return currentUser; },
   getProfile() { return currentProfile; },
+  isAuthReady() { return _authReady; }, // 認証の初回解決が済んだか
+  // ログイン中の可能性が高いか（解決前でも前回ログインのヒントがあればtrue）。
+  // 「読み込み中なのに未ログイン扱いでログイン要求」を防ぐのに使う。
+  hasSession() { return !!currentUser || (!_authReady && !!readHint()); },
   onChange(fn) { changeCallbacks.push(fn); if (currentUser !== null || currentProfile !== null) fn(currentUser, currentProfile); },
 
   async setCrTag(tag) {
