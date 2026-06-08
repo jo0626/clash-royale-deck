@@ -64,8 +64,13 @@
   .grade-section { margin-top: 40px; }
   .section-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; }
   /* ランク枠：デッキスロット風の光る宝石フレーム。上位ほどグロー強め＝格上感 */
-  .grade-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; }
+  /* 横スクロール：ゴールドまで見えて、スクロールでレジェンド＆隠しが現れる */
+  .grade-list { display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; padding: 4px 0 10px;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .grade-list::-webkit-scrollbar { height: 6px; }
+  .grade-list::-webkit-scrollbar-thumb { background: var(--border-hi, rgba(255,255,255,.15)); border-radius: 3px; }
   .grade-card {
+    flex: 0 0 31%; min-width: 108px; max-width: 150px; scroll-snap-align: start;
     display: flex; flex-direction: column; align-items: center; text-align: center;
     padding: 20px 12px 14px; border-radius: 14px; position: relative; overflow: hidden;
     background: linear-gradient(160deg, #1b1e2b 0%, #11131b 100%); border: 2px solid var(--border);
