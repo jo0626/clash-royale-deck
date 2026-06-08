@@ -170,9 +170,10 @@
   .mm-qlabel.tr { top:0; right:0; text-align:right; color:#6fb4ee; }
   .mm-qlabel.bl { bottom:0; left:0; color:#9a988f; }
   .mm-qlabel.br { bottom:0; right:0; text-align:right; color:#e8895f; }
-  .mm-axlabel { position:absolute; font-size:10px; color:var(--text-muted); pointer-events:none; }
-  .mm-axlabel.x { right:8px; bottom:6px; }
-  .mm-axlabel.y { left:6px; top:6px; }
+  .mm-axlabel { position:absolute; font-size:10px; font-weight:700; color:var(--text-muted); pointer-events:none;
+    background:rgba(13,15,20,0.55); border-radius:6px; padding:2px 6px; }
+  .mm-axlabel.x { left:50%; bottom:5px; transform:translateX(-50%); }      /* 下辺の中央 */
+  .mm-axlabel.y { left:5px; top:50%; transform:translateY(-50%); }          /* 左辺の中央 */
   .mm-pt { position:absolute; transform:translate(-50%,-50%); width:24px; height:29px; transition:left .35s ease, top .35s ease; }
   .mm-pt img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
   .mm-pt .lab { position:absolute; top:38px; left:50%; transform:translateX(-50%); white-space:nowrap;
@@ -696,9 +697,9 @@ function renderMetaMap() {
   const base =
       '<div class="mm-q tl"></div><div class="mm-q tr"></div><div class="mm-q bl"></div><div class="mm-q br"></div>'
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
-    + '<div class="mm-qlabel tl">地味だが勝てる</div><div class="mm-qlabel tr">環境トップ</div>'
-    + '<div class="mm-qlabel bl">不遇</div><div class="mm-qlabel br">人気だが勝てない</div>'
-    + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">↑ 勝率</div>';
+    + '<div class="mm-qlabel tl">穴場</div><div class="mm-qlabel tr">鉄板</div>'
+    + '<div class="mm-qlabel bl">不遇</div><div class="mm-qlabel br">人気先行</div>'
+    + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">勝率 ↑</div>';
   const byName = {}; CARDS_DATA.forEach(c => byName[c.name] = c);
   const sel = [..._mmSel].map(n => byName[n]).filter(c => c && c.use != null && c.win != null);
   if (!sel.length) { map.innerHTML = base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます</div>'; return; }
