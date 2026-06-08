@@ -113,6 +113,11 @@
   .seg-tab .seg-emoji { margin-right:5px; }
 
   /* ▼ カード単体ランキング */
+  .card-mode { display:flex; gap:6px; align-items:center; margin:6px 0 10px; }
+  .cmode { flex:1; padding:9px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
+  .cmode.active { background:rgba(232,160,32,0.14); border-color:var(--accent); color:var(--accent); }
+  #meRefresh { flex:none; }
   .crank-tabs { display:flex; gap:8px; margin:0 0 14px; }
   .crank-tab { flex:1; padding:11px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
     background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
@@ -255,6 +260,11 @@
     <section id="secCards">
       <h1 class="page-title">カード人気・メタ</h1>
       <p class="page-sub">カード1枚ごとの使用率と勝率を、マップ上の位置で表示。「安定」「目立たないが勝ってる」「チャレンジング」など、そのカードが今の環境でどれだけポテンシャルを持つかが一目でわかる。</p>
+      <div class="card-mode" id="cardModeTabs">
+        <button class="cmode active" data-mode="env" type="button">🌐 環境メタ</button>
+        <button class="cmode" data-mode="me" type="button">👤 あなたの対面</button>
+        <button class="mm-clear" id="meRefresh" type="button" style="display:none">↻ 更新</button>
+      </div>
       <p class="agg-note" id="cardsNote"></p>
       <p class="note" style="text-align:left; margin:2px 0 12px;">※ 勝率は「そのカードを入れたデッキ」が勝った割合です。カード単体の力とは限りませんが、勝てるデッキに採用されている＝強い構築の一員として機能しているという意味合いで表示しています。</p>
 
@@ -544,10 +554,15 @@ function renderDecks(decks) {
 }
 
 // ============ 急上昇デッキ ＆ カードメタ（使用率/勝率ランキング＋分布図） ============
-let CARDS_DATA = [];            // カード単体集計（GASの j.cards / なければサンプル）
+let CARDS_DATA = [];            // 表示中のカード集計（環境 or あなたの対面）
+let ENV_CARDS = [];             // 環境メタ（GASの j.cards / なければサンプル）
+let ME_CARDS = [];              // あなたの対面メタ（自分のバトルログ集計）
+let ME_COUNT = 0;               // 対面集計に使った対戦数
+let _cardMode = 'env';          // 'env'=環境 / 'me'=あなたの対面
 const _mmSel = new Set();       // 分布図に表示するカード名
 let _mmZoom = null;             // ズーム中の象限（'tl'/'tr'/'bl'/'br' or null＝全体）
 let _ctab = 'use';              // 'use'=使用率 / 'win'=勝率
+function minGames() { return _cardMode === 'me' ? 2 : WIN_MIN_GAMES; } // 対面はサンプル少なので緩める
 const WIN_MIN_GAMES = 50;       // 勝率ランキング・メタマップの最低対戦数（少数試合のブレ除去。減りすぎたら下げる）
 
 // --- GASが trending / cards を出すまでのサンプル ---
@@ -604,18 +619,23 @@ function _cardCost(name) { const i = CARD_INFO[name]; return i ? i.c : ''; }
 function renderCrank() {
   const wrap = document.getElementById('crankList');
   const hint = document.getElementById('crankHint');
+  const me = (_cardMode === 'me');
   let list = CARDS_DATA.slice();
   if (_ctab === 'win') {
-    list = list.filter(c => (c.games || 0) >= WIN_MIN_GAMES);
+    list = list.filter(c => (c.games || 0) >= minGames());
     list.sort((a, b) => (b.win || 0) - (a.win || 0) || (b.games || 0) - (a.games || 0));
-    hint.textContent = '直近3日の対戦結果から算出（' + WIN_MIN_GAMES + '戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。';
+    hint.textContent = me
+      ? 'そのカードを入れた相手に、あなたが勝てた割合（対面' + minGames() + '回以上）。低い＝苦手な相手。'
+      : '直近3日の対戦結果から算出（' + minGames() + '戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。';
   } else if (_ctab === 'rise') {
     list = list.filter(c => c.rise != null && c.rise > 0);
     list.sort((a, b) => (b.rise || 0) - (a.rise || 0));
     hint.textContent = '過去3日間と比べ、今回の更新で使用率が伸びたカード順。';
   } else {
     list.sort((a, b) => (b.use || 0) - (a.use || 0));
-    hint.textContent = 'トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
+    hint.textContent = me
+      ? '直近の対戦で、あなたが当たった割合（対面率）。よく当たる相手カード順。'
+      : 'トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
   }
   // 急上昇のデータがまだ無いときは準備中
   if (_ctab === 'rise' && !list.length) {
@@ -685,9 +705,14 @@ function gotoDeckSearch(cardName) {
 document.getElementById('mmClear').addEventListener('click', () => { _mmSel.clear(); renderCrank(); renderMetaMap(); });
 document.getElementById('mmAll').addEventListener('click', () => {
   // 全て表示も「20戦以上の信頼できるカード」だけプロット（マップの母集団と一致）
-  CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES) _mmSel.add(c.name); });
+  CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= minGames()) _mmSel.add(c.name); });
   renderCrank(); renderMetaMap();
 });
+// 環境メタ ⇄ あなたの対面 の切替
+document.querySelectorAll('#cardModeTabs .cmode').forEach(b => b.addEventListener('click', () => setCardMode(b.getAttribute('data-mode'))));
+const _meRefreshBtn = document.getElementById('meRefresh');
+if (_meRefreshBtn) _meRefreshBtn.addEventListener('click', () => setCardMode('me', true)); // 最新の対戦を取り直し
+
 // マップをタップでその象限を拡大（カードの上でもOK＝タップ位置で象限判定）
 document.getElementById('metaMap').addEventListener('click', (e) => {
   if (_mmZoom) { _mmZoom = null; renderMetaMap(); return; }  // ズーム中はもう一度タップで全体に戻る
@@ -736,7 +761,7 @@ function renderMetaMap() {
   // 母集団は「勝率が信頼できるカード（WIN_MIN_GAMES戦以上）」に限定（少試合の極端な勝率＝外れ値を除外）。
   // 両軸とも「順位(パーセンタイル)」で配置＝中央値が真ん中、上下左右に均等に散る（全方位に広がる）。
   //   使用率も勝率も実数だと中央に密集するため。位置＝環境内での相対順位、実際の%はツールチップで表示。
-  const pop = CARDS_DATA.filter(c => c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES);
+  const pop = CARDS_DATA.filter(c => c.use != null && c.win != null && (c.games || 0) >= minGames());
   const useVals = pop.map(c => c.use);
   const winVals = pop.map(c => c.win);
   const pad = 9;
@@ -801,7 +826,7 @@ function renderMetaMap() {
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
     + '<div class="mm-qlabel tl">目立たないが勝ってる</div><div class="mm-qlabel tr">安定</div>'
     + '<div class="mm-qlabel bl">チャレンジング</div><div class="mm-qlabel br">人気だが勝ってない</div>'
-    + '<div class="mm-axlabel x">使用率 →</div><div class="mm-axlabel y">勝率 ↑</div>';
+    + '<div class="mm-axlabel x">' + (_cardMode === 'me' ? '対面率 →' : '使用率 →') + '</div><div class="mm-axlabel y">' + (_cardMode === 'me' ? 'あなたの勝率 ↑' : '勝率 ↑') + '</div>';
   // 軸メモリ（実数値）：左の余白に勝率(上=max/中=中央値/下=min)、下の余白に使用率(左=min/中=中央値/右=max)
   const ticks =
       '<div class="mm-tick y y-top">' + wS.max + '%</div>'
@@ -823,8 +848,70 @@ function bindBack() {
   if (b) b.addEventListener('click', (e) => { e.stopPropagation(); _mmZoom = null; renderMetaMap(); });
 }
 function initCardMeta(isSample) {
+  ENV_CARDS = CARDS_DATA.slice();        // 環境メタを保持
+  if (_cardMode !== 'me') CARDS_DATA = ENV_CARDS;
   const note = document.getElementById('cardsNote');
-  if (note) note.textContent = isSample ? '※ サンプル表示です（集計データ連携の準備中）' : '';
+  if (note && _cardMode !== 'me') note.textContent = isSample ? '※ サンプル表示です（集計データ連携の準備中）' : '';
+  renderCrank(); renderMetaMap();
+}
+
+// --- あなたの対面メタ：自分のバトルログ（相手デッキ）を集計。Worker /battlelog から取得し localStorage に7日ぶん蓄積 ---
+function _parseT(s) { const m = String(s).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : 0; }
+function _loadMeBattles(tag) { try { return JSON.parse(localStorage.getItem('cr_me_' + tag) || '[]'); } catch (e) { return []; } }
+function _saveMeBattles(tag, arr) { try { localStorage.setItem('cr_me_' + tag, JSON.stringify(arr)); } catch (e) {} }
+function _mergeBattles(oldArr, fresh) {
+  const seen = {}; oldArr.forEach(b => seen[b.t] = 1);
+  let merged = oldArr.concat((fresh || []).filter(b => !seen[b.t]));
+  const cut = Date.now() - 7 * 864e5; // 直近7日ぶん保持
+  return merged.filter(b => _parseT(b.t) >= cut).sort((a, b) => _parseT(b.t) - _parseT(a.t)).slice(0, 600);
+}
+function aggregateMe(battles) {
+  const total = battles.length, m = {};
+  battles.forEach(b => { (b.opp || []).forEach(n => { if (!m[n]) m[n] = { a: 0, w: 0 }; m[n].a++; if (b.win) m[n].w++; }); });
+  return Object.keys(m).map(n => { const o = m[n]; return { name: n, use: total ? Math.round(o.a / total * 1000) / 10 : 0, win: o.a ? Math.round(o.w / o.a * 1000) / 10 : null, games: o.a, rise: null }; });
+}
+async function loadMeCards(force) {
+  const tag = (window.CRAuth && CRAuth.getCrTag && CRAuth.getCrTag()) || '';
+  if (!tag) return { ok: false };
+  let battles = _loadMeBattles(tag);
+  if (force || !battles.length) {
+    try {
+      const res = await fetch('/battlelog?tag=' + encodeURIComponent(tag), { cache: 'no-store' });
+      const j = await res.json();
+      battles = _mergeBattles(battles, (j && j.battles) || []);
+      _saveMeBattles(tag, battles);
+    } catch (e) { /* 取得失敗時は手元の蓄積を使う */ }
+  }
+  ME_CARDS = aggregateMe(battles); ME_COUNT = battles.length;
+  return { ok: true, count: battles.length };
+}
+// モード切替（環境 ⇄ あなたの対面）
+async function setCardMode(mode, force) {
+  if (mode === 'me') {
+    const tag = (window.CRAuth && CRAuth.getCrTag && CRAuth.getCrTag()) || '';
+    if (!tag) {
+      const cn = document.getElementById('cardsNote');
+      if (cn) cn.textContent = '「あなたの対面」はログイン＆クラロワID登録で使えます（右上のアカウントから）。';
+      return;
+    }
+    const cn = document.getElementById('cardsNote');
+    if (cn) cn.textContent = '対戦データを取得中…';
+    await loadMeCards(force);
+  }
+  _cardMode = mode;
+  _mmSel.clear(); _mmZoom = null;
+  if (mode === 'me' && _ctab === 'rise') _ctab = 'use';
+  CARDS_DATA = (mode === 'me') ? ME_CARDS : ENV_CARDS;
+  document.querySelectorAll('#cardModeTabs .cmode').forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === mode));
+  const riseTab = document.querySelector('#crankTabs .crank-tab[data-ctab="rise"]');
+  if (riseTab) riseTab.style.display = (mode === 'me') ? 'none' : '';
+  document.querySelectorAll('#crankTabs .crank-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-ctab') === _ctab));
+  const refreshBtn = document.getElementById('meRefresh');
+  if (refreshBtn) refreshBtn.style.display = (mode === 'me') ? '' : 'none';
+  const cn = document.getElementById('cardsNote');
+  if (cn) cn.textContent = (mode === 'me')
+    ? ('あなたの直近 ' + ME_COUNT + '戦の対戦相手から集計（あなたのトロフィー帯）。アプリを開くほど蓄積されて精度UP。')
+    : (window.__cardsNoteEnv || '');
   renderCrank(); renderMetaMap();
 }
 
@@ -856,10 +943,11 @@ fetch(DECKS_DATA_URL, { cache: 'no-store' })
     if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
     const sub = document.getElementById('pageSub');
     if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b>' + srcText + 'の<b>直前の使用デッキ</b>を集計しています。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
-    const cn = document.getElementById('cardsNote');
-    if (cn) cn.textContent = cardsReal
+    window.__cardsNoteEnv = cardsReal
       ? (hrs + '時間ごとに更新／' + srcText + 'の直前デッキから集計')
       : '※ サンプル表示です（集計データ連携の準備中）';
+    const cn = document.getElementById('cardsNote');
+    if (cn && _cardMode !== 'me') cn.textContent = window.__cardsNoteEnv;
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
