@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>クラロワ デッキ作成・診断ツール｜CR Deck Builders</title>
 <meta name="description" content="クラロワ（クラッシュ・ロワイヤル）の無料デッキ作成・診断ツール。全121枚のカードから8枚を選んでデッキを組み、平均コストやバランスを診断できます。世界上位ランカーの人気デッキ・勝率ランキングも掲載。進化・ヒーロー・チャンピオン対応で、スマホでも快適に使えます。">
 <meta name="application-name" content="クラロワデッキ作成・診断">
@@ -1287,6 +1287,10 @@ function init() {
     // render()で一覧が作り直されるので、次フレームで元の位置へ
     requestAnimationFrame(() => { cardListEl.scrollTop = listScrollMemo; });
   };
+  // フォーカス時、iOSが入力欄を画面内へ寄せようとするスクロールを打ち消す（チラつき防止）
+  // ページ自体は固定レイアウト(body position:fixed)なのでスクロール0に固定してよい
+  const lockTop = () => { window.scrollTo(0, 0); const se = document.scrollingElement; if (se) se.scrollTop = 0; };
+  searchEl.addEventListener('focus', () => { lockTop(); requestAnimationFrame(lockTop); setTimeout(lockTop, 60); });
   // Enter/改行（確定後）でキーボードを閉じる
   searchEl.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); searchEl.blur(); }
