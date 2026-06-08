@@ -79,24 +79,32 @@
     width: 46px; height: 46px; border-radius: 13px; transform: rotate(45deg); margin: 4px 0 18px;
     box-shadow: inset 0 2px 7px rgba(255,255,255,.5), inset 0 -3px 7px rgba(0,0,0,.4), 0 3px 10px rgba(0,0,0,.45);
   }
-  .grade-name { font-family: var(--font-head); font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+  .grade-name { font-family: var(--font-head); font-weight: 700; font-size: 17px; letter-spacing: .5px; }
   .grade-cond { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
-  /* 各ランク（色は格付けの差が出ればOK・カッコよさ優先） */
-  .grade-bronze { border-color: #cd7f32; box-shadow: 0 0 14px rgba(205,127,50,.35); }
-  .grade-bronze .grade-gem { background: linear-gradient(135deg, #e8b06a, #9c5418); }
-  .grade-bronze .grade-name { color: #e6a157; }
-  .grade-silver { border-color: #c7ccd6; box-shadow: 0 0 16px rgba(199,204,214,.4); }
-  .grade-silver .grade-gem { background: linear-gradient(135deg, #f3f6fb, #9aa0ad); }
-  .grade-silver .grade-name { color: #dfe3ea; }
-  .grade-gold { border-color: #e8a020; box-shadow: 0 0 20px rgba(232,160,32,.5); }
-  .grade-gold .grade-gem { background: linear-gradient(135deg, #ffd76a, #c8851a); }
-  .grade-gold .grade-name { color: #f0c54a; }
-  .grade-legend { border-color: #a78bfa; box-shadow: 0 0 26px rgba(167,139,250,.6); }
-  .grade-legend .grade-gem { background: linear-gradient(135deg, #d8ccff, #7c3aed); }
-  .grade-legend .grade-name { color: #c4b5fd; }
-  .grade-hidden { border-color: rgba(255,255,255,.15); opacity: .55; }
-  .grade-hidden .grade-gem { background: linear-gradient(135deg, #3a3f50, #20232c); }
-  .grade-hidden .grade-name { color: var(--text-dim); }
+  .grade-badge { position: absolute; top: 8px; right: 8px; font-size: 9px; font-weight: 700;
+    padding: 2px 7px; border-radius: 999px; background: #e8a020; color: #1a1208; letter-spacing: .5px; }
+  /* 金額が上がるほどグロー強め＝供給量が大きいほど豪華に。色は差が出ればOK・カッコよさ優先 */
+  .g-1 { border-color: #2bb673; box-shadow: 0 0 13px rgba(43,182,115,.32); }
+  .g-1 .grade-gem { background: linear-gradient(135deg, #6fe0ac, #1c8a55); }
+  .g-1 .grade-name { color: #56d199; }
+  .g-2 { border-color: #2e8fe0; box-shadow: 0 0 15px rgba(46,143,224,.38); }
+  .g-2 .grade-gem { background: linear-gradient(135deg, #74bdf5, #1f66ad); }
+  .g-2 .grade-name { color: #5db0e8; }
+  .g-3 { border-color: #8b5cf6; box-shadow: 0 0 18px rgba(139,92,246,.45); }
+  .g-3 .grade-gem { background: linear-gradient(135deg, #c4b0ff, #6d34d6); }
+  .g-3 .grade-name { color: #b39bf9; }
+  .g-4 { border-color: #d4537e; box-shadow: 0 0 20px rgba(212,83,126,.48); }
+  .g-4 .grade-gem { background: linear-gradient(135deg, #f59ab8, #b03360); }
+  .g-4 .grade-name { color: #ee87aa; }
+  .g-5 { border-color: #e8a020; box-shadow: 0 0 23px rgba(232,160,32,.55); }
+  .g-5 .grade-gem { background: linear-gradient(135deg, #ffd76a, #c8851a); }
+  .g-5 .grade-name { color: #f0c54a; }
+  .g-6 { border-color: #ff7a2f; box-shadow: 0 0 30px rgba(255,122,47,.65); }
+  .g-6 .grade-gem { background: linear-gradient(135deg, #ffd06a, #ff5a1f); }
+  .g-6 .grade-name { color: #ff9b54; }
+  .g-hidden { border-color: rgba(255,255,255,.15); opacity: .55; }
+  .g-hidden .grade-gem { background: linear-gradient(135deg, #3a3f50, #20232c); }
+  .g-hidden .grade-name { color: var(--text-dim); }
 
   .note { margin-top: 32px; padding: 16px; background: var(--surface); border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
 
@@ -132,7 +140,7 @@
 <div class="container">
   <h1 class="page-title">支援・寄付</h1>
   <p class="page-sub">
-    このツールは無料で運営しています。もし気に入ってもらえたら、開発者に少しだけ<b>エリクサーを供給</b>してもらえると嬉しいです 💧<br>
+    このツールは無料で運営しています。もし気に入ってもらえたら、開発者に<b>エリクサーを供給</b>してもらえると嬉しいです 💧<br>
     いただいた支援は、<b>サーバーの防衛（維持費）</b>・カードデータの更新・新機能の開発に使わせていただきます。
   </p>
 
@@ -149,42 +157,54 @@
   </div>
 
   <div class="grade-section">
-    <h2 class="section-title">支援者グレード</h2>
+    <h2 class="section-title">エリクサー供給メニュー</h2>
     <p class="page-sub" style="margin-bottom:16px;">
-      累計の支援額に応じてランクが上がり、SNS共有時のデッキ画像が豪華な枠になります。（機能はすべて無料で使えます）
+      供給いただいた額に応じて、SNS共有時のデッキ画像が豪華な枠になります。金額は目安で、任意の額で支援できます。（機能はすべて無料）
     </p>
     <div class="grade-list">
-      <div class="grade-card grade-bronze">
+      <div class="grade-card g-1">
+        <span class="grade-badge">おすすめ</span>
         <span class="grade-gem"></span>
-        <div class="grade-name">ブロンズ</div>
-        <div class="grade-cond">累計 500円〜</div>
+        <div class="grade-name">¥500</div>
+        <div class="grade-cond">ひとしずく 💧</div>
       </div>
-      <div class="grade-card grade-silver">
+      <div class="grade-card g-2">
+        <span class="grade-badge">人気</span>
         <span class="grade-gem"></span>
-        <div class="grade-name">シルバー</div>
-        <div class="grade-cond">累計 2,000円〜</div>
+        <div class="grade-name">¥2,000</div>
+        <div class="grade-cond">ボトル</div>
       </div>
-      <div class="grade-card grade-gold">
+      <div class="grade-card g-3">
         <span class="grade-gem"></span>
-        <div class="grade-name">ゴールド</div>
-        <div class="grade-cond">累計 10,000円〜</div>
+        <div class="grade-name">¥5,000</div>
+        <div class="grade-cond">ポンプ</div>
       </div>
-      <div class="grade-card grade-legend">
+      <div class="grade-card g-4">
         <span class="grade-gem"></span>
-        <div class="grade-name">レジェンド</div>
-        <div class="grade-cond">累計 50,000円〜</div>
+        <div class="grade-name">¥10,000</div>
+        <div class="grade-cond">タンク</div>
       </div>
-      <div class="grade-card grade-hidden">
+      <div class="grade-card g-5">
+        <span class="grade-gem"></span>
+        <div class="grade-name">¥30,000</div>
+        <div class="grade-cond">製造所</div>
+      </div>
+      <div class="grade-card g-6">
+        <span class="grade-gem"></span>
+        <div class="grade-name">¥50,000</div>
+        <div class="grade-cond">エリクサーの泉</div>
+      </div>
+      <div class="grade-card g-hidden">
         <span class="grade-gem"></span>
         <div class="grade-name">？？？</div>
-        <div class="grade-cond">隠しランク</div>
+        <div class="grade-cond">隠し</div>
       </div>
     </div>
   </div>
 
   <div class="note">
-    ※ 支援は買い切り（累計式）です。一度達成したグレードは永続的に維持されます。月額・サブスクリプションではありません。<br>
-    ※ グレードによる違いは見た目のみで、デッキ作成・分析などの機能はすべての方が無料で利用できます。<br>
+    ※ 金額は目安です。支援画面で任意の額を入力できます（月額ではなく1回きり）。<br>
+    ※ 供給による違いは見た目（SNS共有画像の枠）のみで、デッキ作成・分析などの機能はすべての方が無料で利用できます。<br>
     ※ This material is unofficial and is not endorsed by Supercell.
   </div>
 </div>
