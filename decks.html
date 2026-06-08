@@ -34,6 +34,8 @@
   .page-title { font-family:var(--font-head); font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
   .page-sub { color:var(--text-muted); font-size:13px; margin-bottom:20px; line-height:1.7; }
   .agg-note { font-size:11px; color:var(--text-dim); margin:-12px 0 14px; }
+  .tab-desc { font-size:12px; color:var(--text-muted); margin:-4px 0 14px; line-height:1.7; }
+  .tab-desc b { color:var(--text); }
   .deck-tabs { display:flex; gap:8px; margin:0 0 16px; }
   .deck-tab { flex:1; padding:11px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
     background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
@@ -194,6 +196,7 @@
         <button class="deck-tab" data-tab="win">🏅 勝率</button>
         <button class="deck-tab" data-tab="trend">🔥 急上昇</button>
       </div>
+      <p class="tab-desc" id="deckTabDesc"></p>
       <div class="owned-filter">
         <button id="ownedToggle" class="owned-toggle" aria-pressed="false">🃏 組めるデッキだけ表示</button>
         <span id="ownedNote" class="owned-note"></span>
@@ -316,11 +319,28 @@ function applyDecks() {
     else note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
   }
 }
+// タブごとの説明文（押すたびに切り替え）
+function updateDeckTabDesc() {
+  const el = document.getElementById('deckTabDesc');
+  if (!el) return;
+  const n = PLAYERS_TOTAL || 0;
+  let t;
+  if (activeTab === 'win') {
+    t = '実際の対戦結果から、<b>勝率が高い</b>デッキ順に表示されます。';
+  } else if (activeTab === 'trend') {
+    t = '過去3日間のデータのうち、<b>使用人数が急上昇した</b>デッキ順に表示されます。';
+  } else {
+    t = (n ? '<b>' + n + '人</b>の内、' : '') + '実際に使っている<b>人数とその％が多い</b>デッキ順に表示されます。';
+  }
+  el.innerHTML = t;
+}
+
 // タブ切り替え
 document.querySelectorAll('.deck-tab').forEach((btn) => {
   btn.addEventListener('click', () => {
     activeTab = btn.getAttribute('data-tab');
     document.querySelectorAll('.deck-tab').forEach(b => b.classList.toggle('active', b === btn));
+    updateDeckTabDesc();
     applyDecks();
   });
 });
@@ -613,7 +633,7 @@ fetch('decks.json', { cache: 'no-store' })
     const winTabBtn = document.querySelector('.deck-tab[data-tab="win"]');
     if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
     const sub = document.getElementById('pageSub');
-    if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b><b>' + srcText + '</b>の<b>直前の使用デッキ</b>を集計し、「使用率」は使っている人数、「勝率」は実際の対戦結果から算出。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
+    if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b>' + srcText + 'の<b>直前の使用デッキ</b>を集計しています。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
@@ -623,9 +643,10 @@ fetch('decks.json', { cache: 'no-store' })
         note.textContent = '※ 集計データの取得に失敗したため、代表的な型を表示しています';
       }
     }
+    updateDeckTabDesc();
     applyDecks();
   })
-  .catch(() => { ALL_DECKS = DECKS; TREND_DECKS = TREND_SAMPLE; CARDS_DATA = CARDS_SAMPLE; initCardMeta(true); applyDecks(); });
+  .catch(() => { ALL_DECKS = DECKS; TREND_DECKS = TREND_SAMPLE; CARDS_DATA = CARDS_SAMPLE; initCardMeta(true); updateDeckTabDesc(); applyDecks(); });
 </script>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
