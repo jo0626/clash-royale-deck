@@ -113,10 +113,11 @@
   .seg-tab .seg-emoji { margin-right:5px; }
 
   /* ▼ カード単体ランキング */
-  .card-mode { display:flex; gap:6px; align-items:center; margin:6px 0 10px; }
-  .cmode { flex:1; padding:9px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
-    background:var(--surface); border:1px solid var(--border); border-radius:10px; color:var(--text-muted); transition:all 0.15s; }
-  .cmode.active { background:rgba(232,160,32,0.14); border-color:var(--accent); color:var(--accent); }
+  .card-mode { display:flex; gap:6px; align-items:center; margin:10px 0; }
+  .me-toggle { flex:1; padding:11px 10px; text-align:center; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;
+    background:var(--surface); border:1px solid var(--border-hi); color:var(--text-muted); border-radius:10px; transition:all 0.18s; }
+  .me-toggle.active { background:rgba(232,160,32,0.16); border-color:var(--accent); color:var(--accent);
+    box-shadow:0 0 14px rgba(232,160,32,0.5); }
   #meRefresh { flex:none; }
   .crank-tabs { display:flex; gap:8px; margin:0 0 14px; }
   .crank-tab { flex:1; padding:11px 8px; text-align:center; cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
@@ -260,14 +261,13 @@
     <section id="secCards">
       <h1 class="page-title">カード人気・メタ</h1>
       <p class="page-sub">カード1枚ごとの使用率と勝率を、マップ上の位置で表示。「安定」「目立たないが勝ってる」「チャレンジング」など、そのカードが今の環境でどれだけポテンシャルを持つかが一目でわかる。</p>
-      <div class="card-mode" id="cardModeTabs">
-        <button class="cmode active" data-mode="env" type="button">🌐 環境メタ</button>
-        <button class="cmode" data-mode="me" type="button">👤 あなたの対面</button>
-        <button class="mm-clear" id="meRefresh" type="button" style="display:none">↻ 更新</button>
-      </div>
       <p class="agg-note" id="cardsNote"></p>
       <p class="note" style="text-align:left; margin:2px 0 12px;">※ 勝率は「そのカードを入れたデッキ」が勝った割合です。カード単体の力とは限りませんが、勝てるデッキに採用されている＝強い構築の一員として機能しているという意味合いで表示しています。</p>
 
+      <div class="card-mode" id="cardModeTabs">
+        <button class="me-toggle" id="meToggle" type="button" aria-pressed="false">👤 <span id="meLabel">あなたの環境</span><span id="meSuffix">で見る</span></button>
+        <button class="mm-clear" id="meRefresh" type="button" style="display:none">↻ 更新</button>
+      </div>
       <div class="mm-sticky">
         <div class="mm-head">
           <span class="mm-title"><button class="mm-toggle" id="mmToggle" type="button" aria-label="メタマップを開閉">▾</button><svg width="15" height="15" viewBox="0 0 16 16" style="vertical-align:-2px;margin-right:5px" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="#e8a020" stroke-width="1.4"/><line x1="8" y1="2" x2="8" y2="14" stroke="#e8a020" stroke-width="1" opacity="0.45"/><line x1="2" y1="8" x2="14" y2="8" stroke="#e8a020" stroke-width="1" opacity="0.45"/><circle cx="11" cy="5" r="2" fill="#e8a020"/></svg>メタマップ・Tier</span>
@@ -708,8 +708,14 @@ document.getElementById('mmAll').addEventListener('click', () => {
   CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= minGames()) _mmSel.add(c.name); });
   renderCrank(); renderMetaMap();
 });
-// 環境メタ ⇄ あなたの対面 の切替
-document.querySelectorAll('#cardModeTabs .cmode').forEach(b => b.addEventListener('click', () => setCardMode(b.getAttribute('data-mode'))));
+// 光るトグル：OFF=環境メタ / ON=〇〇さんの環境
+function updateMeLabel() {
+  const el = document.getElementById('meLabel'); if (!el) return;
+  const nm = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
+  el.textContent = nm ? (nm + 'さんの環境') : 'あなたの環境';
+}
+const _meToggleBtn = document.getElementById('meToggle');
+if (_meToggleBtn) _meToggleBtn.addEventListener('click', () => setCardMode(_cardMode === 'me' ? 'env' : 'me'));
 const _meRefreshBtn = document.getElementById('meRefresh');
 if (_meRefreshBtn) _meRefreshBtn.addEventListener('click', () => setCardMode('me', true)); // 最新の対戦を取り直し
 
@@ -751,8 +757,8 @@ function syncMapOpenFromAuth() {
 }
 (function pollMapPref() {
   if (!window.CRAuth) { setTimeout(pollMapPref, 200); return; }
-  syncMapOpenFromAuth();
-  if (CRAuth.onChange) CRAuth.onChange(() => syncMapOpenFromAuth());
+  syncMapOpenFromAuth(); updateMeLabel();
+  if (CRAuth.onChange) CRAuth.onChange(() => { syncMapOpenFromAuth(); updateMeLabel(); });
 })();
 
 // --- 分布図マップ（選んだカードだけプロット） ---
@@ -902,15 +908,20 @@ async function setCardMode(mode, force) {
   _mmSel.clear(); _mmZoom = null;
   if (mode === 'me' && _ctab === 'rise') _ctab = 'use';
   CARDS_DATA = (mode === 'me') ? ME_CARDS : ENV_CARDS;
-  document.querySelectorAll('#cardModeTabs .cmode').forEach(b => b.classList.toggle('active', b.getAttribute('data-mode') === mode));
+  const tg = document.getElementById('meToggle');
+  if (tg) { tg.classList.toggle('active', mode === 'me'); tg.setAttribute('aria-pressed', mode === 'me' ? 'true' : 'false'); }
+  const suf = document.getElementById('meSuffix');
+  if (suf) suf.textContent = (mode === 'me') ? 'を表示中' : 'で見る';
   const riseTab = document.querySelector('#crankTabs .crank-tab[data-ctab="rise"]');
   if (riseTab) riseTab.style.display = (mode === 'me') ? 'none' : '';
   document.querySelectorAll('#crankTabs .crank-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-ctab') === _ctab));
   const refreshBtn = document.getElementById('meRefresh');
   if (refreshBtn) refreshBtn.style.display = (mode === 'me') ? '' : 'none';
   const cn = document.getElementById('cardsNote');
+  const _nm = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
+  const who = _nm ? _nm + 'さん' : 'あなた';
   if (cn) cn.textContent = (mode === 'me')
-    ? ('あなたの直近 ' + ME_COUNT + '戦の対戦相手から集計（あなたのトロフィー帯）。アプリを開くほど蓄積されて精度UP。')
+    ? (who + 'の直近 ' + ME_COUNT + '戦の対戦相手から集計（' + who + 'のトロフィー帯）。このページを開くたびに精度UP。')
     : (window.__cardsNoteEnv || '');
   renderCrank(); renderMetaMap();
 }
