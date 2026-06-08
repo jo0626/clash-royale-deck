@@ -880,16 +880,36 @@ async function loadMeCards(force) {
   const tag = (window.CRAuth && CRAuth.getCrTag && CRAuth.getCrTag()) || '';
   if (!tag) return { ok: false };
   let battles = _loadMeBattles(tag);
-  if (force || !battles.length) {
-    try {
-      const res = await fetch('/battlelog?tag=' + encodeURIComponent(tag) + (force ? '&fresh=' + Date.now() : ''), { cache: 'no-store' });
-      const j = await res.json();
-      battles = _mergeBattles(battles, (j && j.battles) || []);
-      _saveMeBattles(tag, battles);
-    } catch (e) { /* 取得失敗時は手元の蓄積を使う */ }
-  }
+  // クラウド（プロフィールに同梱済み＝追加読込なし）とマージ＝別端末・キャッシュ削除後も復元
+  const cloud = (window.CRAuth && CRAuth.getMeBattles && CRAuth.getMeBattles()) || [];
+  if (cloud.length) battles = _mergeBattles(battles, cloud);
+  // 開くたびに最新を取りに行く（同じタグはWorker側で10分キャッシュ＝CR APIは叩き直さない）
+  try {
+    const res = await fetch('/battlelog?tag=' + encodeURIComponent(tag) + (force ? '&fresh=' + Date.now() : ''), { cache: 'no-store' });
+    const j = await res.json();
+    battles = _mergeBattles(battles, (j && j.battles) || []);
+  } catch (e) { /* 取得失敗時は手元の蓄積を使う */ }
+  _saveMeBattles(tag, battles);
   ME_CARDS = aggregateMe(battles); ME_COUNT = battles.length;
+  _syncMeToCloud(battles); // 間引き書込（await しない＝UIを止めない）
   return { ok: true, count: battles.length };
+}
+// クラウドへ間引き書込：クラウドの最新時刻を“しおり”に、それより新しい対戦が何件たまったかで判断。
+//   新規が SOON_N 件たまったら即保存／たまらなくても FALLBACK_H 時間に1回は保存（データ消失防止）。
+const ME_SYNC_SOON_N = 15;     // 新規がこれだけたまったら即クラウド保存
+const ME_SYNC_FALLBACK_H = 6;  // たまらなくても、この時間に1回は保存
+function _syncMeToCloud(merged) {
+  if (!(window.CRAuth && CRAuth.getUser && CRAuth.getUser() && CRAuth.saveMeBattles)) return;
+  const cloud = (CRAuth.getMeBattles && CRAuth.getMeBattles()) || [];
+  const mark = cloud.length ? cloud[0].t : '';           // 保存済みのしおり（最新の対戦時刻）
+  const newCount = merged.filter(b => b.t > mark).length; // しおりより新しい＝未保存の新規件数（時刻文字列は辞書順=時系列順）
+  if (newCount <= 0) return;                              // 新規なし＝書かない
+  let lastAt = 0; try { lastAt = +localStorage.getItem('cr_me_syncAt') || 0; } catch (e) {}
+  const soon = newCount >= ME_SYNC_SOON_N;
+  const fallback = Date.now() - lastAt >= ME_SYNC_FALLBACK_H * 3600e3;
+  if (!soon && !fallback) return;                         // まだ少ない＆時間も経ってない→次回へ
+  try { localStorage.setItem('cr_me_syncAt', String(Date.now())); } catch (e) {}
+  CRAuth.saveMeBattles(merged);
 }
 // モード切替（環境 ⇄ あなたの対面）
 async function setCardMode(mode, force) {

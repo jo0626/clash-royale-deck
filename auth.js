@@ -217,6 +217,16 @@ const CRAuth = {
   getDisplayName() { return currentUser ? resolveDisplayName(currentUser, currentProfile) : ""; }, // 表示名（未ログインは空）
   getOwnedCards() { return _ownedCards; }, // 取得済みなら日本語カード名の配列、未取得はnull
 
+  // 「あなたの環境」の対戦履歴（端末またぎ用にアカウントへ要約保存）。
+  //   プロフィール取得時に一緒に読めるので追加の読み取りコストなし。書き込みは呼び出し側で間引く。
+  getMeBattles() { return (currentProfile && Array.isArray(currentProfile.meBattles)) ? currentProfile.meBattles : []; },
+  async saveMeBattles(arr) {
+    if (!currentUser || !FB) return;
+    const a = Array.isArray(arr) ? arr.slice(0, 400) : []; // ドキュメントを軽く保つ
+    if (currentProfile) currentProfile.meBattles = a;
+    try { await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { meBattles: a, meSyncAt: FB.serverTimestamp() }); } catch (e) {}
+  },
+
   // メタマップの開閉状態（アカウントに保存。既定=開く）
   getMapOpen() { return !(currentProfile && currentProfile.mapOpen === false); },
   async setMapOpen(open) {
