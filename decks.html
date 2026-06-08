@@ -166,16 +166,16 @@
   .mm-axis.v { left:50%; top:0; bottom:0; width:1px; }
   .mm-axis.h { top:50%; left:0; right:0; height:1px; }
   .mm-qlabel { position:absolute; font-size:9px; font-weight:700; color:var(--text-dim); padding:3px 6px; line-height:1.3; pointer-events:none;
-    max-width:48%; background:rgba(13,15,20,0.5); border-radius:6px; }
+    max-width:48%; z-index:1; text-shadow:0 1px 2px #0d0f14, 0 0 3px #0d0f14; }
   .mm-qlabel.tl { top:0; left:0; color:#3ec79b; }
   .mm-qlabel.tr { top:0; right:0; text-align:right; color:#6fb4ee; }
   .mm-qlabel.bl { bottom:0; left:0; color:#9a988f; }
   .mm-qlabel.br { bottom:0; right:0; text-align:right; color:#e8895f; }
   .mm-axlabel { position:absolute; font-size:10px; font-weight:700; color:var(--text-muted); pointer-events:none;
-    background:rgba(13,15,20,0.55); border-radius:6px; padding:2px 6px; }
+    z-index:1; text-shadow:0 1px 2px #0d0f14, 0 0 3px #0d0f14; }
   .mm-axlabel.x { left:50%; bottom:5px; transform:translateX(-50%); }      /* 下辺の中央 */
   .mm-axlabel.y { left:5px; top:50%; transform:translateY(-50%); }          /* 左辺の中央 */
-  .mm-pt { position:absolute; transform:translate(-50%,-50%); width:24px; height:29px; transition:left .35s ease, top .35s ease; }
+  .mm-pt { position:absolute; transform:translate(-50%,-50%); width:24px; height:29px; z-index:3; transition:left .35s ease, top .35s ease; }
   .mm-pt img { width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
   .mm-pt .lab { position:absolute; top:38px; left:50%; transform:translateX(-50%); white-space:nowrap;
     font-size:9px; font-weight:700; color:var(--text); background:rgba(0,0,0,0.55); border-radius:4px; padding:0 4px; }
@@ -188,7 +188,7 @@
   .mm-axis.v.zoom { width:2px; } .mm-axis.h.zoom { height:2px; }
   .metamap.mm-zoomed .mm-pt { width:22px; height:26px; }
   .mm-zline { position:absolute; font-size:9px; font-weight:700; color:var(--accent); background:rgba(13,15,20,0.55); border-radius:5px; padding:1px 5px; pointer-events:none; }
-  .mm-back { position:absolute; top:6px; left:6px; z-index:5; background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .mm-zhint { position:absolute; top:6px; left:8px; z-index:5; font-size:10px; font-weight:700; color:var(--text-muted); pointer-events:none; text-shadow:0 1px 2px #0d0f14; }
   .mm-ztitle { position:absolute; top:8px; right:8px; font-size:12px; font-weight:700; color:var(--accent); pointer-events:none; }
   /* プロット本体（左・下に軸メモリ用の余白） */
   .mm-plot { position:absolute; left:34px; right:6px; top:6px; bottom:18px; }
@@ -669,7 +669,7 @@ document.getElementById('mmAll').addEventListener('click', () => {
 });
 // マップをタップでその象限を拡大（カードの上でもOK＝タップ位置で象限判定）
 document.getElementById('metaMap').addEventListener('click', (e) => {
-  if (_mmZoom) return;
+  if (_mmZoom) { _mmZoom = null; renderMetaMap(); return; }  // ズーム中はもう一度タップで全体に戻る
   if (!_mmSel.size) return;             // 何も選択してないときは拡大しない
   if (e.target.closest('.mm-empty')) return;
   const map = document.getElementById('metaMap');
@@ -767,11 +767,10 @@ function renderMetaMap() {
       + '<div class="mm-axis h zoom" style="top:' + hEdge + '%"></div>'
       + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">中央 使用率' + uS.med + '%</div>'
       + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">中央 勝率' + wS.med + '%</div>'
-      + '<button class="mm-back" id="mmBack" type="button">← 全体に戻る</button>'
+      + '<div class="mm-zhint">タップで全体に戻る</div>'
       + '<div class="mm-ztitle">' + QLABEL[Q] + '</div>';
-    if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; bindBack(); return; }
+    if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; return; }
     map.innerHTML = base + cards.map(c => ptHtml(c, sx(c), sy(c), false)).join('');
-    bindBack();
     return;
   }
 
