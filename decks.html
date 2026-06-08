@@ -186,7 +186,7 @@
   /* ズーム時：中央線を強調・拡大マーカー・戻る/タイトル */
   .mm-axis.zoom { background:var(--accent); opacity:0.6; }
   .mm-axis.v.zoom { width:2px; } .mm-axis.h.zoom { height:2px; }
-  .metamap.mm-zoomed .mm-pt { width:44px; height:53px; }
+  .metamap.mm-zoomed .mm-pt { width:22px; height:26px; }
   .mm-zline { position:absolute; font-size:9px; font-weight:700; color:var(--accent); background:rgba(13,15,20,0.55); border-radius:5px; padding:1px 5px; pointer-events:none; }
   .mm-back { position:absolute; top:6px; left:6px; z-index:5; background:var(--surface); border:1px solid var(--border-hi); color:var(--text); border-radius:999px; padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
   .mm-ztitle { position:absolute; top:8px; right:8px; font-size:12px; font-weight:700; color:var(--accent); pointer-events:none; }
@@ -660,11 +660,19 @@ document.getElementById('mmAll').addEventListener('click', () => {
   CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES) _mmSel.add(c.name); });
   renderCrank(); renderMetaMap();
 });
-// マップの4領域タップでその象限を拡大（カードや戻るボタンの上は除く）
+// マップをタップでその象限を拡大（カードの上でもOK＝タップ位置で象限判定）
 document.getElementById('metaMap').addEventListener('click', (e) => {
   if (_mmZoom) return;
-  const q = e.target.closest('.mm-q');
-  if (q) { _mmZoom = q.getAttribute('data-q'); renderMetaMap(); }
+  if (!_mmSel.size) return;             // 何も選択してないときは拡大しない
+  if (e.target.closest('.mm-empty')) return;
+  const map = document.getElementById('metaMap');
+  const r = map.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const px = (e.clientX - r.left) / r.width;   // 0=左, 1=右
+  const py = (e.clientY - r.top) / r.height;   // 0=上, 1=下
+  const right = px >= 0.5, top = py < 0.5;      // 画面上＝勝率高
+  _mmZoom = top ? (right ? 'tr' : 'tl') : (right ? 'br' : 'bl');
+  renderMetaMap();
 });
 
 // --- メタマップの開閉（ログイン中はアカウントに保存／ログアウト時は開くがデフォルト） ---
@@ -746,7 +754,7 @@ function renderMetaMap() {
       + '<button class="mm-back" id="mmBack" type="button">← 全体に戻る</button>'
       + '<div class="mm-ztitle">' + QLABEL[Q] + '</div>';
     if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; bindBack(); return; }
-    map.innerHTML = base + cards.map(c => ptHtml(c, sx(c), sy(c), true)).join('');
+    map.innerHTML = base + cards.map(c => ptHtml(c, sx(c), sy(c), false)).join('');
     bindBack();
     return;
   }
@@ -801,6 +809,10 @@ fetch(DECKS_DATA_URL, { cache: 'no-store' })
     if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
     const sub = document.getElementById('pageSub');
     if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b>' + srcText + 'の<b>直前の使用デッキ</b>を集計しています。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
+    const cn = document.getElementById('cardsNote');
+    if (cn) cn.textContent = cardsReal
+      ? (hrs + '時間ごとに更新／' + srcText + 'の直前デッキから集計')
+      : '※ サンプル表示です（集計データ連携の準備中）';
     const note = document.getElementById('aggNote');
     if (note) {
       if (j && j.updated) {
