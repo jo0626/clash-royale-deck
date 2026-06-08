@@ -601,7 +601,7 @@ function renderCrank() {
       + '<div class="note" style="margin-top:8px">数回の更新でデータがたまり次第、自動で表示されます</div></div>';
     return;
   }
-  list = list.slice(0, 50);
+  // 使用率/勝率は全カードを表示（上限なし）。急上昇は rise>0 で既に絞り済み。
   const maxUse = Math.max(1, ...CARDS_DATA.map(c => c.use || 0));
   const maxRise = Math.max(0.1, ...CARDS_DATA.map(c => c.rise || 0));
   wrap.innerHTML = list.map((c, i) => {
