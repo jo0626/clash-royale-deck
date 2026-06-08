@@ -148,6 +148,12 @@
     padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
   .mm-clear:hover { color:var(--text); }
   .mm-btns { display:flex; gap:6px; flex-shrink:0; }
+  .mm-toggle { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:0 6px 0 0; line-height:1; }
+  .mm-toggle:hover { color:var(--text); }
+  .mm-sticky.mm-collapsed { padding-bottom:6px; }
+  .mm-sticky.mm-collapsed .mm-hint,
+  .mm-sticky.mm-collapsed #metaMap,
+  .mm-sticky.mm-collapsed .mm-btns { display:none; }
   .mm-hint { font-size:11px; color:var(--text-dim); margin:0 0 10px; line-height:1.6; }
   .metamap { position:relative; width:100%; height:300px; background:var(--surface);
     border:1px solid var(--border); border-radius:12px; overflow:hidden; }
@@ -231,7 +237,7 @@
 
       <div class="mm-sticky">
         <div class="mm-head">
-          <span class="mm-title"><svg width="15" height="15" viewBox="0 0 16 16" style="vertical-align:-2px;margin-right:5px" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="#e8a020" stroke-width="1.4"/><line x1="8" y1="2" x2="8" y2="14" stroke="#e8a020" stroke-width="1" opacity="0.45"/><line x1="2" y1="8" x2="14" y2="8" stroke="#e8a020" stroke-width="1" opacity="0.45"/><circle cx="11" cy="5" r="2" fill="#e8a020"/></svg>メタマップ</span>
+          <span class="mm-title"><button class="mm-toggle" id="mmToggle" type="button" aria-label="メタマップを開閉">▾</button><svg width="15" height="15" viewBox="0 0 16 16" style="vertical-align:-2px;margin-right:5px" aria-hidden="true"><rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="#e8a020" stroke-width="1.4"/><line x1="8" y1="2" x2="8" y2="14" stroke="#e8a020" stroke-width="1" opacity="0.45"/><line x1="2" y1="8" x2="14" y2="8" stroke="#e8a020" stroke-width="1" opacity="0.45"/><circle cx="11" cy="5" r="2" fill="#e8a020"/></svg>メタマップ</span>
           <span class="mm-btns"><button class="mm-clear" id="mmAll" type="button">全て表示</button><button class="mm-clear" id="mmClear" type="button">選択をクリア</button></span>
         </div>
         <p class="mm-hint">下のランキングでカードをタップすると、ここに表示されます。横=使用率の順位（右ほど人気）／縦=勝率（上ほど高い）。</p>
@@ -637,18 +643,47 @@ document.getElementById('crankList').addEventListener('click', (e) => {
 });
 document.getElementById('mmClear').addEventListener('click', () => { _mmSel.clear(); renderCrank(); renderMetaMap(); });
 document.getElementById('mmAll').addEventListener('click', () => {
-  CARDS_DATA.forEach(c => { if (c.use != null && c.win != null) _mmSel.add(c.name); });
+  // 全て表示も「20戦以上の信頼できるカード」だけプロット（マップの母集団と一致）
+  CARDS_DATA.forEach(c => { if (c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES) _mmSel.add(c.name); });
   renderCrank(); renderMetaMap();
 });
+
+// --- メタマップの開閉（ログイン中はアカウントに保存／ログアウト時は開くがデフォルト） ---
+let mapOpen = true;
+function applyMapOpen(open) {
+  mapOpen = open;
+  const s = document.querySelector('#secCards .mm-sticky');
+  if (s) s.classList.toggle('mm-collapsed', !open);
+  const t = document.getElementById('mmToggle');
+  if (t) t.textContent = open ? '▾' : '▸';
+  setHeaderH();
+}
+document.getElementById('mmToggle').addEventListener('click', () => {
+  const next = !mapOpen;
+  applyMapOpen(next);
+  if (window.CRAuth && CRAuth.getUser && CRAuth.getUser() && CRAuth.setMapOpen) CRAuth.setMapOpen(next);
+});
+function syncMapOpenFromAuth() {
+  let open = true; // 未ログインは常に開く
+  if (window.CRAuth && CRAuth.getUser && CRAuth.getUser() && CRAuth.getMapOpen) open = CRAuth.getMapOpen();
+  applyMapOpen(open);
+}
+(function pollMapPref() {
+  if (!window.CRAuth) { setTimeout(pollMapPref, 200); return; }
+  syncMapOpenFromAuth();
+  if (CRAuth.onChange) CRAuth.onChange(() => syncMapOpenFromAuth());
+})();
 
 // --- 分布図マップ（選んだカードだけプロット） ---
 function renderMetaMap() {
   const map = document.getElementById('metaMap');
+  // 母集団は「勝率が信頼できるカード（WIN_MIN_GAMES戦以上）」に限定。
+  //   少試合の極端な勝率（数戦で90〜100%等）が上限/下限を伸ばして全体を潰すのを防ぐ＝勝率ランキングと一致。
   // 横(使用率)：分散して低い側に潰れるので「順位(パーセンタイル)」で配置＝中央値が真ん中、左右に散る。
-  // 縦(勝率)：実数ベース（高いほど上・差は比例）。上限/下限＝全カードの勝率の実測 最大値/最小値。
-  //   → そのカードが現環境の勝率レンジの中でどの高さ＝どれだけポテンシャルがあるかが見える。
-  const useVals = CARDS_DATA.filter(c => c.use != null).map(c => c.use);
-  const winVals = CARDS_DATA.filter(c => c.win != null).map(c => c.win);
+  // 縦(勝率)：実数ベース（高いほど上・差は比例）。上限/下限＝母集団の勝率の実測 最大値/最小値。
+  const pop = CARDS_DATA.filter(c => c.use != null && c.win != null && (c.games || 0) >= WIN_MIN_GAMES);
+  const useVals = pop.map(c => c.use);
+  const winVals = pop.map(c => c.win);
   const pad = 9;
   function rankFrac(vals, v) {
     if (!vals.length) return 0.5;
@@ -658,8 +693,9 @@ function renderMetaMap() {
   }
   const wLo = winVals.length ? Math.min(...winVals) : 45;
   const wHi = winVals.length ? Math.max(...winVals) : 60;
-  const fx = u => pad + rankFrac(useVals, u) * (100 - 2 * pad);
-  const fy = w => (100 - pad) - ((w - wLo) / Math.max(1, wHi - wLo)) * (100 - 2 * pad);
+  const clamp = v => Math.max(pad, Math.min(100 - pad, v));
+  const fx = u => clamp(pad + rankFrac(useVals, u) * (100 - 2 * pad));
+  const fy = w => clamp((100 - pad) - ((w - wLo) / Math.max(1, wHi - wLo)) * (100 - 2 * pad));
   const base =
       '<div class="mm-q tl"></div><div class="mm-q tr"></div><div class="mm-q bl"></div><div class="mm-q br"></div>'
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'

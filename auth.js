@@ -217,6 +217,15 @@ const CRAuth = {
   getDisplayName() { return currentUser ? resolveDisplayName(currentUser, currentProfile) : ""; }, // 表示名（未ログインは空）
   getOwnedCards() { return _ownedCards; }, // 取得済みなら日本語カード名の配列、未取得はnull
 
+  // メタマップの開閉状態（アカウントに保存。既定=開く）
+  getMapOpen() { return !(currentProfile && currentProfile.mapOpen === false); },
+  async setMapOpen(open) {
+    if (!currentUser || !FB) return;
+    const v = !!open;
+    if (currentProfile) currentProfile.mapOpen = v;
+    try { await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { mapOpen: v, updatedAt: FB.serverTimestamp() }); } catch (e) {}
+  },
+
   // 表示名モードを切り替え（"account" or "game"）
   async setNameMode(mode) {
     if (!currentUser || !FB) return;
