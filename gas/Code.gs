@@ -289,15 +289,33 @@ function updateDecks() {
   // カード単体（窓内：使用率は採用率の平均、勝率は合算）
   var cards = aggregateCards_(hist.snaps);
 
-  // 急上昇：今回の pop と「前回スナップショット」の差分（正の伸びだけ）
-  var prevSnap = hist.snaps.length >= 2 ? hist.snaps[hist.snaps.length - 2] : null;
+  // 急上昇：「過去3日分（基準）」vs「今回の更新」。
+  //   基準＝今回を除く過去スナップショットの合算採用率（count合計 / players合計）。
+  //   今回＝この更新の採用率（count / players）。
+  //   rise = 今回採用率 − 基準採用率（%ポイント）。正＝過去3日平均より今まさに伸びている。
+  //   6時間ごとの1〜2人ブレ対策で、今回2人以上使われたデッキのみ対象。基準が無い初回付近は出さない。
   var trending = [];
-  if (prevSnap && prevSnap.decks) {
-    Object.keys(pop).forEach(function (k) {
-      var delta = pop[k].count - (prevSnap.decks[k] || 0);
-      if (delta > 0) {
-        var d = finalizeDeck(pop[k]);
-        trending.push({ name: d.name, slots: d.slots, forms: d.forms, count: pop[k].count, delta: delta });
+  var prior = hist.snaps.slice(0, -1); // 今回ぶん（末尾）を除いた過去最大3日
+  if (prior.length >= 1) {
+    var baseCount = {}, basePlayers = 0;
+    prior.forEach(function (s) {
+      basePlayers += (s.players || 0);
+      var dk = s.decks || {};
+      Object.keys(dk).forEach(function (sig) { baseCount[sig] = (baseCount[sig] || 0) + dk[sig]; });
+    });
+    var curPlayers = aggregated || 1;
+    Object.keys(pop).forEach(function (sig) {
+      var cur = pop[sig].count;
+      if (cur < 2) return; // 今回2人以上のみ（単発1人ノイズ除外）
+      var curRate = cur / curPlayers;
+      var baseRate = basePlayers > 0 ? (baseCount[sig] || 0) / basePlayers : 0;
+      var rise = curRate - baseRate;
+      if (rise > 0) {
+        var d = finalizeDeck(pop[sig]);
+        trending.push({
+          name: d.name, slots: d.slots, forms: d.forms, count: cur,
+          delta: Math.round(rise * 1000) / 10 // 上昇ポイント(%)。フロントの判定にも使う
+        });
       }
     });
     trending.sort(function (a, b) { return b.delta - a.delta || b.count - a.count; });

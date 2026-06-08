@@ -318,8 +318,8 @@ function applyDecks() {
   // 急上昇がまだ空（前回スナップショット未蓄積）のときは集計中を表示
   if (activeTab === 'trend' && list.length === 0) {
     document.getElementById('deckList').innerHTML =
-      '<div class="coming-soon"><div class="big">🔥</div>急上昇は集計中です'
-      + '<div class="note" style="margin-top:8px">前回データとの差分が取れる、数回の更新後に表示されます</div></div>';
+      '<div class="coming-soon"><div class="big">🔥</div>急上昇は準備中です'
+      + '<div class="note" style="margin-top:8px">数回の更新でデータがたまり次第、自動で表示されます</div></div>';
   }
   if (note) {
     if (onlyOwned && ownedSet) note.textContent = shown.length + ' / ' + list.length + ' デッキ' + (cardFilter ? '（絞り込み中）' : 'が今のカードで組めます');
@@ -335,7 +335,7 @@ function updateDeckTabDesc() {
   if (activeTab === 'win') {
     t = '実際の対戦結果から、<b>勝率が高い</b>デッキ順に表示されます。';
   } else if (activeTab === 'trend') {
-    t = '<b>' + UPDATE_HRS + '時間ごと</b>の更新で、前回より<b>使用人数が急上昇した</b>デッキ順に表示されます。';
+    t = '<b>過去3日間の平均</b>と比べ、今回の更新で<b>使用人数が伸びた</b>デッキ順に表示されます。';
   } else {
     t = (n ? '<b>' + n + '人</b>の内、' : '') + '実際に使っている<b>人数とその％が多い</b>デッキ順に表示されます。';
   }
@@ -451,11 +451,9 @@ function renderDecks(decks) {
     const avg = (d.slots.reduce((s,n)=> s + (CARD_INFO[n]?CARD_INFO[n].c:0), 0) / d.slots.length).toFixed(1);
     let headHtml;
     if (d.delta != null) {
-      // 急上昇タブ：前回比の伸び ＋ 現在の使用人数
-      const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
-      const sign = d.delta > 0 ? '+' : '';
-      headHtml = '<span class="stat-trend"><span class="arrow">▲</span> ' + sign + d.delta + '人 急上昇</span>'
-        + '<span class="stat-sep">今' + (d.count != null ? d.count + '人' : '') + (pct != null ? ' / ' + pct + '%' : '') + '</span>'
+      // 急上昇タブ：3日窓の前半→直近で使用が伸びたデッキ（単発の差分ではなく合算比較）
+      headHtml = '<span class="stat-trend"><span class="arrow">▲</span> 急上昇</span>'
+        + '<span class="stat-sep">過去3日平均より使用増' + (d.count != null ? '（今' + d.count + '人）' : '') + '</span>'
         + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>';
     } else if (d.winRate != null) {
       // 勝率タブ：勝率 ＋ 対戦数
