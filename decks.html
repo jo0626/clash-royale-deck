@@ -541,15 +541,23 @@ window.addEventListener('resize', setHeaderH);
 window.addEventListener('load', setHeaderH);
 setTimeout(setHeaderH, 300); // フォント確定後に再計測
 
-// --- トップ：デッキ / カード 切替 ---
+// --- トップ：デッキ / カード 切替（URLハッシュに状態を保持＝リロード・直リンクで同じタブが開く） ---
+function setSeg(seg) {
+  seg = (seg === 'cards') ? 'cards' : 'decks';
+  document.querySelectorAll('#topSeg .seg-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-seg') === seg));
+  document.getElementById('secDecks').style.display = seg === 'cards' ? 'none' : '';
+  document.getElementById('secCards').style.display = seg === 'cards' ? '' : 'none';
+  setHeaderH();
+}
 document.querySelectorAll('#topSeg .seg-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     const seg = btn.getAttribute('data-seg');
-    document.querySelectorAll('#topSeg .seg-tab').forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('secDecks').style.display = seg === 'cards' ? 'none' : '';
-    document.getElementById('secCards').style.display = seg === 'cards' ? '' : 'none';
+    if ((location.hash.replace('#', '') || 'decks') !== seg) history.replaceState(null, '', '#' + seg);
+    setSeg(seg);
   });
 });
+window.addEventListener('hashchange', () => setSeg(location.hash.replace('#', '')));
+setSeg(location.hash.replace('#', '')); // 初期表示はハッシュに従う（#cards ならカード）
 
 function _cardImg(name) { const i = CARD_INFO[name]; return i ? (i.i || '') : ''; }
 function _cardCost(name) { const i = CARD_INFO[name]; return i ? i.c : ''; }
@@ -629,7 +637,8 @@ document.getElementById('mmAll').addEventListener('click', () => {
 function renderMetaMap() {
   const map = document.getElementById('metaMap');
   // 横(使用率)：分散して低い側に潰れるので「順位(パーセンタイル)」で配置＝中央値が真ん中、左右に散る。
-  // 縦(勝率)：実数ベース（高いほど上・差は比例）。表示中カードの最高/最低勝率に少し余白を取った範囲。
+  // 縦(勝率)：実数ベース（高いほど上・差は比例）。上限/下限＝全カードの勝率の実測 最大値/最小値。
+  //   → そのカードが現環境の勝率レンジの中でどの高さ＝どれだけポテンシャルがあるかが見える。
   const useVals = CARDS_DATA.filter(c => c.use != null).map(c => c.use);
   const winVals = CARDS_DATA.filter(c => c.win != null).map(c => c.win);
   const pad = 9;
@@ -639,8 +648,8 @@ function renderMetaMap() {
     for (const x of vals) { if (x < v) lt++; else if (x === v) eq++; }
     return (lt + eq / 2) / vals.length;
   }
-  const wLo = winVals.length ? Math.min(...winVals) - 1 : 45;
-  const wHi = winVals.length ? Math.max(...winVals) + 1 : 60;
+  const wLo = winVals.length ? Math.min(...winVals) : 45;
+  const wHi = winVals.length ? Math.max(...winVals) : 60;
   const fx = u => pad + rankFrac(useVals, u) * (100 - 2 * pad);
   const fy = w => (100 - pad) - ((w - wLo) / Math.max(1, wHi - wLo)) * (100 - 2 * pad);
   const base =
