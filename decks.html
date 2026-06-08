@@ -28,7 +28,8 @@
   .seg-tabs { display:flex; gap:4px; max-width:900px; margin:20px auto 0; padding:0 20px; }
   .seg-tab { flex:1; padding:12px; text-align:center; cursor:pointer; background:var(--surface); border:1px solid var(--border); border-radius:10px; font-weight:700; font-size:14px; color:var(--text-muted); transition:all 0.15s; font-family:var(--font-head); letter-spacing:1px; }
   .seg-tab.active { background:rgba(232,160,32,0.12); border-color:var(--accent); color:var(--accent); }
-  .swipe-viewport { overflow:hidden; max-width:900px; margin:0 auto; }
+  /* overflow:visible にして position:sticky（分布図マップの上部固定）を効かせる。横スワイプは未使用 */
+  .swipe-viewport { overflow:visible; max-width:900px; margin:0 auto; }
   .swipe-track { display:flex; transition:transform 0.3s ease; }
   .swipe-page { min-width:100%; padding:20px; }
   .page-title { font-family:var(--font-head); font-size:22px; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
@@ -133,7 +134,9 @@
   .crank-row.sel .crank-check { color:var(--accent); }
 
   /* ▼ メタマップ（分布図） */
-  .mm-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:26px 0 4px; flex-wrap:wrap; }
+  /* 分布図マップを画面上部に固定（ヘッダーの高さぶん下げる）。下のランキングだけがスクロールする */
+  .mm-sticky { position:sticky; top:var(--cr-header-h, 60px); z-index:30; background:var(--bg); padding-bottom:16px; }
+  .mm-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:10px 0 4px; flex-wrap:wrap; }
   .mm-title { font-family:var(--font-head); font-size:17px; font-weight:700; letter-spacing:1px; }
   .mm-clear { background:var(--surface); border:1px solid var(--border-hi); color:var(--text-muted); border-radius:999px;
     padding:5px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; }
@@ -218,12 +221,14 @@
       <p class="page-sub">環境での使用率と勝率、そして「人気だが勝てない／地味だが勝てる」などをマップで表示。</p>
       <p class="agg-note" id="cardsNote"></p>
 
-      <div class="mm-head">
-        <span class="mm-title">📍 分布図マップ</span>
-        <button class="mm-clear" id="mmClear" type="button">選択をクリア</button>
+      <div class="mm-sticky">
+        <div class="mm-head">
+          <span class="mm-title">📍 分布図マップ</span>
+          <button class="mm-clear" id="mmClear" type="button">選択をクリア</button>
+        </div>
+        <p class="mm-hint">下のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
+        <div id="metaMap" class="metamap"></div>
       </div>
-      <p class="mm-hint">下のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
-      <div id="metaMap" class="metamap"></div>
 
       <div class="crank-tabs" id="crankTabs">
         <button class="crank-tab active" data-ctab="use">📊 使用率</button>
@@ -524,6 +529,16 @@ const CARDS_SAMPLE = [
   ['ゴーレム',5,46,90],['エリクサーゴーレム',6,45,95],['プリンセス',14,54,230],
   ['インフェルノタワー',13,53,210],['エアバルーン',12,55,200],['ラヴァハウンド',8,50,130]
 ].map(a => ({ name: a[0], use: a[1], win: a[2], games: a[3], rise: a[4] != null ? a[4] : null }));
+
+// 分布図マップの固定位置（ヘッダーの実高さ）をCSS変数に反映
+function setHeaderH() {
+  const h = document.querySelector('header');
+  if (h) document.documentElement.style.setProperty('--cr-header-h', h.offsetHeight + 'px');
+}
+setHeaderH();
+window.addEventListener('resize', setHeaderH);
+window.addEventListener('load', setHeaderH);
+setTimeout(setHeaderH, 300); // フォント確定後に再計測
 
 // --- トップ：デッキ / カード 切替 ---
 document.querySelectorAll('#topSeg .seg-tab').forEach(btn => {
