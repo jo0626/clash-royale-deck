@@ -63,21 +63,35 @@
 
   .grade-section { margin-top: 40px; }
   .section-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; }
-  .grade-list { display: flex; flex-direction: column; gap: 10px; }
+  /* ランク枠：デッキスロット風の光る宝石フレーム。上位ほどグロー強め＝格上感 */
+  .grade-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 12px; }
   .grade-card {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 18px; border-radius: 10px;
-    background: var(--surface); border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 20px 12px 14px; border-radius: 14px; position: relative; overflow: hidden;
+    background: linear-gradient(160deg, #1b1e2b 0%, #11131b 100%); border: 2px solid var(--border);
   }
-  .grade-medal { font-size: 26px; }
-  .grade-info { flex: 1; }
-  .grade-name { font-weight: 700; font-size: 15px; }
-  .grade-cond { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .grade-bronze { border-left: 3px solid #cd7f32; }
-  .grade-silver { border-left: 3px solid #c0c0c0; }
-  .grade-gold { border-left: 3px solid #e8a020; }
-  .grade-legend { border-left: 3px solid #8b5cf6; }
-  .grade-hidden { border-left: 3px solid var(--text-dim); opacity: 0.6; }
+  .grade-gem {
+    width: 46px; height: 46px; border-radius: 13px; transform: rotate(45deg); margin: 4px 0 18px;
+    box-shadow: inset 0 2px 7px rgba(255,255,255,.5), inset 0 -3px 7px rgba(0,0,0,.4), 0 3px 10px rgba(0,0,0,.45);
+  }
+  .grade-name { font-family: var(--font-head); font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+  .grade-cond { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+  /* 各ランク（色は格付けの差が出ればOK・カッコよさ優先） */
+  .grade-bronze { border-color: #cd7f32; box-shadow: 0 0 14px rgba(205,127,50,.35); }
+  .grade-bronze .grade-gem { background: linear-gradient(135deg, #e8b06a, #9c5418); }
+  .grade-bronze .grade-name { color: #e6a157; }
+  .grade-silver { border-color: #c7ccd6; box-shadow: 0 0 16px rgba(199,204,214,.4); }
+  .grade-silver .grade-gem { background: linear-gradient(135deg, #f3f6fb, #9aa0ad); }
+  .grade-silver .grade-name { color: #dfe3ea; }
+  .grade-gold { border-color: #e8a020; box-shadow: 0 0 20px rgba(232,160,32,.5); }
+  .grade-gold .grade-gem { background: linear-gradient(135deg, #ffd76a, #c8851a); }
+  .grade-gold .grade-name { color: #f0c54a; }
+  .grade-legend { border-color: #a78bfa; box-shadow: 0 0 26px rgba(167,139,250,.6); }
+  .grade-legend .grade-gem { background: linear-gradient(135deg, #d8ccff, #7c3aed); }
+  .grade-legend .grade-name { color: #c4b5fd; }
+  .grade-hidden { border-color: rgba(255,255,255,.15); opacity: .55; }
+  .grade-hidden .grade-gem { background: linear-gradient(135deg, #3a3f50, #20232c); }
+  .grade-hidden .grade-name { color: var(--text-dim); }
 
   .note { margin-top: 32px; padding: 16px; background: var(--surface); border-radius: 8px; font-size: 12px; color: var(--text-muted); line-height: 1.7; }
 
@@ -132,43 +146,33 @@
   <div class="grade-section">
     <h2 class="section-title">支援者グレード</h2>
     <p class="page-sub" style="margin-bottom:16px;">
-      累計の支援額に応じて、デッキ作成画面の見た目が豪華になります。（機能はすべて無料で使えます）
+      累計の支援額に応じてランクが上がり、SNS共有時のデッキ画像が豪華な枠になります。（機能はすべて無料で使えます）
     </p>
     <div class="grade-list">
       <div class="grade-card grade-bronze">
-        <span class="grade-medal">🥉</span>
-        <div class="grade-info">
-          <div class="grade-name">ブロンズ支援者</div>
-          <div class="grade-cond">累計 500円〜 / デッキ枠にブロンズカラー</div>
-        </div>
+        <span class="grade-gem"></span>
+        <div class="grade-name">ブロンズ</div>
+        <div class="grade-cond">累計 500円〜</div>
       </div>
       <div class="grade-card grade-silver">
-        <span class="grade-medal">🥈</span>
-        <div class="grade-info">
-          <div class="grade-name">シルバー支援者</div>
-          <div class="grade-cond">累計 2,000円〜 / デッキ枠にシルバーの輝き</div>
-        </div>
+        <span class="grade-gem"></span>
+        <div class="grade-name">シルバー</div>
+        <div class="grade-cond">累計 2,000円〜</div>
       </div>
       <div class="grade-card grade-gold">
-        <span class="grade-medal">🥇</span>
-        <div class="grade-info">
-          <div class="grade-name">ゴールド支援者</div>
-          <div class="grade-cond">累計 10,000円〜 / デッキ枠が黄金に輝く</div>
-        </div>
+        <span class="grade-gem"></span>
+        <div class="grade-name">ゴールド</div>
+        <div class="grade-cond">累計 10,000円〜</div>
       </div>
       <div class="grade-card grade-legend">
-        <span class="grade-medal">👑</span>
-        <div class="grade-info">
-          <div class="grade-name">レジェンド支援者</div>
-          <div class="grade-cond">累計 50,000円〜 / 特別なエフェクト＆殿堂入り掲載</div>
-        </div>
+        <span class="grade-gem"></span>
+        <div class="grade-name">レジェンド</div>
+        <div class="grade-cond">累計 50,000円〜</div>
       </div>
       <div class="grade-card grade-hidden">
-        <span class="grade-medal">❓</span>
-        <div class="grade-info">
-          <div class="grade-name">？？？</div>
-          <div class="grade-cond">隠しグレード … 達成者が現れたら解放されます</div>
-        </div>
+        <span class="grade-gem"></span>
+        <div class="grade-name">？？？</div>
+        <div class="grade-cond">隠しランク</div>
       </div>
     </div>
   </div>
