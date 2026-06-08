@@ -352,6 +352,15 @@ function aggregateCards_(snaps) {
     Object.keys(s.use || {}).forEach(function (k) { keys[k] = 1; });
     Object.keys(s.bat || {}).forEach(function (k) { keys[k] = 1; });
   });
+  // 急上昇(rise)用：今回(最新スナップ) vs 過去3日(それ以外)の採用率
+  var latest = snaps[snaps.length - 1] || { use: {}, players: 0 };
+  var prior = snaps.slice(0, -1);
+  var basePlayers = 0, baseUse = {};
+  prior.forEach(function (s) {
+    basePlayers += (s.players || 0);
+    var u = s.use || {};
+    Object.keys(u).forEach(function (k) { baseUse[k] = (baseUse[k] || 0) + u[k]; });
+  });
   var out = [];
   Object.keys(keys).forEach(function (name) {
     var useSum = 0, g = 0, w = 0;
@@ -362,7 +371,13 @@ function aggregateCards_(snaps) {
     });
     var use = Math.round(useSum / n * 1000) / 10;
     var winr = g > 0 ? Math.round(w / g * 1000) / 10 : null;
-    if (use > 0 || g > 0) out.push({ name: name, use: use, win: winr, games: g });
+    var rise = null; // 過去ぶんが無い初回付近は null（フロントは急上昇に出さない）
+    if (prior.length >= 1 && latest.players > 0) {
+      var curRate = (latest.use && latest.use[name] ? latest.use[name] : 0) / latest.players;
+      var baseRate = basePlayers > 0 ? (baseUse[name] || 0) / basePlayers : 0;
+      rise = Math.round((curRate - baseRate) * 1000) / 10;
+    }
+    if (use > 0 || g > 0) out.push({ name: name, use: use, win: winr, games: g, rise: rise });
   });
   return out;
 }

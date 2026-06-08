@@ -214,23 +214,25 @@
     </section>
 
     <section id="secCards" style="display:none">
-      <h1 class="page-title">カードメタ</h1>
-      <p class="page-sub">環境で何が強いか、カード単位で。使用率と勝率、そして「人気だが勝ててない／地味だが勝てる」のギャップが見える。</p>
+      <h1 class="page-title">カード人気・メタ</h1>
+      <p class="page-sub">環境での使用率と勝率、そして「人気だが勝てない／地味だが勝てる」などをマップで表示。</p>
       <p class="agg-note" id="cardsNote"></p>
-      <div class="crank-tabs" id="crankTabs">
-        <button class="crank-tab active" data-ctab="use">📊 使用率ランキング</button>
-        <button class="crank-tab" data-ctab="win">🏅 勝率ランキング</button>
-      </div>
-      <p class="crank-hint" id="crankHint"></p>
-      <div id="crankList" class="crank-list"></div>
 
       <div class="mm-head">
         <span class="mm-title">📍 分布図マップ</span>
         <button class="mm-clear" id="mmClear" type="button">選択をクリア</button>
       </div>
-      <p class="mm-hint">上のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
+      <p class="mm-hint">下のランキングでカードをタップすると、ここに小さく表示されます。横=使用率／縦=勝率。</p>
       <div id="metaMap" class="metamap"></div>
-      <p class="note">※ 勝率は直近3日間の対戦結果を累積して算出（更新ごとに最古を捨てて巡回）。</p>
+
+      <div class="crank-tabs" id="crankTabs">
+        <button class="crank-tab active" data-ctab="use">📊 使用率</button>
+        <button class="crank-tab" data-ctab="win">🏅 勝率</button>
+        <button class="crank-tab" data-ctab="rise">🔥 急上昇</button>
+      </div>
+      <p class="crank-hint" id="crankHint"></p>
+      <div id="crankList" class="crank-list"></div>
+      <p class="note">※ 勝率・急上昇は直近3日間のデータから算出（更新ごとに最古を捨てて巡回）。</p>
     </section>
     </div>
   </div>
@@ -512,15 +514,16 @@ const TREND_SAMPLE = (function () {
   return pick.map((d, i) => ({ name: d.name, slots: d.slots, evo: d.evo, champ: d.champ, count: counts[i], delta: deltas[i] }));
 })();
 const CARDS_SAMPLE = [
+  // name, use(%), win(%), games, rise(pp・急上昇用。省略=null)
   ['ローリングウッド',64,53,820],['アイススピリット',58,52,910],['スケルトン',55,51,880],
   ['ファイアボール',47,52,700],['大砲',31,54,520],['ホグライダー',28,51,470],
   ['マスケット銃士',26,52,430],['ナイト',25,50,610],['ザップ',22,49,540],
   ['コウモリの群れ',21,53,360],['ポイズン',19,52,300],['トルネード',17,55,280],
-  ['ディガー',16,53,260],['迫撃砲',9,56,140],['巨大クロスボウ',6,57,110],
-  ['エレクトロジャイアント',7,49,120],['メガナイト',20,47,420],['ペッカ',15,48,250],
+  ['ディガー',16,53,260,0.4],['迫撃砲',9,56,140,1.2],['巨大クロスボウ',6,57,110,0.8],
+  ['エレクトロジャイアント',7,49,120,0.6],['メガナイト',20,47,420],['ペッカ',15,48,250,0.3],
   ['ゴーレム',5,46,90],['エリクサーゴーレム',6,45,95],['プリンセス',14,54,230],
   ['インフェルノタワー',13,53,210],['エアバルーン',12,55,200],['ラヴァハウンド',8,50,130]
-].map(a => ({ name: a[0], use: a[1], win: a[2], games: a[3] }));
+].map(a => ({ name: a[0], use: a[1], win: a[2], games: a[3], rise: a[4] != null ? a[4] : null }));
 
 // --- トップ：デッキ / カード 切替 ---
 document.querySelectorAll('#topSeg .seg-tab').forEach(btn => {
@@ -544,26 +547,45 @@ function renderCrank() {
     list = list.filter(c => (c.games || 0) >= WIN_MIN_GAMES);
     list.sort((a, b) => (b.win || 0) - (a.win || 0) || (b.games || 0) - (a.games || 0));
     hint.textContent = '直近3日の対戦結果から算出（' + WIN_MIN_GAMES + '戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。';
+  } else if (_ctab === 'rise') {
+    list = list.filter(c => c.rise != null && c.rise > 0);
+    list.sort((a, b) => (b.rise || 0) - (a.rise || 0));
+    hint.textContent = '過去3日間と比べ、今回の更新で使用率が伸びたカード順。';
   } else {
     list.sort((a, b) => (b.use || 0) - (a.use || 0));
     hint.textContent = 'トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
   }
+  // 急上昇のデータがまだ無いときは準備中
+  if (_ctab === 'rise' && !list.length) {
+    wrap.innerHTML = '<div class="coming-soon"><div class="big">🔥</div>カードの急上昇は準備中です'
+      + '<div class="note" style="margin-top:8px">数回の更新でデータがたまり次第、自動で表示されます</div></div>';
+    return;
+  }
   list = list.slice(0, 50);
   const maxUse = Math.max(1, ...CARDS_DATA.map(c => c.use || 0));
+  const maxRise = Math.max(0.1, ...CARDS_DATA.map(c => c.rise || 0));
   wrap.innerHTML = list.map((c, i) => {
     const sel = _mmSel.has(c.name);
-    const big = _ctab === 'win' ? (c.win != null ? c.win + '%' : '—') : (c.use != null ? c.use + '%' : '—');
-    const sub = _ctab === 'win' ? ((c.games || 0) + '戦 ・ 使用' + (c.use != null ? c.use + '%' : '—'))
-                                : ('勝率 ' + (c.win != null ? c.win + '%' : '—'));
-    const barPct = _ctab === 'win' ? Math.max(0, Math.min(100, c.win || 0)) : Math.round((c.use || 0) / maxUse * 100);
-    const barCol = _ctab === 'win' ? '#e8a020' : '#3a8ef0';
+    const winTxt = (c.win != null ? c.win + '%' : '—');
+    const useTxt = (c.use != null ? c.use + '%' : '—');
+    let big, sub, barPct, barCol, statCls;
+    if (_ctab === 'win') {
+      big = winTxt; sub = (c.games || 0) + '戦 ・ 使用' + useTxt;
+      barPct = Math.max(0, Math.min(100, c.win || 0)); barCol = '#e8a020'; statCls = 'win';
+    } else if (_ctab === 'rise') {
+      big = '▲' + (c.rise || 0); sub = '使用 ' + useTxt + ' ・ 勝率 ' + winTxt;
+      barPct = Math.round((c.rise || 0) / maxRise * 100); barCol = '#ff8a3c'; statCls = 'win';
+    } else {
+      big = useTxt; sub = '勝率 ' + winTxt;
+      barPct = Math.round((c.use || 0) / maxUse * 100); barCol = '#3a8ef0'; statCls = 'use';
+    }
     return '<div class="crank-row' + (sel ? ' sel' : '') + '" data-n="' + String(c.name).replace(/"/g, '&quot;') + '">'
       + '<span class="crank-rank">' + (i + 1) + '</span>'
       + '<span class="crank-ico"><span class="pip">' + _cardCost(c.name) + '</span>'
         + (_cardImg(c.name) ? '<img src="' + _cardImg(c.name) + '" alt="' + c.name + '" loading="lazy">' : '') + '</span>'
       + '<span class="crank-name">' + c.name + '</span>'
       + '<span class="crank-bar"><i style="width:' + barPct + '%;background:' + barCol + '"></i></span>'
-      + '<span class="crank-stat ' + _ctab + '"><span class="big">' + big + '</span><span class="sub">' + sub + '</span></span>'
+      + '<span class="crank-stat ' + statCls + '"><span class="big">' + big + '</span><span class="sub">' + sub + '</span></span>'
       + '<span class="crank-check">' + (sel ? '✓' : '＋') + '</span>'
       + '</div>';
   }).join('');
@@ -616,9 +638,13 @@ function initCardMeta(isSample) {
   renderCrank(); renderMetaMap();
 }
 
-// decks.json（GASが更新）を優先。取得できなければ内蔵DECKSにフォールバック
-fetch('decks.json', { cache: 'no-store' })
-  .then(r => r.ok ? r.json() : null)
+// データ(decks.json)はGASが「同じリポジトリの data ブランチ」に更新する → raw から取得。
+// サイト本体(main)をManus等で丸ごと差し替えても、data ブランチは触らないので消えない。
+// 取得できなければ同一オリジンの decks.json、それも無ければ内蔵DECKSにフォールバック（移行中も壊れない）。
+const DECKS_DATA_URL = 'https://raw.githubusercontent.com/rea-fi-lia/clash-royale-deck/data/decks.json';
+fetch(DECKS_DATA_URL, { cache: 'no-store' })
+  .then(r => { if (!r.ok) throw 0; return r.json(); })
+  .catch(() => fetch('decks.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : null))
   .then(j => {
     const hasData = j && Array.isArray(j.decks) && j.decks.length;
     ALL_DECKS = hasData ? j.decks : DECKS;
