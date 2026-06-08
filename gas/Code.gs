@@ -1,373 +1,416 @@
 /**
- * CR Deck Builders – 集計GAS（currentDeck ＋ battlelog → decks.json）
+ * CR Deck Builders – 人気デッキ自動更新 (Google Apps Script)
+ * トップ層プレイヤーの currentDeck を集計し、頻度上位デッキを
+ * decks.json として GitHub リポジトリへコミットする。
  *
- * 出力（decks.json）:
- *   decks[]    使用率デッキ（currentDeck頻度）          {name,sub,slots,count,evo}
- *   winDecks[] 勝率デッキ（battlelogから算出）          {name,slots,winRate,games,evo}
- *   trending[] 急上昇デッキ（前回スナップショット比の伸び）{name,slots,count,delta,evo}
- *   cards[]    カード単体（3日ローリング集計）           {name,use,win,games}
- *   players,topPlayers,intervalHours,updated,cardsWindowDays
+ * ★この版の要点：
+ *   - 各カードを実データから「進化(evo) / ヒーロー(hero) / チャンピオン(champ) / 通常(norm)」に分類。
+ *       champion : rarity === "champion"
+ *       evo      : evolutionLevel>0 かつ iconUrls.evolutionMedium あり
+ *       hero     : evolutionLevel>0 かつ iconUrls.heroMedium のみ（evolutionMedium なし）
+ *     ＝ 進化とヒーローは同じ特殊枠の取り合い。プレイヤーが実際に使った形が出る。
+ *   - デッキごとに各カードの形を多数決で確定し、特殊カードを前に並べて
+ *     slots[] と forms[]（各スロットの形）を出力。サイトはこの forms 通りに絵柄を表示。
+ *   - 取得失敗したプレイヤーを1回リトライして母数を1000に近づける。
  *
- * 履歴は cardhist.json としてリポジトリにコミット（3日ぶんのスナップショットを巡回保存）。
+ * ★★ 追記（カードメタ／急上昇）：追加APIリクエストなしで、既存集計から
+ *   - trending[] … 前回スナップショット比でデッキ使用が伸びたもの（急上昇）
+ *   - cards[]    … カード単体の使用率(pop由来)・勝率(win由来)を「3日ローリング」で集計
+ *   履歴は cardhist.json としてリポジトリに保存（更新ごとに最古を捨てて巡回）。
  *
- * スクリプトプロパティ（プロジェクトの設定 → スクリプト プロパティ）:
- *   CR_TOKEN, GITHUB_TOKEN, GITHUB_REPO(owner/repo), GITHUB_PATH(例: decks.json), GITHUB_BRANCH(例: main)
- *
- * トリガー: main を 6 時間おき。
+ * スクリプトのプロパティ:
+ *   CR_TOKEN, GITHUB_TOKEN, GITHUB_REPO("owner/repo"),
+ *   GITHUB_PATH("decks.json"), GITHUB_BRANCH("main"),
+ *   TOP_PLAYERS("1000"), TOP_DECKS("50"), INTERVAL_HOURS("12")
  */
 
 var PROXY = 'https://proxy.royaleapi.dev/v1';
-var TOP_N = 120;          // 集計する世界上位プレイヤー数（増やすほどAPIリクエスト増）
-var INTERVAL_HOURS = 6;   // トリガー間隔（表示用）
-var WINDOW_DAYS = 3;      // カード集計のローリング期間
-var DECK_WIN_MIN = 15;    // デッキ勝率の最低対戦数
-var MAX_SNAP_DECKS = 200; // スナップショットに残すデッキ種類の上限
+var WINDOW_DAYS = 3; // カード集計のローリング期間（日）
 
 var SLUG2JP = {
-  "archer-queen":"アーチャークイーン",
-  "archers":"アーチャー",
-  "arrows":"矢の雨",
-  "baby-dragon":"ベビードラゴン",
-  "balloon":"エアバルーン",
-  "bandit":"アサシン ユーノ",
-  "barbarian-barrel":"ローリングバーバリアン",
-  "barbarian-hut":"バーバリアンの小屋",
-  "barbarians":"バーバリアン",
-  "bats":"コウモリの群れ",
-  "battle-healer":"バトルヒーラー",
-  "battle-ram":"攻城バーバリアン",
-  "berserker":"バーサーカー",
-  "bomb-tower":"ボムタワー",
-  "bomber":"ボンバー",
-  "boss-bandit":"ボスアサシン",
-  "bowler":"ボウラー",
-  "cannon":"大砲",
-  "cannon-cart":"60式ムート",
-  "clone":"クローン",
-  "dark-prince":"ダークプリンス",
-  "dart-goblin":"吹き矢ゴブリン",
-  "earthquake":"アースクエイク",
-  "electro-dragon":"ライトニングドラゴン",
-  "electro-giant":"エレクトロジャイアント",
-  "electro-spirit":"エレクトロスピリット",
-  "electro-wizard":"エレクトロウィザード",
-  "elite-barbarians":"エリートバーバリアン",
-  "elixir-collector":"エリクサーポンプ",
-  "elixir-golem":"エリクサーゴーレム",
-  "executioner":"執行人ファルチェ",
-  "fire-spirit":"ファイアスピリット",
-  "fireball":"ファイアボール",
-  "firecracker":"ロケット砲士",
-  "fisherman":"漁師トリトン",
-  "flying-machine":"ホバリング砲",
-  "freeze":"フリーズ",
-  "furnace":"オーブン",
-  "giant":"ジャイアント",
-  "giant-skeleton":"巨大スケルトン",
-  "giant-snowball":"巨大雪玉",
-  "goblin-barrel":"ゴブリンバレル",
-  "goblin-cage":"ゴブリンの檻",
-  "goblin-curse":"ゴブリンの呪い",
-  "goblin-demolisher":"ダイナマイトゴブリン",
-  "goblin-drill":"ゴブリンドリル",
-  "goblin-gang":"ゴブリンギャング",
-  "goblin-giant":"ゴブジャイアント",
-  "goblin-hut":"ゴブリンの小屋",
-  "goblin-machine":"ゴブリンマシン",
-  "goblins":"ゴブリン",
-  "goblinstein":"ゴブリンシュタイン",
-  "golden-knight":"ゴールドナイト",
-  "golem":"ゴーレム",
-  "graveyard":"スケルトンラッシュ",
-  "guards":"盾の戦士",
-  "heal-spirit":"ヒールスピリット",
-  "hog-rider":"ホグライダー",
-  "hunter":"ハンター",
-  "ice-golem":"アイスゴーレム",
-  "ice-spirit":"アイススピリット",
-  "ice-wizard":"アイスウィザード",
-  "inferno-dragon":"インフェルノドラゴン",
-  "inferno-tower":"インフェルノタワー",
-  "knight":"ナイト",
-  "lava-hound":"ラヴァハウンド",
-  "lightning":"ライトニング",
-  "little-prince":"リトルプリンス",
-  "lumberjack":"ランバージャック",
-  "magic-archer":"マジックアーチャー",
-  "mega-knight":"メガナイト",
-  "mega-minion":"メガガーゴイル",
-  "mighty-miner":"マイティディガー",
-  "miner":"ディガー",
-  "mini-pekka":"ミニペッカ",
-  "minion-horde":"ガーゴイルの群れ",
-  "minions":"ガーゴイル",
-  "mirror":"ミラー",
-  "monk":"モンク",
-  "mortar":"迫撃砲",
-  "mother-witch":"マザーネクロマンサー",
-  "musketeer":"マスケット銃士",
-  "night-witch":"ダークネクロ",
-  "pekka":"ペッカ",
-  "phoenix":"フェニックス",
-  "poison":"ポイズン",
-  "prince":"プリンス",
-  "princess":"プリンセス",
-  "rage":"レイジ",
-  "ram-rider":"ラムライダー",
-  "rascals":"アウトロー",
-  "rocket":"ロケット",
-  "royal-delivery":"ロイヤルデリバリー",
-  "royal-ghost":"ロイヤルゴースト",
-  "royal-giant":"ロイヤルジャイアント",
-  "royal-hogs":"ロイヤルホグ",
-  "royal-recruits":"見習い親衛隊",
-  "rune-giant":"鍛冶屋ジャイアント",
-  "skeleton-army":"スケルトン部隊",
-  "skeleton-barrel":"スケルトンバレル",
-  "skeleton-dragons":"スケルトンドラゴン",
-  "skeleton-king":"スケルトンキング",
-  "skeletons":"スケルトン",
-  "sparky":"スパーキー",
-  "spear-goblins":"槍ゴブリン",
-  "spirit-empress":"スピリットエンプレス",
-  "suspicious-bush":"ステルスブッシュ",
-  "tesla":"テスラ",
-  "the-log":"ローリングウッド",
-  "three-musketeers":"三銃士",
-  "tombstone":"墓石",
-  "tornado":"トルネード",
-  "valkyrie":"バルキリー",
-  "vines":"ヴァイン",
-  "void":"ボイド",
-  "wall-breakers":"ウォールブレイカー",
-  "witch":"ネクロマンサー",
-  "wizard":"ウィザード",
-  "x-bow":"巨大クロスボウ",
-  "zap":"ザップ",
-  "zappies":"ザッピー"
+  "skeletons": "スケルトン", "ice-spirit": "アイススピリット", "fire-spirit": "ファイアスピリット",
+  "electro-spirit": "エレクトロスピリット", "heal-spirit": "ヒールスピリット", "goblins": "ゴブリン",
+  "bomber": "ボンバー", "spear-goblins": "槍ゴブリン", "bats": "コウモリの群れ", "ice-golem": "アイスゴーレム",
+  "wall-breakers": "ウォールブレイカー", "berserker": "バーサーカー", "zap": "ザップ", "giant-snowball": "巨大雪玉",
+  "barbarian-barrel": "ローリングバーバリアン", "the-log": "ローリングウッド", "rage": "レイジ",
+  "suspicious-bush": "ステルスブッシュ", "goblin-curse": "ゴブリンの呪い", "knight": "ナイト", "archers": "アーチャー",
+  "minions": "ガーゴイル", "goblin-gang": "ゴブリンギャング", "skeleton-barrel": "スケルトンバレル",
+  "firecracker": "ロケット砲士", "mega-minion": "メガガーゴイル", "dart-goblin": "吹き矢ゴブリン",
+  "elixir-golem": "エリクサーゴーレム", "ice-wizard": "アイスウィザード", "princess": "プリンセス", "miner": "ディガー",
+  "skeleton-army": "スケルトン部隊", "guards": "盾の戦士", "bandit": "アサシン ユーノ", "fisherman": "漁師トリトン",
+  "royal-ghost": "ロイヤルゴースト", "arrows": "矢の雨", "tornado": "トルネード", "earthquake": "アースクエイク",
+  "royal-delivery": "ロイヤルデリバリー", "goblin-barrel": "ゴブリンバレル", "clone": "クローン", "vines": "ヴァイン",
+  "void": "ボイド", "mirror": "ミラー", "cannon": "大砲", "tombstone": "墓石", "valkyrie": "バルキリー",
+  "musketeer": "マスケット銃士", "mini-pekka": "ミニペッカ", "hog-rider": "ホグライダー", "battle-ram": "攻城バーバリアン",
+  "skeleton-dragons": "スケルトンドラゴン", "zappies": "ザッピー", "flying-machine": "ホバリング砲",
+  "battle-healer": "バトルヒーラー", "goblin-demolisher": "ダイナマイトゴブリン", "dark-prince": "ダークプリンス",
+  "hunter": "ハンター", "baby-dragon": "ベビードラゴン", "electro-wizard": "エレクトロウィザード",
+  "inferno-dragon": "インフェルノドラゴン", "lumberjack": "ランバージャック", "magic-archer": "マジックアーチャー",
+  "mother-witch": "マザーネクロマンサー", "night-witch": "ダークネクロ", "golden-knight": "ゴールドナイト",
+  "skeleton-king": "スケルトンキング", "mighty-miner": "マイティディガー", "phoenix": "フェニックス",
+  "rune-giant": "鍛冶屋ジャイアント", "fireball": "ファイアボール", "freeze": "フリーズ", "poison": "ポイズン",
+  "goblin-cage": "ゴブリンの檻", "goblin-drill": "ゴブリンドリル", "goblin-hut": "ゴブリンの小屋",
+  "bomb-tower": "ボムタワー", "tesla": "テスラ", "mortar": "迫撃砲", "furnace": "オーブン", "barbarians": "バーバリアン",
+  "minion-horde": "ガーゴイルの群れ", "giant": "ジャイアント", "wizard": "ウィザード", "balloon": "エアバルーン",
+  "witch": "ネクロマンサー", "bowler": "ボウラー", "executioner": "執行人ファルチェ", "cannon-cart": "60式ムート",
+  "royal-hogs": "ロイヤルホグ", "rascals": "アウトロー", "electro-dragon": "ライトニングドラゴン", "prince": "プリンス",
+  "ram-rider": "ラムライダー", "little-prince": "リトルプリンス", "monk": "モンク", "goblinstein": "ゴブリンシュタイン",
+  "boss-bandit": "ボスアサシン", "archer-queen": "アーチャークイーン", "goblin-machine": "ゴブリンマシン",
+  "graveyard": "スケルトンラッシュ", "inferno-tower": "インフェルノタワー", "royal-giant": "ロイヤルジャイアント",
+  "elite-barbarians": "エリートバーバリアン", "giant-skeleton": "巨大スケルトン", "goblin-giant": "ゴブジャイアント",
+  "sparky": "スパーキー", "spirit-empress": "スピリットエンプレス", "rocket": "ロケット", "lightning": "ライトニング",
+  "elixir-collector": "エリクサーポンプ", "barbarian-hut": "バーバリアンの小屋", "x-bow": "巨大クロスボウ",
+  "pekka": "ペッカ", "lava-hound": "ラヴァハウンド", "electro-giant": "エレクトロジャイアント", "mega-knight": "メガナイト",
+  "royal-recruits": "見習い親衛隊", "golem": "ゴーレム", "three-musketeers": "三銃士"
 };
-var COST = {"archer-queen":5,"archers":3,"arrows":3,"baby-dragon":4,"balloon":5,"bandit":3,"barbarian-barrel":2,"barbarian-hut":6,"barbarians":5,"bats":2,"battle-healer":4,"battle-ram":4,"berserker":2,"bomb-tower":4,"bomber":2,"boss-bandit":6,"bowler":5,"cannon":3,"cannon-cart":5,"clone":3,"dark-prince":4,"dart-goblin":3,"earthquake":3,"electro-dragon":5,"electro-giant":7,"electro-spirit":1,"electro-wizard":4,"elite-barbarians":6,"elixir-collector":6,"elixir-golem":3,"executioner":5,"fire-spirit":1,"fireball":4,"firecracker":3,"fisherman":3,"flying-machine":4,"freeze":4,"furnace":4,"giant":5,"giant-skeleton":6,"giant-snowball":2,"goblin-barrel":3,"goblin-cage":4,"goblin-curse":2,"goblin-demolisher":4,"goblin-drill":4,"goblin-gang":3,"goblin-giant":6,"goblin-hut":4,"goblin-machine":5,"goblins":2,"goblinstein":5,"golden-knight":4,"golem":8,"graveyard":5,"guards":3,"heal-spirit":1,"hog-rider":4,"hunter":4,"ice-golem":2,"ice-spirit":1,"ice-wizard":3,"inferno-dragon":4,"inferno-tower":5,"knight":3,"lava-hound":7,"lightning":6,"little-prince":3,"lumberjack":4,"magic-archer":4,"mega-knight":7,"mega-minion":3,"mighty-miner":4,"miner":3,"mini-pekka":4,"minion-horde":5,"minions":3,"mirror":1,"monk":5,"mortar":4,"mother-witch":4,"musketeer":4,"night-witch":4,"pekka":7,"phoenix":4,"poison":4,"prince":5,"princess":3,"rage":2,"ram-rider":5,"rascals":5,"rocket":6,"royal-delivery":3,"royal-ghost":3,"royal-giant":6,"royal-hogs":5,"royal-recruits":7,"rune-giant":4,"skeleton-army":3,"skeleton-barrel":3,"skeleton-dragons":4,"skeleton-king":4,"skeletons":1,"sparky":6,"spear-goblins":2,"spirit-empress":6,"suspicious-bush":2,"tesla":4,"the-log":2,"three-musketeers":9,"tombstone":3,"tornado":3,"valkyrie":4,"vines":3,"void":3,"wall-breakers":2,"witch":5,"wizard":5,"x-bow":6,"zap":2,"zappies":4};
 
-/* ============ エントリ ============ */
-function main() {
-  var props = PropertiesService.getScriptProperties();
-  var token = clean_(props.getProperty('CR_TOKEN'));
-  if (!token) throw new Error('CR_TOKEN 未設定');
+var COST = {
+  "スケルトン": 1, "アイススピリット": 1, "ファイアスピリット": 1, "エレクトロスピリット": 1, "ヒールスピリット": 1,
+  "ゴブリン": 2, "ボンバー": 2, "槍ゴブリン": 2, "コウモリの群れ": 2, "アイスゴーレム": 2, "ウォールブレイカー": 2,
+  "バーサーカー": 2, "ザップ": 2, "巨大雪玉": 2, "ローリングバーバリアン": 2, "ローリングウッド": 2, "レイジ": 2,
+  "ステルスブッシュ": 2, "ゴブリンの呪い": 2, "ナイト": 3, "アーチャー": 3, "ガーゴイル": 3, "ゴブリンギャング": 3,
+  "スケルトンバレル": 3, "ロケット砲士": 3, "メガガーゴイル": 3, "吹き矢ゴブリン": 3, "エリクサーゴーレム": 3,
+  "アイスウィザード": 3, "プリンセス": 3, "ディガー": 3, "スケルトン部隊": 3, "盾の戦士": 3, "アサシン ユーノ": 3,
+  "漁師トリトン": 3, "ロイヤルゴースト": 3, "矢の雨": 3, "トルネード": 3, "アースクエイク": 3, "ロイヤルデリバリー": 3,
+  "ゴブリンバレル": 3, "クローン": 3, "ヴァイン": 3, "ボイド": 3, "ミラー": 1, "大砲": 3, "墓石": 3,
+  "バルキリー": 4, "マスケット銃士": 4, "ミニペッカ": 4, "ホグライダー": 4, "攻城バーバリアン": 4, "スケルトンドラゴン": 4,
+  "ザッピー": 4, "ホバリング砲": 4, "バトルヒーラー": 4, "ダイナマイトゴブリン": 4, "ダークプリンス": 4, "ハンター": 4,
+  "ベビードラゴン": 4, "エレクトロウィザード": 4, "インフェルノドラゴン": 4, "ランバージャック": 4, "マジックアーチャー": 4,
+  "マザーネクロマンサー": 4, "ダークネクロ": 4, "ゴールドナイト": 4, "スケルトンキング": 4, "マイティディガー": 4,
+  "フェニックス": 4, "鍛冶屋ジャイアント": 4, "ファイアボール": 4, "フリーズ": 4, "ポイズン": 4, "ゴブリンの檻": 4,
+  "ゴブリンドリル": 4, "ゴブリンの小屋": 4, "ボムタワー": 4, "テスラ": 4, "迫撃砲": 4, "オーブン": 4,
+  "バーバリアン": 5, "ガーゴイルの群れ": 5, "ジャイアント": 5, "ウィザード": 5, "エアバルーン": 5, "ネクロマンサー": 5,
+  "ボウラー": 5, "執行人ファルチェ": 5, "60式ムート": 5, "ロイヤルホグ": 5, "アウトロー": 5, "ライトニングドラゴン": 5,
+  "プリンス": 5, "ラムライダー": 5, "リトルプリンス": 3, "モンク": 5, "ゴブリンシュタイン": 5, "ボスアサシン": 6,
+  "アーチャークイーン": 5, "ゴブリンマシン": 5, "スケルトンラッシュ": 5, "インフェルノタワー": 5, "ロイヤルジャイアント": 6,
+  "エリートバーバリアン": 6, "巨大スケルトン": 6, "ゴブジャイアント": 6, "スパーキー": 6, "スピリットエンプレス": 6,
+  "ロケット": 6, "ライトニング": 6, "エリクサーポンプ": 6, "バーバリアンの小屋": 6, "巨大クロスボウ": 6,
+  "ペッカ": 7, "ラヴァハウンド": 7, "エレクトロジャイアント": 7, "メガナイト": 7, "見習い親衛隊": 7, "ゴーレム": 8, "三銃士": 9
+};
 
-  var tags = topPlayerTags_(token, TOP_N);
-  var now = Date.now();
+function prop(k, def) {
+  var v = PropertiesService.getScriptProperties().getProperty(k);
+  return (v === null || v === '') ? (def === undefined ? null : def) : v;
+}
 
-  var hist = ghReadJson_(histPath_()) || { snaps: [], lastRun: 0 };
-  var lastRun = Number(hist.lastRun || 0);
+function normSlug(name) {
+  return String(name).toLowerCase()
+    .replace(/\./g, '').replace(/'/g, '').replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
 
-  var useNow = {};   // slug -> 現在その構築を使っている人数
-  var deckUse = {};  // sig  -> { count, slugs[], evo[] }
-  var bat = {};      // slug -> [games, wins]（今回の新規バトルのみ）
-  var deckBat = {};  // sig  -> { g, w, slugs[], evo[] }
+function apiCardToJp(card) { return SLUG2JP[normSlug(card.name)] || null; }
 
-  tags.forEach(function (tag) {
-    var p = crGet_(PROXY + '/players/' + encodeURIComponent(tag), token);
-    if (p && p.currentDeck && p.currentDeck.length) tallyCurrentDeck_(p.currentDeck, useNow, deckUse);
-    var bl = crGet_(PROXY + '/players/' + encodeURIComponent(tag) + '/battlelog', token);
-    if (bl && bl.length) tallyBattles_(bl, lastRun, bat, deckBat);
-    Utilities.sleep(40);
+// 注意：APIの evolutionLevel は「装備中」ではなく「所持している進化レベル」も含めて
+// デッキ内のカードに付く（所持してれば付く）。進化枠は2つなので、
+// 1プレイヤー分はデッキ順で先頭2枚の特殊カードだけを装備中とみなし、
+// さらに全プレイヤーの多数決で「実際によく装備される2枚」に収束させる（updateDecks内）。
+
+function crGet(path, token) {
+  var res = UrlFetchApp.fetch(PROXY + path, {
+    method: 'get', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, muteHttpExceptions: true
   });
+  var code = res.getResponseCode();
+  if (code !== 200) throw new Error('CR API ' + code + ' for ' + path + ' :: ' + res.getContentText().slice(0, 300));
+  return JSON.parse(res.getContentText());
+}
 
-  var players = tags.length;
+function deckNameGuess(slots) {
+  var wins = ['ホグライダー', 'ロイヤルジャイアント', 'エアバルーン', '巨大クロスボウ', '迫撃砲', 'ゴーレム', 'ラヴァハウンド', 'ペッカ', 'メガナイト', 'ロイヤルホグ', '三銃士', 'スケルトンラッシュ', 'ディガー', 'ゴブリンドリル'];
+  for (var i = 0; i < slots.length; i++) { if (wins.indexOf(slots[i]) >= 0) return slots[i] + ' デッキ'; }
+  return 'おすすめデッキ';
+}
 
-  // --- スナップショットを追加 → 3日より古いものを捨てる ---
-  var snap = { t: now, players: players, use: useNow, bat: bat, decks: compactDecks_(deckUse, MAX_SNAP_DECKS) };
-  hist.snaps.push(snap);
-  var cutoff = now - WINDOW_DAYS * 24 * 3600 * 1000;
-  hist.snaps = hist.snaps.filter(function (s) { return s.t >= cutoff; });
+function updateDecks() {
+  var token = (prop('CR_TOKEN') || '').replace(/[^A-Za-z0-9._-]/g, '');
+  if (!token) throw new Error('CR_TOKEN 未設定');
+  var topN = parseInt(prop('TOP_PLAYERS', '1000'), 10);
+  var outN = parseInt(prop('TOP_DECKS', '50'), 10);
+  var intervalHours = parseInt(prop('INTERVAL_HOURS', '12'), 10);
 
-  // --- 集計 ---
+  var ranking = crGet('/locations/global/pathoflegend/players?limit=' + topN, token);
+  var players = (ranking.items || []).slice(0, topN);
+  var headers = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
+
+  // ---- バトルログから集計（6分制限回避・失敗は1回リトライ）----
+  // ★currentDeckのevolutionLevelは「所持」全部に付くが、バトルログのevolutionLevelは
+  //   「その試合で実際に進化/ヒーロー装備したカード」にだけ付く＝本物。
+  //   pop(使用率)=各プレイヤーの直前デッキ1個 / win(勝率)=決着した全試合の勝敗。
+  var pop = {}, win = {}, unmapped = {}, CHUNK = 40;
+
+  function classifyDeck(cards) {
+    var jp = [], fm = [], ok = true;
+    cards.forEach(function (c) {
+      var name = apiCardToJp(c);
+      if (!name) { ok = false; unmapped[c.name] = (unmapped[c.name] || 0) + 1; return; }
+      jp.push(name);
+      var f = 'norm';
+      if (c.rarity === 'champion') f = 'champ';
+      else if (c.evolutionLevel && c.evolutionLevel > 0) {
+        var iu = c.iconUrls || {};
+        var hasEvo = !!iu.evolutionMedium, hasHero = !!iu.heroMedium;
+        f = (hasEvo && hasHero) ? 'both' : (hasHero ? 'hero' : 'evo');
+      }
+      fm.push(f);
+    });
+    return (ok && jp.length === 8) ? { jp: jp, fm: fm } : null;
+  }
+  function tally(map, cards, won) {
+    var d = classifyDeck(cards);
+    if (!d) return false;
+    var key = d.jp.slice().sort().join('|');
+    var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {} });
+    e.count++;
+    if (won === true) e.wins++;
+    d.jp.forEach(function (n, idx) {
+      var v = e.votes[n] || (e.votes[n] = { evo: 0, hero: 0, both: 0, champ: 0, norm: 0 });
+      v[d.fm[idx]]++;
+    });
+    return true;
+  }
+  function isStd(b) {
+    return b && b.team && b.team.length === 1 && b.opponent && b.opponent.length === 1
+      && b.team[0] && b.team[0].cards && b.team[0].cards.length === 8;
+  }
+  function evoCnt(cards) { var k = 0; for (var j = 0; j < cards.length; j++) if (cards[j].evolutionLevel > 0) k++; return k; }
+  function processLog(battles) {
+    if (!battles || !battles.length) return;
+    var gotPop = false;
+    for (var i = 0; i < battles.length; i++) {
+      var b = battles[i];
+      if (!isStd(b)) continue;
+      var cards = b.team[0].cards;
+      if (evoCnt(cards) > 2) continue; // 特殊モード除外（進化3枚以上）
+      if (!gotPop) { if (tally(pop, cards, null)) gotPop = true; } // 使用率：直前デッキ1個だけ
+      var tc = b.team[0].crowns, oc = b.opponent[0].crowns;       // 勝率：決着試合のみ（引き分け除外）
+      if (typeof tc === 'number' && typeof oc === 'number' && tc !== oc) tally(win, cards, tc > oc);
+    }
+  }
+  function fetchTags(tags) {
+    var got = [];
+    for (var off = 0; off < tags.length; off += CHUNK) {
+      var slice = tags.slice(off, off + CHUNK);
+      var batch = slice.map(function (t) {
+        return { url: PROXY + '/players/' + encodeURIComponent(t) + '/battlelog', method: 'get', headers: headers, muteHttpExceptions: true };
+      });
+      var resps = UrlFetchApp.fetchAll(batch);
+      resps.forEach(function (res, i) {
+        if (res.getResponseCode() === 200) { got.push(slice[i]); try { processLog(JSON.parse(res.getContentText())); } catch (e) {} }
+      });
+      Utilities.sleep(300);
+    }
+    return got;
+  }
+  var allTags = players.map(function (p) { return p.tag; });
+  var got1 = fetchTags(allTags);
+  var miss = allTags.filter(function (t) { return got1.indexOf(t) < 0; }); // HTTP失敗のみ再取得（二重集計防止）
+  if (miss.length) { Utilities.sleep(1200); fetchTags(miss); }
+
+  var aggregated = Object.keys(pop).reduce(function (s, k) { return s + pop[k].count; }, 0);
+  var winBattles = Object.keys(win).reduce(function (s, k) { return s + win[k].count; }, 0);
+  Logger.log('ranking ' + players.length + ' / players(pop) ' + aggregated + ' / win-battles ' + winBattles + ' / unmapped ' + JSON.stringify(unmapped));
+
+  // ---- デッキ確定（形＋ゲームと同じスロット配置）。pop/win共通 ----
+  //   index0(1枚目)=進化のみ / index1(2枚目)=チャンピオンorヒーロー / index2(3枚目)=進化orチャンピオンorヒーロー
+  function finalizeDeck(r) {
+    var champName = null, champBest = 0;
+    r.cards.forEach(function (n) { var c = (r.votes[n] || {}).champ || 0; if (c > champBest) { champBest = c; champName = n; } });
+    var thr = Math.max(2, r.count * 0.25); // 上位2枚かつ25%以上が特殊装備したカードを採用
+    var scored = r.cards.map(function (n) {
+      var v = r.votes[n] || {};
+      return { n: n, score: (v.evo || 0) + (v.hero || 0) + (v.both || 0), e: (v.evo || 0), h: (v.hero || 0) };
+    }).filter(function (x) { return x.n !== champName && x.score >= thr; });
+    scored.sort(function (a, b) { return b.score - a.score; });
+    var picked = scored.slice(0, 2);
+    var cardForm = {};
+    r.cards.forEach(function (n) { cardForm[n] = 'norm'; });
+    if (champName) cardForm[champName] = 'champ';
+    picked.forEach(function (x) { cardForm[x.n] = (x.e > x.h) ? 'evo' : 'hero'; }); // 同数/判定不可はヒーロー優先
+    var groups = { evo: [], hero: [], champ: [], norm: [] };
+    r.cards.forEach(function (n) { groups[cardForm[n] || 'norm'].push(n); });
+    groups.norm.sort(function (a, b) { return (COST[a] || 0) - (COST[b] || 0); });
+    var slots8 = [null, null, null, null, null, null, null, null];
+    var evos = groups.evo.slice(), mids = groups.champ.concat(groups.hero);
+    if (evos.length) slots8[0] = evos.shift();
+    if (evos.length) slots8[2] = evos.shift();
+    [1, 2].forEach(function (idx) { if (slots8[idx] === null && mids.length) slots8[idx] = mids.shift(); });
+    var rest = groups.norm.concat(evos, mids);
+    rest.sort(function (a, b) { return (COST[a] || 0) - (COST[b] || 0); });
+    for (var k = 0; k < 8; k++) if (slots8[k] === null) slots8[k] = rest.shift();
+    return { name: deckNameGuess(slots8), slots: slots8, forms: slots8.map(function (n) { return cardForm[n] || 'norm'; }) };
+  }
+
+  // 使用率：人数の多い順
+  var popDecks = Object.keys(pop).map(function (k) { return pop[k]; })
+    .sort(function (a, b) { return b.count - a.count; }).slice(0, outN)
+    .map(function (r) { var d = finalizeDeck(r); d.count = r.count; return d; });
+
+  // 勝率：最低試合数以上で勝率の高い順（同率は試合数）。統計的にそのまま使えば勝率が良い順。
+  var winMin = parseInt(prop('WIN_MIN_GAMES', '30'), 10);
+  var winDecks = Object.keys(win).map(function (k) { return win[k]; })
+    .filter(function (r) { return r.count >= winMin; })
+    .sort(function (a, b) { var wa = a.wins / a.count, wb = b.wins / b.count; return (wb - wa) || (b.count - a.count); }).slice(0, outN)
+    .map(function (r) { var d = finalizeDeck(r); d.games = r.count; d.wins = r.wins; d.winRate = Math.round(r.wins / r.count * 1000) / 10; return d; });
+
+  Logger.log('popDecks ' + popDecks.length + ' / winDecks ' + winDecks.length + ' (winMin ' + winMin + ')');
+  if (!popDecks.length) throw new Error('集計0件 unmapped=' + JSON.stringify(unmapped));
+
+  // ===== ここから追記：カード単体（使用率/勝率）＋ 急上昇：3日ローリング =====
+  // 追加のAPIリクエストはなし。既存の pop / win 集計からカード単位を導出する。
+  var now = Date.now();
+  var ghPath = prop('GITHUB_PATH', 'decks.json');
+  var histPath = ghSiblingPath_(ghPath, 'cardhist.json');
+
+  // カード使用率の素：直前デッキ(pop)にそのカードを入れている人数
+  var useNow = {};
+  Object.keys(pop).forEach(function (k) {
+    var r = pop[k];
+    r.cards.forEach(function (n) { useNow[n] = (useNow[n] || 0) + r.count; });
+  });
+  // カード勝率の素：決着した全試合(win)での出現数・勝ち数
+  var batNow = {};
+  Object.keys(win).forEach(function (k) {
+    var r = win[k];
+    r.cards.forEach(function (n) {
+      if (!batNow[n]) batNow[n] = [0, 0];
+      batNow[n][0] += r.count; batNow[n][1] += r.wins;
+    });
+  });
+  // デッキ使用数のスナップショット（急上昇の差分用）。多い順に200種まで。
+  var deckSig = {};
+  Object.keys(pop).sort(function (a, b) { return pop[b].count - pop[a].count; }).slice(0, 200)
+    .forEach(function (k) { deckSig[k] = pop[k].count; });
+
+  // 履歴に今回ぶんを追加し、3日より古いスナップショットを捨てる
+  var hist = ghReadJson_(histPath) || { snaps: [] };
+  hist.snaps.push({ t: now, players: aggregated, use: useNow, bat: batNow, decks: deckSig });
+  hist.snaps = hist.snaps.filter(function (s) { return s.t >= now - WINDOW_DAYS * 864e5; });
+
+  // カード単体（窓内：使用率は採用率の平均、勝率は合算）
   var cards = aggregateCards_(hist.snaps);
-  var prevSnap = hist.snaps.length >= 2 ? hist.snaps[hist.snaps.length - 2] : null;
-  var trending = trendingDecks_(deckUse, prevSnap, 15);
-  var decks = topUsageDecks_(deckUse, players, 30);
-  var winDecks = topWinDecks_(deckBat, DECK_WIN_MIN, 30);
 
-  var out = {
+  // 急上昇：今回の pop と「前回スナップショット」の差分（正の伸びだけ）
+  var prevSnap = hist.snaps.length >= 2 ? hist.snaps[hist.snaps.length - 2] : null;
+  var trending = [];
+  if (prevSnap && prevSnap.decks) {
+    Object.keys(pop).forEach(function (k) {
+      var delta = pop[k].count - (prevSnap.decks[k] || 0);
+      if (delta > 0) {
+        var d = finalizeDeck(pop[k]);
+        trending.push({ name: d.name, slots: d.slots, forms: d.forms, count: pop[k].count, delta: delta });
+      }
+    });
+    trending.sort(function (a, b) { return b.delta - a.delta || b.count - a.count; });
+    trending = trending.slice(0, 15);
+  }
+  Logger.log('cards ' + cards.length + ' / trending ' + trending.length + ' / snaps ' + hist.snaps.length);
+  // ===== 追記ここまで =====
+
+  commitToGithub({
     updated: new Date().toISOString(),
-    intervalHours: INTERVAL_HOURS,
-    topPlayers: TOP_N,
-    players: players,
+    players: aggregated,
+    topPlayers: players.length,
+    intervalHours: intervalHours,
     cardsWindowDays: WINDOW_DAYS,
-    decks: decks,
+    decks: popDecks,
     winDecks: winDecks,
     trending: trending,
     cards: cards
-  };
-
-  ghWriteJson_(mainPath_(), out);
-  hist.lastRun = now;
-  ghWriteJson_(histPath_(), hist);
-}
-
-/* ============ 集計ロジック ============ */
-function tallyCurrentDeck_(deck, useNow, deckUse) {
-  var slugs = [], evo = [];
-  deck.forEach(function (c) {
-    var s = slugify_(c.name);
-    slugs.push(s);
-    if (c.evolutionLevel && c.evolutionLevel > 0) evo.push(s);
-    useNow[s] = (useNow[s] || 0) + 1;
   });
-  if (slugs.length !== 8) return;
-  var sig = slugs.slice().sort().join(',');
-  if (!deckUse[sig]) deckUse[sig] = { count: 0, slugs: slugs, evo: evo };
-  deckUse[sig].count++;
+  ghWriteJson_(histPath, hist); // 履歴を更新（別ファイル）
 }
 
-function tallyBattles_(bl, lastRun, bat, deckBat) {
-  bl.forEach(function (b) {
-    var t = parseBattleTime_(b.battleTime);
-    if (t <= lastRun) return;                 // 既集計ぶんは飛ばす（重複防止）
-    if (!b.team || b.team.length !== 1) return; // 1v1のみ
-    var me = b.team[0], opp = (b.opponent && b.opponent[0]) || null;
-    if (!me || !me.cards || me.cards.length !== 8 || !opp) return;
-    var win = (me.crowns || 0) > (opp.crowns || 0) ? 1 : 0;
-    var slugs = [], evo = [];
-    me.cards.forEach(function (c) {
-      var s = slugify_(c.name); slugs.push(s);
-      if (c.evolutionLevel && c.evolutionLevel > 0) evo.push(s);
-      if (!bat[s]) bat[s] = [0, 0];
-      bat[s][0]++; if (win) bat[s][1]++;
-    });
-    var sig = slugs.slice().sort().join(',');
-    if (!deckBat[sig]) deckBat[sig] = { g: 0, w: 0, slugs: slugs, evo: evo };
-    deckBat[sig].g++; deckBat[sig].w += win;
-  });
-}
-
+// 窓内のスナップショットからカード単体を集計
+//   use  : 各スナップの採用率(人数/母数)を平均して % に
+//   win  : 窓内の出現数・勝ち数を合算して勝率 %（比率なので重複の影響を受けにくい）
 function aggregateCards_(snaps) {
-  var slugs = {};
+  var keys = {}, n = snaps.length || 1;
   snaps.forEach(function (s) {
-    Object.keys(s.use || {}).forEach(function (k) { slugs[k] = 1; });
-    Object.keys(s.bat || {}).forEach(function (k) { slugs[k] = 1; });
+    Object.keys(s.use || {}).forEach(function (k) { keys[k] = 1; });
+    Object.keys(s.bat || {}).forEach(function (k) { keys[k] = 1; });
   });
-  var n = snaps.length || 1;
   var out = [];
-  Object.keys(slugs).forEach(function (slug) {
-    var useSum = 0, games = 0, wins = 0;
+  Object.keys(keys).forEach(function (name) {
+    var useSum = 0, g = 0, w = 0;
     snaps.forEach(function (s) {
       var pl = s.players || 0;
-      if (pl > 0 && s.use && s.use[slug]) useSum += s.use[slug] / pl;
-      if (s.bat && s.bat[slug]) { games += s.bat[slug][0]; wins += s.bat[slug][1]; }
+      if (pl > 0 && s.use && s.use[name]) useSum += s.use[name] / pl;
+      if (s.bat && s.bat[name]) { g += s.bat[name][0]; w += s.bat[name][1]; }
     });
-    var use = r1_(useSum / n * 100);
-    var win = games > 0 ? r1_(wins / games * 100) : null;
-    if (use > 0 || games > 0) out.push({ name: jp_(slug), use: use, win: win, games: games });
+    var use = Math.round(useSum / n * 1000) / 10;
+    var winr = g > 0 ? Math.round(w / g * 1000) / 10 : null;
+    if (use > 0 || g > 0) out.push({ name: name, use: use, win: winr, games: g });
   });
   return out;
 }
 
-function trendingDecks_(deckUse, prevSnap, limit) {
-  if (!prevSnap || !prevSnap.decks) return [];   // 初回は出さない（フロントがサンプル表示）
-  var prev = prevSnap.decks;
-  var arr = [];
-  Object.keys(deckUse).forEach(function (sig) {
-    var cur = deckUse[sig].count;
-    var was = (prev[sig] && prev[sig].c) || 0;
-    var delta = cur - was;
-    if (delta > 0) arr.push({ name: deckName_(deckUse[sig].slugs), slots: jpArr_(deckUse[sig].slugs), evo: jpArr_(deckUse[sig].evo), count: cur, delta: delta });
-  });
-  arr.sort(function (a, b) { return b.delta - a.delta || b.count - a.count; });
-  return arr.slice(0, limit);
-}
-
-function topUsageDecks_(deckUse, players, limit) {
-  var arr = Object.keys(deckUse).map(function (sig) {
-    var d = deckUse[sig];
-    return { name: deckName_(d.slugs), sub: 'トップ層で使用 ' + d.count + '人', slots: jpArr_(d.slugs), evo: jpArr_(d.evo), count: d.count };
-  });
-  arr.sort(function (a, b) { return b.count - a.count; });
-  return arr.slice(0, limit);
-}
-
-function topWinDecks_(deckBat, minGames, limit) {
-  var arr = [];
-  Object.keys(deckBat).forEach(function (sig) {
-    var d = deckBat[sig];
-    if (d.g < minGames) return;
-    arr.push({ name: deckName_(d.slugs), slots: jpArr_(d.slugs), evo: jpArr_(d.evo), winRate: r1_(d.w / d.g * 100), games: d.g });
-  });
-  arr.sort(function (a, b) { return b.winRate - a.winRate || b.games - a.games; });
-  return arr.slice(0, limit);
-}
-
-function compactDecks_(deckUse, max) {
-  var sigs = Object.keys(deckUse).sort(function (a, b) { return deckUse[b].count - deckUse[a].count; }).slice(0, max);
-  var o = {};
-  sigs.forEach(function (sig) { var d = deckUse[sig]; o[sig] = { c: d.count, slugs: d.slugs, evo: d.evo }; });
-  return o;
-}
-
-/* ============ API / GitHub ============ */
-function topPlayerTags_(token, n) {
-  var j = crGet_(PROXY + '/locations/global/pathoflegend/players?limit=' + n, token);
-  if (!j || !j.items) return [];
-  return j.items.slice(0, n).map(function (it) { return it.tag; }).filter(Boolean);
-}
-
-function crGet_(url, token) {
-  var res = UrlFetchApp.fetch(url, {
-    method: 'get',
-    headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
-    muteHttpExceptions: true
-  });
-  if (res.getResponseCode() !== 200) return null;
-  try { return JSON.parse(res.getContentText()); } catch (e) { return null; }
+// GITHUB_PATH と同じディレクトリの別ファイルパスを作る（例: decks.json → cardhist.json）
+function ghSiblingPath_(mainPath, name) {
+  var i = mainPath.lastIndexOf('/');
+  return (i >= 0 ? mainPath.slice(0, i + 1) : '') + name;
 }
 
 function ghReadJson_(path) {
-  var p = ghProps_();
-  var url = 'https://api.github.com/repos/' + p.repo + '/contents/' + path + '?ref=' + p.branch;
-  var res = UrlFetchApp.fetch(url, { method: 'get', headers: ghHeaders_(p.token), muteHttpExceptions: true });
+  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'main');
+  if (!ghToken || !repo) return null;
+  var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
+  var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/contents/' + path + '?ref=' + branch,
+    { method: 'get', headers: headers, muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) return null;
   try {
     var j = JSON.parse(res.getContentText());
-    var txt = Utilities.newBlob(Utilities.base64Decode(j.content)).getDataAsString('UTF-8');
-    return JSON.parse(txt);
+    return JSON.parse(Utilities.newBlob(Utilities.base64Decode(j.content)).getDataAsString('UTF-8'));
   } catch (e) { return null; }
 }
 
 function ghWriteJson_(path, obj) {
-  var p = ghProps_();
-  var base = 'https://api.github.com/repos/' + p.repo + '/contents/' + path;
-  // 既存のsha取得
+  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'main');
+  if (!ghToken || !repo) throw new Error('GITHUB_TOKEN / GITHUB_REPO 未設定');
+  var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
+  var api = 'https://api.github.com/repos/' + repo + '/contents/' + path;
   var sha = null;
-  var g = UrlFetchApp.fetch(base + '?ref=' + p.branch, { method: 'get', headers: ghHeaders_(p.token), muteHttpExceptions: true });
-  if (g.getResponseCode() === 200) { try { sha = JSON.parse(g.getContentText()).sha; } catch (e) {} }
-  var payload = {
-    message: 'update ' + path + ' ' + new Date().toISOString(),
-    content: Utilities.base64Encode(JSON.stringify(obj), Utilities.Charset.UTF_8),
-    branch: p.branch
-  };
-  if (sha) payload.sha = sha;
-  var res = UrlFetchApp.fetch(base, { method: 'put', headers: ghHeaders_(p.token), contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true });
-  if (res.getResponseCode() >= 300) throw new Error('GitHub write ' + path + ' 失敗: ' + res.getResponseCode() + ' ' + res.getContentText());
+  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: headers, muteHttpExceptions: true });
+  if (cur.getResponseCode() === 200) sha = JSON.parse(cur.getContentText()).sha;
+  var content = Utilities.base64Encode(Utilities.newBlob(JSON.stringify(obj)).getBytes());
+  var body = { message: 'chore: update ' + path, content: content, branch: branch };
+  if (sha) body.sha = sha;
+  var put = UrlFetchApp.fetch(api, {
+    method: 'put', headers: headers, contentType: 'application/json',
+    payload: JSON.stringify(body), muteHttpExceptions: true
+  });
+  var code = put.getResponseCode();
+  if (code !== 200 && code !== 201) throw new Error('GitHub write ' + path + ' ' + code + ' :: ' + put.getContentText().slice(0, 200));
 }
 
-function ghProps_() {
-  var pr = PropertiesService.getScriptProperties();
-  return {
-    token: pr.getProperty('GITHUB_TOKEN'),
-    repo: pr.getProperty('GITHUB_REPO'),
-    branch: pr.getProperty('GITHUB_BRANCH') || 'main',
-    path: pr.getProperty('GITHUB_PATH') || 'decks.json'
-  };
-}
-function ghHeaders_(token) { return { Authorization: 'token ' + token, Accept: 'application/vnd.github+json', 'User-Agent': 'cr-deck-gas' }; }
-function mainPath_() { return ghProps_().path; }
-function histPath_() { var pth = ghProps_().path; var i = pth.lastIndexOf('/'); return (i >= 0 ? pth.slice(0, i + 1) : '') + 'cardhist.json'; }
+function commitToGithub(payload) {
+  var ghToken = prop('GITHUB_TOKEN');
+  var repo = prop('GITHUB_REPO');
+  var path = prop('GITHUB_PATH', 'decks.json');
+  var branch = prop('GITHUB_BRANCH', 'main');
+  if (!ghToken || !repo) throw new Error('GITHUB_TOKEN / GITHUB_REPO 未設定');
 
-/* ============ ユーティリティ ============ */
-function slugify_(name) { return String(name || '').toLowerCase().replace(/[.’']/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
-function jp_(slug) { return SLUG2JP[slug] || slug; }
-function jpArr_(slugs) { return (slugs || []).map(jp_); }
-function deckName_(slugs) { var best = null, bc = -1; (slugs || []).forEach(function (s) { var c = COST[s] || 0; if (c > bc) { bc = c; best = s; } }); return (best ? jp_(best) : 'デッキ') + ' デッキ'; }
-function r1_(x) { return Math.round(x * 10) / 10; }
-function clean_(s) { return String(s || '').replace(/[^A-Za-z0-9._-]/g, ''); }
-function parseBattleTime_(s) { var m = String(s || '').match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/); if (!m) return 0; return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]); }
+  var api = 'https://api.github.com/repos/' + repo + '/contents/' + path;
+  var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
+
+  var sha = null;
+  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: headers, muteHttpExceptions: true });
+  if (cur.getResponseCode() === 200) sha = JSON.parse(cur.getContentText()).sha;
+
+  var content = Utilities.base64Encode(Utilities.newBlob(JSON.stringify(payload)).getBytes());
+  var body = { message: 'chore: update decks.json', content: content, branch: branch };
+  if (sha) body.sha = sha;
+
+  var put = UrlFetchApp.fetch(api, {
+    method: 'put', headers: headers, contentType: 'application/json',
+    payload: JSON.stringify(body), muteHttpExceptions: true
+  });
+  var code = put.getResponseCode();
+  if (code !== 200 && code !== 201) throw new Error('GitHub commit ' + code + ' :: ' + put.getContentText().slice(0, 300));
+}
+
+function createTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'updateDecks') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('updateDecks').timeBased().everyHours(12).create();
+}
