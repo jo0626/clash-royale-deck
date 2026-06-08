@@ -882,7 +882,7 @@ async function loadMeCards(force) {
   let battles = _loadMeBattles(tag);
   if (force || !battles.length) {
     try {
-      const res = await fetch('/battlelog?tag=' + encodeURIComponent(tag), { cache: 'no-store' });
+      const res = await fetch('/battlelog?tag=' + encodeURIComponent(tag) + (force ? '&fresh=' + Date.now() : ''), { cache: 'no-store' });
       const j = await res.json();
       battles = _mergeBattles(battles, (j && j.battles) || []);
       _saveMeBattles(tag, battles);
