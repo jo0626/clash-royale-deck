@@ -359,8 +359,9 @@ function injectAccountUI() {
       font-size: 18px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
       border-radius: 8px; line-height: 1; }
     .cr-name-edit:hover { color: var(--text,#e8eaf0); background: var(--surface2,#1e2230); }
-    .cr-name-picker { display: block; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
-    .cr-name-pick-label { font-size: 11px; color: var(--text-muted,#6b7080); margin: 0 0 4px; font-weight: 700; }
+    .cr-name-picker { display: none; background: var(--surface2,#1e2230); border: 1px solid var(--border,rgba(255,255,255,.07)); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+    .cr-name-picker.open { display: block; }
+    .cr-name-edit.on { color: var(--accent,#e8a020); background: var(--surface2,#1e2230); }
     .cr-name-opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text,#e8eaf0); padding: 6px 2px; cursor: pointer; }
     .cr-name-opt input[type=radio] { accent-color: var(--accent,#e8a020); width:16px; height:16px; flex:none; margin:0; }
     .cr-name-opt input[type=radio]:disabled + span { color: var(--text-dim,#3a3f50); }
@@ -482,8 +483,7 @@ function renderNamePicker() {
   if (!p) return;
   const user = currentUser, profile = currentProfile;
   const mode = (profile && profile.nameMode) || "account";
-  let html = '<div class="cr-name-pick-label">表示名</div>'
-    + '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>' + esc_(accountNameOf(user)) + "</span></label>";
+  let html = '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="account" id="crNameAccRadio"><span>' + esc_(accountNameOf(user)) + "</span></label>";
   if (_crName) {
     html += '<label class="cr-name-opt"><input type="radio" name="crNameMode" value="game" id="crNameGameRadio"><span>' + esc_(_crName) + "</span></label>";
   }
@@ -515,6 +515,7 @@ function buildMenu(user, profile) {
   // ※このエリアは今後随時拡張していく
   m.innerHTML = `
     <div class="cr-name-row">
+      <button class="cr-name-edit" id="crNameEdit" title="表示名を変更" aria-label="表示名を変更">✎</button>
       <h4 id="crMenuName">${esc_(resolveDisplayName(user, profile))}</h4>
     </div>
     <div class="cr-name-picker" id="crNamePicker"></div>
@@ -529,8 +530,14 @@ function buildMenu(user, profile) {
     <div class="cr-divider"></div>
     <div class="cr-row"><button class="cr-mini cr-logout" id="crLogout">ログアウト</button></div>
   `;
-  // 表示名ピッカー（ID未入力ならアカウント名の一択、取得後にゲーム内名を追加）
+  // 表示名ピッカー（ID未入力ならアカウント名の一択、取得後にゲーム内名を追加）。✎で開閉
   renderNamePicker();
+  const editBtn = document.getElementById("crNameEdit");
+  if (editBtn) editBtn.onclick = () => {
+    const pk = document.getElementById("crNamePicker");
+    const open = pk.classList.toggle("open");
+    editBtn.classList.toggle("on", open);
+  };
 
   // 入力は自動で大文字＋英数字のみ（#不要・小文字や記号は弾く）
   const tagInput = document.getElementById("crTagInput");
@@ -554,6 +561,11 @@ function toggleMenu() {
     // 開くたびに入力欄を保存済みの値へ戻す（未保存の編集は破棄。登録は「保存」時だけ変わる）
     const ti = document.getElementById("crTagInput");
     if (ti) ti.value = (currentProfile && currentProfile.crTag) || "";
+    // 名前ピッカーは畳んだ状態から
+    const pk = document.getElementById("crNamePicker");
+    if (pk) pk.classList.remove("open");
+    const eb = document.getElementById("crNameEdit");
+    if (eb) eb.classList.remove("on");
   }
   syncMenuBackdrop();
 }
