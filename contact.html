@@ -85,19 +85,21 @@
   .logo-icon{height:2.2em;width:2.2em;flex:0 0 auto;border-radius:50%;display:block;box-shadow:0 2px 8px rgba(0,0,0,.4)}
   .logo-text{display:flex;flex-direction:column;justify-content:center;line-height:1.18}
   @media (max-width:600px){.logo-icon{height:1.9em;width:1.9em}}
+  /* 4アイコンをボディ先頭のバーへ（ヘッダーはロゴ＋下線だけ＝Index統一） */
+  .topbar { padding:10px 20px; border-bottom:1px solid var(--border); background:var(--surface); justify-content:flex-end; }
 </style>
 </head>
 <body>
 
 <header>
-  <a class="logo" href="index.html"><img class="logo-icon" src="/icon-192.png" alt="CR Deck Builders ロゴ" width="192" height="192"><div class="logo-text">CR Deck Builders<span>クラロワデッキ作成・診断ツール</span></div></a>
-  <nav class="nav-icons">
+  <a class="logo" href="index.html"><img class="logo-icon" src="icon-192.png" alt="CR Deck Builders ロゴ" width="192" height="192"><div class="logo-text">CR Deck Builders<span>クラロワデッキ作成・診断ツール</span></div></a>
+</header>
+<nav class="nav-icons topbar">
     <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
     <a class="nav-icon" href="decks.html" title="人気デッキ・デッキ探求"><span class="nav-emoji">🏆</span></a>
     <a class="nav-icon" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
     <a class="nav-icon active" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
-  </nav>
-</header>
+</nav>
 
 <div class="container">
   <h1 class="page-title">リクエスト・お問い合わせ</h1>
