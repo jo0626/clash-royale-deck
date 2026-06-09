@@ -2321,6 +2321,7 @@ function openShareDialog(deckArr, deckName) {
   const lineText = 'あなたのデッキを共有しましょう！';
   // プレビューは実際のSNS共有画像（Worker /ogimg）をそのまま表示する（SNSに出るのと同じ見た目＝グレード枠込み）
   const ogimgBase = 'https://crdeckbuilders.com/ogimg?deck=' + slugs.join(',') + '&g=' + grade;
+  const ogimgFree = 'https://crdeckbuilders.com/ogimg?deck=' + slugs.join(',') + '&g=free'; // 枠無し＝最も軽い。プレビューが出ない時の最終フォールバック
 
   // ログイン中なら「share by 〇〇」を入れるか選べる（画像にクリエイター名が載る）
   const byName = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
@@ -2360,11 +2361,12 @@ function openShareDialog(deckArr, deckName) {
   // プレビュー画像が出ない時の保険：1回リトライ→ダメならby無し画像にフォールバック（by版はコールド生成で一瞬失敗することがある）
   const shImg = ov.querySelector('#shImg');
   if (shImg) {
-    let tries = 0;
+    let step = 0;
     shImg.onerror = () => {
-      tries++;
-      if (tries === 1) { const s = shImg.src; shImg.removeAttribute('src'); setTimeout(() => { shImg.src = s; }, 1300); }
-      else if (shImg.src.indexOf('&by=') >= 0) { shImg.src = ogimgBase; }
+      step++;
+      if (step === 1) { const s = shImg.src; shImg.removeAttribute('src'); setTimeout(() => { shImg.src = s; }, 1200); } // ①一度リトライ（コールド生成対策）
+      else if (shImg.src.indexOf('&by=') >= 0) { shImg.src = ogimgBase; }                  // ②by無しへ
+      else if (shImg.src !== ogimgFree) { shImg.src = ogimgFree; }                          // ③枠無し（最軽量）へ＝必ず何か表示
     };
   }
   const copyBtn = ov.querySelector('#shCopy');
