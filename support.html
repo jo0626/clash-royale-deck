@@ -8,6 +8,7 @@
 <link rel="canonical" href="https://crdeckbuilders.com/support.html">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
   :root {
@@ -143,12 +144,18 @@
     .page-title { font-size: 22px; }
     .container { padding: 24px 16px 40px; }
   }
+
+  /* ロゴ左のアイコン（縦幅をEN+JPの2行に合わせる。大きさは .logo-icon の height/width で微調整） */
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-icon{height:2.2em;width:2.2em;flex:0 0 auto;border-radius:50%;display:block;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+  .logo-text{display:flex;flex-direction:column;justify-content:center;line-height:1.18}
+  @media (max-width:600px){.logo-icon{height:1.9em;width:1.9em}}
 </style>
 </head>
 <body>
 
 <header>
-  <a class="logo" href="index.html">CR Deck Builders<span>クラロワデッキ作成・診断ツール</span></a>
+  <a class="logo" href="index.html"><img class="logo-icon" src="/icon-192.png" alt="CR Deck Builders ロゴ" width="192" height="192"><div class="logo-text">CR Deck Builders<span>クラロワデッキ作成・診断ツール</span></div></a>
   <nav class="nav-icons">
     <a class="nav-icon" href="index.html" title="デッキ作成"><span class="nav-emoji">🛠️</span></a>
     <a class="nav-icon" href="decks.html" title="人気デッキ・デッキ探求"><span class="nav-emoji">🏆</span></a>
