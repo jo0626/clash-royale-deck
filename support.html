@@ -48,9 +48,9 @@
 
   .container { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
   .page-title { font-family: var(--font-head); font-size: 28px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
-  .page-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; line-height: 1.7; }
+  .page-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 18px; line-height: 1.7; }
 
-  .donate-buttons { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+  .donate-buttons { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
   .donate-btn {
     display: flex; align-items: center; gap: 12px;
     padding: 16px 20px; border-radius: 10px; text-decoration: none;
@@ -62,7 +62,7 @@
   .donate-btn .label { flex: 1; }
   .donate-btn .label small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; margin-top: 2px; }
 
-  .grade-section { margin-top: 40px; }
+  .grade-section { margin-top: 20px; }
   .section-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; letter-spacing: 1px; margin-bottom: 16px; }
   /* ランク枠：デッキスロット風の光る宝石フレーム。上位ほどグロー強め＝格上感 */
   /* 横スクロール：ゴールドまで見えて、スクロールでレジェンド＆隠しが現れる */
@@ -171,11 +171,6 @@
     いただいた支援は、<b>サーバーの防衛（維持費）</b>・カードデータの更新・新機能の開発に使わせていただきます。
   </p>
 
-  <!-- ▼ ログイン推奨ヒント（ログイン中はJSで非表示） -->
-  <p id="donateLoginHint" class="page-sub" style="margin:0 0 12px; font-size:12px;">
-    💡 <b>ログインしてから</b>供給すると、供給額が記録されて自動でグレードが解放されます（未ログインでも支援は可能です）。
-  </p>
-
   <!-- ▼ メイン寄付ボタン（¥300）＋OFUSE。ログイン中はJSで ?client_reference_id=<uid> を付与し、誰の供給かを記録する。
        Stripe ¥300  : https://donate.stripe.com/5kQ8wQ6Or9iE8QZc0TgYU02
        Stripe ¥500  : https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00（下のメニューのカード）
@@ -195,9 +190,6 @@
 
   <div class="grade-section">
     <h2 class="section-title">エリクサー供給メニュー</h2>
-    <p class="page-sub" style="margin-bottom:16px;">
-      供給いただいた額に応じて、SNS共有時のデッキ画像が豪華な枠になります。金額は目安で、任意の額で支援できます。（機能はすべて無料）
-    </p>
     <div class="grade-list">
       <!-- リンクがあるのは ¥500 / ¥2,000 のみ（aタグ＝クリックで決済・ログイン中はuid付与）。
            他はStripeのPayment Link未作成のため、リンク無しのアイコン表示のまま。 -->
@@ -256,6 +248,9 @@
         <div class="grade-cond">隠し</div>
       </div>
     </div>
+    <p class="page-sub" style="margin:14px 0 0;">
+      ログインしている場合、供給いただいた額に応じて、SNS共有時のデッキ画像が豪華な枠になります。金額は目安で、任意の額で支援できます。（機能はすべて無料）
+    </p>
   </div>
 
   <div class="note">
@@ -281,8 +276,6 @@
       var base = a.getAttribute('data-link');
       a.href = uid ? (base + '?client_reference_id=' + encodeURIComponent(uid)) : base;
     });
-    var hint = document.getElementById('donateLoginHint');
-    if (hint) hint.style.display = uid ? 'none' : '';
   }
   function init() {
     if (window.CRAuth && window.CRAuth.onChange) {
