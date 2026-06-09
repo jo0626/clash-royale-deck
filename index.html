@@ -353,6 +353,17 @@
   @keyframes favSpin { to { --favA: 360deg; } }
   @keyframes favShine { 0%,80% { background-position: 210% 0; } 90% { background-position: -60% 0; } 100% { background-position: -60% 0; } }
   @media (prefers-reduced-motion: reduce) { body.perk-bottle .slot.filled.fav::before, body.perk-bottle .slot.filled.fav::after { animation: none; } body.perk-bottle .slot.filled.fav::after { opacity: 0; } }
+  /* ¥500：ドラッグ中のスパンコール軌跡 */
+  .spangle { position: fixed; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 2px; pointer-events: none; z-index: 3000;
+    box-shadow: 0 0 6px rgba(255,215,120,.7); animation: spangleFall .68s ease-out forwards; }
+  @keyframes spangleFall {
+    0%   { transform: translate(0,0) rotate(0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx,0), var(--dy,14px)) rotate(var(--rot,180deg)) scale(.25); opacity: 0; }
+  }
+  /* ¥2,000：お気に入り同士を一瞬つなぐ金線 */
+  .fav-link-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1200; }
+  .fav-link-overlay polyline { fill: none; stroke: #ffe08a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(255,215,120,.9)); }
+  @media (prefers-reduced-motion: reduce){ .spangle { display: none; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
   /* SNS共有プレビュー＝実際の共有画像(/ogimg)。グリッド全幅で表示 */
@@ -1834,6 +1845,7 @@ function initTouchDnD() {
     }
     e.preventDefault();
     if (touchClone) moveGhost(touchClone, t.clientX, t.clientY);
+    spangleAt(t.clientX, t.clientY); // ¥500: ドラッグ軌跡（スパンコール）
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('drag-over'));
     const el = document.elementFromPoint(t.clientX, t.clientY);
     const target = el && el.closest('.slot');
@@ -2006,6 +2018,61 @@ function renderDeck() {
   updateActionButtons();
   showDeckStats(deck, true); // 実デッキの統計を表示（入れ替え時は平均コストをロール）
   updateDeckGlow(deck.filter(Boolean).length); // ¥500特典：枚数に応じてデッキ枠のグロー（8枚でシャキーン）
+  // ¥2,000特典：お気に入りが「増えた」瞬間だけ、デッキ内のお気に入り同士を一瞬つなぐ
+  const favNow = deck.filter(c => c && isFav(c.name)).map(c => c.name);
+  if (favNow.length > (window._favPrev || []).length) requestAnimationFrame(flashFavLinks);
+  window._favPrev = favNow;
+}
+
+// ===== ¥500/¥2,000 演出ヘルパー =====
+function fxTrailOn() {
+  return document.body.classList.contains('perk-drop') && window.CRAuth && (!CRAuth.getFxTrail || CRAuth.getFxTrail());
+}
+let _spLast = 0;
+const SPANGLE_COLORS = ['linear-gradient(135deg,#fff,#ffd76a)', 'linear-gradient(135deg,#bff7ec,#26c6a0)', 'linear-gradient(135deg,#ffd6f0,#e0709f)', 'linear-gradient(135deg,#fff,#a9c7ff)'];
+function spawnSpangle(x, y) {
+  const s = document.createElement('div');
+  s.className = 'spangle';
+  s.style.left = x + 'px'; s.style.top = y + 'px';
+  s.style.setProperty('--dx', ((Math.random() * 2 - 1) * 20).toFixed(0) + 'px');
+  s.style.setProperty('--dy', ((Math.random() * 2 - 1) * 14 + 12).toFixed(0) + 'px');
+  s.style.setProperty('--rot', ((Math.random() * 2 - 1) * 220).toFixed(0) + 'deg');
+  s.style.background = SPANGLE_COLORS[(Math.random() * SPANGLE_COLORS.length) | 0];
+  document.body.appendChild(s);
+  setTimeout(() => s.remove(), 680);
+}
+function spangleAt(x, y) {
+  if (!fxTrailOn()) return;
+  const now = performance.now();
+  if (now - _spLast < 32) return;        // 連発しすぎ防止
+  _spLast = now;
+  spawnSpangle(x, y); if (Math.random() < 0.55) spawnSpangle(x, y);
+}
+// デスクトップ(ネイティブDnD)：ドラッグ中の dragover 座標で軌跡を出す
+document.addEventListener('dragover', e => {
+  if (dragSrcCard || dragSrcIdx !== null) spangleAt(e.clientX, e.clientY);
+}, true);
+
+// ¥2,000特典：デッキ内のお気に入りカード同士を細い金線で一瞬だけ結ぶ
+function flashFavLinks() {
+  if (!document.body.classList.contains('perk-bottle')) return;
+  const favs = Array.from(document.querySelectorAll('#deckSlots .slot.filled.fav'));
+  if (favs.length < 2) return;
+  const pts = favs.map(el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'fav-link-overlay');
+  const poly = document.createElementNS(NS, 'polyline');
+  poly.setAttribute('points', pts.map(p => p[0] + ',' + p[1]).join(' '));
+  svg.appendChild(poly);
+  document.body.appendChild(svg);
+  const len = poly.getTotalLength ? poly.getTotalLength() : 600;
+  poly.style.strokeDasharray = len; poly.style.strokeDashoffset = len;
+  poly.animate(
+    [{ strokeDashoffset: len, opacity: 1 }, { strokeDashoffset: 0, opacity: 1, offset: 0.45 }, { strokeDashoffset: 0, opacity: 0 }],
+    { duration: 950, easing: 'ease-out' }
+  );
+  setTimeout(() => svg.remove(), 1000);
 }
 
 // ¥500特典：カード枚数(0-8)に応じてデッキ枠のグローを段階的に設定（perk-dropユーザーのみ）。

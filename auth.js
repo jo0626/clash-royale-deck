@@ -236,6 +236,15 @@ const CRAuth = {
     try { await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { mapOpen: v, updatedAt: FB.serverTimestamp() }); } catch (e) {}
   },
 
+  // ¥500特典：ドラッグ時のスパンコール軌跡 ON/OFF（アカウントに保存・既定=ON）
+  getFxTrail() { return !(currentProfile && currentProfile.fxTrail === false); },
+  async setFxTrail(on) {
+    if (!currentUser || !FB) return;
+    const v = !!on;
+    if (currentProfile) currentProfile.fxTrail = v;
+    try { await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { fxTrail: v, updatedAt: FB.serverTimestamp() }); } catch (e) {}
+  },
+
   // 表示名モードを切り替え（"account" or "game"）
   async setNameMode(mode) {
     if (!currentUser || !FB) return;
@@ -546,6 +555,12 @@ function buildMenu(user, profile) {
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
     <div class="cr-hint" id="crTagHint"></div>
+    ${(profile && profile.donatedTotal >= 500) ? `
+    <div class="cr-divider"></div>
+    <label class="cr-row" style="justify-content:space-between; cursor:pointer">
+      <span style="font-size:12px">✨ ドラッグの軌跡</span>
+      <input type="checkbox" id="crFxTrail" ${CRAuth.getFxTrail() ? "checked" : ""}>
+    </label>` : ""}
     <div class="cr-divider"></div>
     <div class="cr-row"><button class="cr-mini cr-logout" id="crLogout">ログアウト</button></div>
   `;
@@ -570,6 +585,8 @@ function buildMenu(user, profile) {
     flash("crTagSave", "✓");
     if (v.trim()) CRAuth.refreshOwnedCards(); // 登録時のみ所持カード＋ゲーム内名を取得
   };
+  const fxT = document.getElementById("crFxTrail");
+  if (fxT) fxT.onchange = () => CRAuth.setFxTrail(fxT.checked);
   document.getElementById("crLogout").onclick = () => CRAuth.signOut();
 }
 
