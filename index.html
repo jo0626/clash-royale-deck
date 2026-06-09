@@ -338,24 +338,26 @@
   @property --favA { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
   /* リムの回転は .right（デッキ枠の小さいサブツリー）で --favA を回す＝再生成でリセットせず、かつ全体再計算にならず軽い。
      ※以前 body で回していてカードリスト(121枚)まで毎フレーム再計算→タブが落ちて不安定になっていた。 */
-  body.perk-bottle .right { animation: favSpin 3.6s linear infinite; }
+  body.perk-bottle.has-fav .right { animation: favSpin 3.6s linear infinite; } /* デッキにお気に入りがある時だけ回す＝常時の負荷を無くして安定化 */
   body.perk-bottle .slot.filled.fav::before {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 4; pointer-events: none;
-    background: conic-gradient(from var(--favA), transparent 0 42%, #ffe08a 56%, #fff 62%, #ffd76a 70%, transparent 86% 100%);
+    /* 縁を弱く照らしつつ、白の細いグリントが一周＝端っこ(カードに当たらない位置)で弱めにテカっと */
+    background: conic-gradient(from var(--favA), transparent 0 47%, rgba(255,224,138,.5) 55%, #fff 60%, rgba(255,224,138,.5) 65%, transparent 73% 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
-    opacity: .85;
+    opacity: .9;
   }
   /* 斜めの差し込みシャインは廃止（カードに当たって強すぎたため）。光は縁(リム)＝カードに当たらない位置だけ。 */
   /* お気に入りを入れた瞬間の「ふわん」（柔らかく一瞬ふくらむ） */
   @keyframes favPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } 30% { transform: scale(1.07); box-shadow: 0 0 18px 5px rgba(255,224,138,.6); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } }
   body.perk-bottle .slot.fav.fav-pop { animation: favPop .5s ease-out; z-index: 6; }
   /* ふわん時にさりげなく舞うハート */
-  .fav-heart { position: fixed; transform: translate(-50%,-50%); font-size: 15px; color: #ff9bc0; pointer-events: none; z-index: 3001; text-shadow: 0 0 6px rgba(255,150,190,.7); animation: favHeart .7s ease-out forwards; }
-  @keyframes favHeart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.5); } 25% { opacity: .95; transform: translate(-50%,-72%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-155%) scale(.9); } }
+  .fav-heart { position: fixed; transform: translate(-50%,-50%); pointer-events: none; z-index: 3001; filter: drop-shadow(0 0 5px rgba(255,170,205,.5)); animation: favHeart .85s ease-out forwards; }
+  .fav-heart svg { display: block; }
+  @keyframes favHeart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.45); } 28% { opacity: .9; transform: translate(-50%,-74%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-160%) scale(.92); } }
   @keyframes favSpin { to { --favA: 360deg; } }
-  @media (prefers-reduced-motion: reduce) { body.perk-bottle .right { animation: none; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { body.perk-bottle.has-fav .right { animation: none; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
   /* ¥500：ドラッグ中のスパンコール軌跡 */
   .spangle { position: fixed; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 2px; pointer-events: none; z-index: 3000;
     box-shadow: 0 0 6px rgba(255,215,120,.7); animation: spangleFall .68s ease-out forwards; }
@@ -2023,6 +2025,7 @@ function renderDeck() {
   updateDeckGlow(deck.filter(Boolean).length); // ¥500特典：枚数に応じてデッキ枠のグロー（8枚でシャキーン）
   // ¥2,000特典：お気に入りが「増えた」瞬間だけ、デッキ内のお気に入り同士を一瞬つなぐ
   const favNow = deck.filter(c => c && isFav(c.name)).map(c => c.name);
+  document.body.classList.toggle('has-fav', favNow.length > 0); // お気に入りがある時だけリム回転（安定化）
   const favAdded = favNow.filter(n => !(window._favPrev || []).includes(n));
   window._favPrev = favNow;
   if (favAdded.length) requestAnimationFrame(() => { popFavSlots(favAdded); flashFavLinks(); }); // 入れた瞬間：ふわん＋お気に入り結線
@@ -2100,9 +2103,10 @@ function popFavSlots(names) {
         setTimeout(() => el.classList.remove('fav-pop'), 600);
         // さりげなくハートがふわっと舞う
         const r = el.getBoundingClientRect();
-        const h = document.createElement('div'); h.className = 'fav-heart'; h.textContent = '❤';
+        const h = document.createElement('div'); h.className = 'fav-heart';
+        h.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ffb3d1" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20.3S3.6 15.3 3.6 9.2C3.6 6.5 5.5 5 7.6 5c1.7 0 3.2 1 4.4 2.7C13.2 6 14.7 5 16.4 5c2.1 0 4 1.5 4 4.2 0 6.1-8.4 11.1-8.4 11.1Z"/></svg>'; // 中空のふんわりハート
         h.style.left = (r.left + r.width / 2) + 'px'; h.style.top = (r.top + r.height * 0.42) + 'px';
-        document.body.appendChild(h); setTimeout(() => h.remove(), 720);
+        document.body.appendChild(h); setTimeout(() => h.remove(), 880);
       }
     });
   });
@@ -2348,6 +2352,16 @@ function openShareDialog(deckArr, deckName) {
     syncLinks();
   };
   syncLinks();
+  // プレビュー画像が出ない時の保険：1回リトライ→ダメならby無し画像にフォールバック（by版はコールド生成で一瞬失敗することがある）
+  const shImg = ov.querySelector('#shImg');
+  if (shImg) {
+    let tries = 0;
+    shImg.onerror = () => {
+      tries++;
+      if (tries === 1) { const s = shImg.src; shImg.removeAttribute('src'); setTimeout(() => { shImg.src = s; }, 1300); }
+      else if (shImg.src.indexOf('&by=') >= 0) { shImg.src = ogimgBase; }
+    };
+  }
   const copyBtn = ov.querySelector('#shCopy');
   copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
   document.body.appendChild(ov);
