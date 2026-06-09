@@ -291,7 +291,7 @@
       </div>
       <p class="crank-hint" id="crankHint"></p>
       <div id="crankList" class="crank-list"></div>
-      <p class="note">※ 勝率・急上昇は直近3日間のデータから算出（更新ごとに最古を捨てて巡回）。</p>
+      <p class="note">※ 使用率・勝率・急上昇いずれも直近3日間のデータから算出（更新ごとに最古を捨てて巡回）。</p>
     </section>
     </div>
   </div>
@@ -646,7 +646,7 @@ function renderCrank() {
     list.sort((a, b) => (b.use || 0) - (a.use || 0));
     hint.textContent = me
       ? '直近の対戦で、あなたが当たった割合（対面率）。よく当たる相手カード順。'
-      : 'トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
+      : '過去3日間で、トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
   }
   // 急上昇のデータがまだ無いときは準備中
   if (_ctab === 'rise' && !list.length) {
