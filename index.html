@@ -335,24 +335,29 @@
   @media (prefers-reduced-motion: reduce) { body.perk-drop .deck-slots.deck-full { animation: none; } }
   /* ¥2,000特典「ボトル」：デッキに入れたお気に入りカードが特別に輝く（perk-bottleのみ・.slot.fav）
      ①縁を金のコニックグラデの艶が一周（選ばれし1枚） ②たまに斜めのシャインが走る（控えめ頻度） */
-  @property --favA { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  @property --favA { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+  /* リムの回転は body 側で --favA を回し続ける＝スロットが再生成(カード追加)されてもリセットせず回り続ける */
+  body.perk-bottle { animation: favSpin 3.6s linear infinite; }
   body.perk-bottle .slot.filled.fav::before {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 4; pointer-events: none;
-    background: conic-gradient(from var(--favA), transparent 0 38%, #ffe08a 52%, #fff 60%, #ffd76a 68%, transparent 82% 100%);
+    background: conic-gradient(from var(--favA), transparent 0 40%, #ffe08a 54%, #fff 61%, #ffd76a 69%, transparent 84% 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
-    animation: favSpin 3.6s linear infinite;
   }
+  /* 斜めシャインは控えめに（差し込みを弱める＋頻度も落とす） */
   body.perk-bottle .slot.filled.fav::after {
     content: ''; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: 5; pointer-events: none;
-    background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.5) 47%, rgba(255,255,255,.88) 50%, rgba(255,255,255,.5) 53%, transparent 62%);
+    background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.16) 48%, rgba(255,255,255,.38) 50%, rgba(255,255,255,.16) 52%, transparent 60%);
     background-size: 250% 100%; background-position: 210% 0;
-    animation: favShine 6.5s ease-in-out infinite;
+    animation: favShine 8s ease-in-out infinite;
   }
+  /* お気に入りを入れた瞬間の「ふわん」（柔らかく一瞬ふくらむ） */
+  @keyframes favPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } 30% { transform: scale(1.07); box-shadow: 0 0 18px 5px rgba(255,224,138,.65); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } }
+  body.perk-bottle .slot.fav.fav-pop { animation: favPop .5s ease-out; z-index: 6; }
   @keyframes favSpin { to { --favA: 360deg; } }
-  @keyframes favShine { 0%,80% { background-position: 210% 0; } 90% { background-position: -60% 0; } 100% { background-position: -60% 0; } }
-  @media (prefers-reduced-motion: reduce) { body.perk-bottle .slot.filled.fav::before, body.perk-bottle .slot.filled.fav::after { animation: none; } body.perk-bottle .slot.filled.fav::after { opacity: 0; } }
+  @keyframes favShine { 0%,82% { background-position: 210% 0; } 91% { background-position: -60% 0; } 100% { background-position: -60% 0; } }
+  @media (prefers-reduced-motion: reduce) { body.perk-bottle { animation: none; } body.perk-bottle .slot.filled.fav::after { animation: none; opacity: 0; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
   /* ¥500：ドラッグ中のスパンコール軌跡 */
   .spangle { position: fixed; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 2px; pointer-events: none; z-index: 3000;
     box-shadow: 0 0 6px rgba(255,215,120,.7); animation: spangleFall .68s ease-out forwards; }
@@ -2020,8 +2025,9 @@ function renderDeck() {
   updateDeckGlow(deck.filter(Boolean).length); // ¥500特典：枚数に応じてデッキ枠のグロー（8枚でシャキーン）
   // ¥2,000特典：お気に入りが「増えた」瞬間だけ、デッキ内のお気に入り同士を一瞬つなぐ
   const favNow = deck.filter(c => c && isFav(c.name)).map(c => c.name);
-  if (favNow.length > (window._favPrev || []).length) requestAnimationFrame(flashFavLinks);
+  const favAdded = favNow.filter(n => !(window._favPrev || []).includes(n));
   window._favPrev = favNow;
+  if (favAdded.length) requestAnimationFrame(() => { popFavSlots(favAdded); flashFavLinks(); }); // 入れた瞬間：ふわん＋お気に入り結線
 }
 
 // ===== ¥500/¥2,000 演出ヘルパー =====
@@ -2073,6 +2079,19 @@ function flashFavLinks() {
     { duration: 950, easing: 'ease-out' }
   );
   setTimeout(() => svg.remove(), 1000);
+}
+
+// ¥2,000特典：お気に入りを入れた瞬間、そのスロットを「ふわん」と一瞬ふくらませる
+function popFavSlots(names) {
+  if (!document.body.classList.contains('perk-bottle')) return;
+  names.forEach(name => {
+    deck.forEach((c, i) => {
+      if (c && c.name === name) {
+        const el = document.querySelector('#deckSlots .slot[data-idx="' + i + '"]');
+        if (el) { el.classList.remove('fav-pop'); void el.offsetWidth; el.classList.add('fav-pop'); setTimeout(() => el.classList.remove('fav-pop'), 600); }
+      }
+    });
+  });
 }
 
 // ¥500特典：カード枚数(0-8)に応じてデッキ枠のグローを段階的に設定（perk-dropユーザーのみ）。
@@ -2402,7 +2421,7 @@ function initSlotScrub() {
   }
     let slots = [];
     try { slots = await CRAuth.getSlots(); } catch (e) { showToast('スロットの取得に失敗しました'); return; }
-    segSlots = slots.filter(s => (s.slots || []).length > 0); // 保存済み（空きでない）スロットだけ
+    segSlots = slots.slice(); // 保存済みスロット（0枚保存も含めて表示・呼び出し可能＝消えないように）
     if (!segSlots.length) { showToast('保存済みデッキがありません'); return; }
     baseIdx = segSlots.findIndex(s => s.slot === currentSlot);
     if (baseIdx < 0) baseIdx = 0;
