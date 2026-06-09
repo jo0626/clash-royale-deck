@@ -377,6 +377,20 @@
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
   /* SNS共有プレビュー＝実際の共有画像(/ogimg)。グリッド全幅で表示 */
   .share-ogimg { grid-column: 1 / -1; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; border-radius: 10px; display: block; background: var(--surface2); }
+  /* SNS共有プレビューをページ内でCSS描画（軽量・即時・share by安定）。実際の共有画像(Worker)と同じ見た目 */
+  .share-rep { grid-column: 1 / -1; width: 100%; aspect-ratio: 1200 / 630; border-radius: 10px; overflow: hidden; box-sizing: border-box;
+    background: linear-gradient(150deg, #171a2b 0%, #0d0f17 100%); border: 7px solid rgba(255,255,255,.12);
+    display: flex; flex-direction: column; justify-content: space-between; padding: 4.2% 5%; color: #fff; }
+  .rep-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .rep-h1 { font-family: var(--font-head); font-weight: 700; color: var(--accent); font-size: clamp(13px, 3.4vw, 24px); letter-spacing: 1px; line-height: 1; }
+  .rep-h2 { color: #cdd2e0; font-size: clamp(7px, 1.7vw, 12px); margin-top: 3px; }
+  .rep-label { font-family: var(--font-head); font-weight: 700; font-size: clamp(7px, 1.7vw, 12px); padding: 3px 9px; border-radius: 999px; white-space: nowrap; align-self: flex-start; letter-spacing: .5px; }
+  .rep-by { color: #d9b86a; font-weight: 700; font-size: clamp(8px, 2vw, 14px); min-height: 1em; }
+  .rep-cards { display: flex; justify-content: center; gap: 1.4%; }
+  .rep-card { position: relative; width: 11.2%; aspect-ratio: 128 / 168; border-radius: 8px; overflow: hidden; background: #1e2230; border: 2px solid rgba(255,255,255,.12); }
+  .rep-card img { width: 100%; height: 100%; object-fit: contain; }
+  .rep-pip { position: absolute; top: 2px; left: 2px; font-size: clamp(7px, 1.5vw, 12px); font-weight: 700; color: #fff; background: #888; border-radius: 4px; padding: 0 3px; line-height: 1.4; }
+  .rep-bottom { display: flex; justify-content: space-between; color: #cfd3dc; font-weight: 700; font-size: clamp(8px, 1.9vw, 14px); }
   .sdk-card { position: relative; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden;
     background: var(--surface2); border: 1px solid var(--border); }
   .sdk-card.empty { background: rgba(255,255,255,0.03); }
@@ -2300,6 +2314,39 @@ async function openSlotSaveDialog() {
 }
 
 // ===== 保存直後のSNS共有 =====
+// 共有プレビューをページ内で描画するためのグレード定義（Worker /ogimg の GRADES と同じ見た目）
+const REPLICA_GRADES = {
+  free:    { b:'rgba(255,255,255,0.12)', g:'',                         l:'',                lb:'',        lf:'' },
+  drop:    { b:'#26c6a0', g:'0 0 16px rgba(38,198,160,.6)',  l:'SUPPORTER',        lb:'#26c6a0', lf:'#06231c' },
+  bottle:  { b:'#1fc7c7', g:'0 0 16px rgba(31,199,199,.6)',  l:'SUPPORTER',        lb:'#1fc7c7', lf:'#06231c' },
+  pump:    { b:'#2e8fe0', g:'0 0 18px rgba(46,143,224,.6)',  l:'BIG SUPPORTER',    lb:'#2e8fe0', lf:'#04141f' },
+  drum:    { b:'#5a6cf0', g:'0 0 18px rgba(90,108,240,.6)',  l:'BIG SUPPORTER',    lb:'#5a6cf0', lf:'#fff' },
+  tank:    { b:'#8b5cf6', g:'0 0 20px rgba(139,92,246,.6)',  l:'SUPER SUPPORTER',  lb:'#8b5cf6', lf:'#fff' },
+  pool:    { b:'#c054d4', g:'0 0 20px rgba(192,84,212,.6)',  l:'SUPER SUPPORTER',  lb:'#c054d4', lf:'#fff' },
+  factory: { b:'#d4537e', g:'0 0 22px rgba(212,83,126,.6)',  l:'MEGA SUPPORTER',   lb:'#d4537e', lf:'#fff' },
+  dam:     { b:'#e8a020', g:'0 0 24px rgba(232,160,32,.65)', l:'MEGA SUPPORTER',   lb:'#e8a020', lf:'#1a1208' },
+  spring:  { b:'#ff7a2f', g:'0 0 26px rgba(255,122,47,.7)',  l:'LEGEND SUPPORTER', lb:'#ff7a2f', lf:'#1a1208' }
+};
+function shareReplica(deckArr, gradeKey, by) {
+  const G = REPLICA_GRADES[gradeKey] || REPLICA_GRADES.free;
+  const filled = (deckArr || []).filter(Boolean);
+  const avg = filled.length ? (filled.reduce((s, c) => s + (c.cost || 0), 0) / filled.length).toFixed(1) : '';
+  const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
+  let cards = '';
+  for (let i = 0; i < 8; i++) {
+    const c = deckArr[i];
+    if (!c) { cards += '<div class="rep-card"></div>'; continue; }
+    const pip = COST_COLORS[Math.min(c.cost, 9)] || '#888';
+    cards += '<div class="rep-card"><img src="' + slotCardImg(c, i) + '" alt=""><span class="rep-pip" style="background:' + pip + '">' + c.cost + '</span></div>';
+  }
+  return '<div class="share-rep" style="border-color:' + G.b + ';' + (G.g ? 'box-shadow:inset ' + G.g + ';' : '') + '">'
+    + '<div class="rep-top"><div><div class="rep-h1">CR DECK BUILDERS</div><div class="rep-h2">クラロワデッキ作成・診断ツール</div></div>'
+    + (G.l ? '<div class="rep-label" style="background:' + G.lb + ';color:' + G.lf + '">' + G.l + '</div>' : '') + '</div>'
+    + '<div class="rep-by">' + (by ? 'share by ' + esc(by) : '') + '</div>'
+    + '<div class="rep-cards">' + cards + '</div>'
+    + '<div class="rep-bottom"><span>' + (avg ? 'AVG ELIXIR ' + avg : '') + '</span><span>crdeckbuilders.com</span></div>'
+    + '</div>';
+}
 function buildDeckShareUrl(deckArr) {
   let names = (deckArr || []).map(c => c ? c.name : '');
   while (names.length && names[names.length - 1] === '') names.pop();
@@ -2331,7 +2378,7 @@ function openShareDialog(deckArr, deckName) {
   ov.className = 'slot-pop';
   ov.innerHTML = `<div class="slot-pop-box">
     <div class="slot-pop-title">✅ 保存しました！このデッキを共有する？</div>
-    <div class="share-deck"><img class="share-ogimg" id="shImg" src="${ogimgBase}" alt="SNS共有プレビュー画像"></div>
+    <div class="share-deck" id="shRep"></div>
     <div class="share-btns">
       ${byName ? `<button class="share-b sns-byname active" id="shByBtn" aria-pressed="true">👤 「share by ${byNameEsc}」を入れて投稿</button>` : ''}
       <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
@@ -2350,7 +2397,7 @@ function openShareDialog(deckArr, deckName) {
     const u = finalUrl();
     ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(u);
     ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + u);
-    const img = ov.querySelector('#shImg'); if (img) img.src = ogimgBase + byParam(); // プレビュー画像も名前ON/OFFで切替
+    const rep = ov.querySelector('#shRep'); if (rep) rep.innerHTML = shareReplica(deckArr, grade, (byName && byOn()) ? byName : ''); // プレビューはページ内描画＝軽量・即時・by安定
   };
   if (shByBtn) shByBtn.onclick = () => {
     shByBtn.classList.toggle('active');
@@ -2358,17 +2405,6 @@ function openShareDialog(deckArr, deckName) {
     syncLinks();
   };
   syncLinks();
-  // プレビュー画像が出ない時の保険：1回リトライ→ダメならby無し画像にフォールバック（by版はコールド生成で一瞬失敗することがある）
-  const shImg = ov.querySelector('#shImg');
-  if (shImg) {
-    let step = 0;
-    shImg.onerror = () => {
-      step++;
-      if (step === 1) { const s = shImg.src; shImg.removeAttribute('src'); setTimeout(() => { shImg.src = s; }, 1200); } // ①一度リトライ（コールド生成対策）
-      else if (shImg.src.indexOf('&by=') >= 0) { shImg.src = ogimgBase; }                  // ②by無しへ
-      else if (shImg.src !== ogimgFree) { shImg.src = ogimgFree; }                          // ③枠無し（最軽量）へ＝必ず何か表示
-    };
-  }
   const copyBtn = ov.querySelector('#shCopy');
   copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
   document.body.appendChild(ov);
