@@ -313,22 +313,20 @@
     100% { transform: translateY(0)    scale(1);    }
   }
   @media (prefers-reduced-motion: reduce) { .avg-val.rolling { animation: none; } }
-  /* ¥500特典「ひとしずく」：デッキ8枚そろうと枠がシャキーンと光り、その後ずっと光り続ける（perk-dropユーザーのみ） */
-  body.perk-drop .deck-slots.full {
-    animation: deckBurst 0.55s cubic-bezier(.2,.8,.2,1), deckGlow 2.6s ease-in-out 0.5s infinite;
+  /* ¥500特典「ひとしずく」：累計500円以上のみ。カードが増えるほど枠が徐々に光り（box-shadowはJSが枚数で設定）、
+     8枚で「シャキーン」と最大光→そのまま継続。8→7で抜くと消える時はフェード（transition）。 */
+  body.perk-drop .deck-slots { transition: box-shadow 0.55s ease, filter 0.35s ease; }
+  body.perk-drop .deck-slots.deck-full { animation: deckPop 0.95s ease-out, deckPulse 3s ease-in-out 0.95s infinite; }
+  @keyframes deckPop {
+    0%   { filter: brightness(1) saturate(1); transform: scale(1); }
+    50%  { filter: brightness(1.5) saturate(1.25) drop-shadow(0 0 22px rgba(255,255,255,.85)); transform: scale(1.012); }
+    100% { filter: brightness(1.05); transform: scale(1); }
   }
-  @keyframes deckBurst {
-    0%   { box-shadow: inset 0 0 0 0 rgba(38,198,160,0), 0 0 0 0 rgba(38,198,160,0); filter: brightness(1); }
-    16%  { box-shadow: inset 0 0 26px 3px rgba(255,255,255,.92), 0 0 46px 10px rgba(38,198,160,.9); filter: brightness(1.32) saturate(1.15); }
-    100% { box-shadow: inset 0 0 14px 1px rgba(38,198,160,.45), 0 0 20px 2px rgba(38,198,160,.5); filter: brightness(1); }
+  @keyframes deckPulse {
+    0%,100% { filter: brightness(1.03) drop-shadow(0 0 4px rgba(38,198,160,.35)); }
+    50%     { filter: brightness(1.12) drop-shadow(0 0 12px rgba(38,198,160,.6)); }
   }
-  @keyframes deckGlow {
-    0%,100% { box-shadow: inset 0 0 12px 1px rgba(38,198,160,.4),  0 0 16px 2px rgba(38,198,160,.42); }
-    50%     { box-shadow: inset 0 0 20px 2px rgba(38,198,160,.68), 0 0 30px 6px rgba(38,198,160,.66); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    body.perk-drop .deck-slots.full { animation: none; box-shadow: inset 0 0 14px 1px rgba(38,198,160,.5), 0 0 20px 2px rgba(38,198,160,.5); }
-  }
+  @media (prefers-reduced-motion: reduce) { body.perk-drop .deck-slots.deck-full { animation: none; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
   .sdk-card { position: relative; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden;
@@ -1979,7 +1977,23 @@ function renderDeck() {
 
   updateActionButtons();
   showDeckStats(deck, true); // 実デッキの統計を表示（入れ替え時は平均コストをロール）
-  slots.classList.toggle('full', deck.filter(Boolean).length === 8); // ¥500特典：8枚そろうと枠が光る（body.perk-drop時のみ発光）
+  updateDeckGlow(deck.filter(Boolean).length); // ¥500特典：枚数に応じてデッキ枠のグロー（8枚でシャキーン）
+}
+
+// ¥500特典：カード枚数(0-8)に応じてデッキ枠のグローを段階的に設定（perk-dropユーザーのみ）。
+// box-shadowをJSで枚数比例にし、CSSのtransitionで増減がなめらかに（8→7はフェード）。8枚で .deck-full=シャキーン＋継続。
+function updateDeckGlow(n) {
+  const el = document.getElementById('deckSlots');
+  if (!el) return;
+  const perk = document.body.classList.contains('perk-drop');
+  el.classList.toggle('deck-full', perk && n === 8); // 8枚到達時だけ付与＝再描画(入れ替え)では再発火しない
+  if (!perk || n === 0) { el.style.boxShadow = ''; return; }
+  const t = n / 8;                                   // 0.125 .. 1（徐々に強く）
+  const blur = Math.round(6 + 20 * t);
+  const spread = (1 + 2 * t).toFixed(1);
+  const ai = (0.15 + 0.5 * t).toFixed(2);            // inset（内側）の濃さ
+  const ao = (0.12 + 0.45 * t).toFixed(2);           // outer（外側）の濃さ
+  el.style.boxShadow = 'inset 0 0 ' + blur + 'px ' + spread + 'px rgba(38,198,160,' + ai + '), 0 0 ' + Math.round(blur * 0.9) + 'px 2px rgba(38,198,160,' + ao + ')';
 }
 
 // 平均コストを「現在の表示値→目標値」へ0.01刻みでロール（ドゥルル）。
@@ -2399,6 +2413,7 @@ init();
   CRAuth.onChange((user, profile) => {
     const total = (profile && profile.donatedTotal) || 0;
     document.body.classList.toggle('perk-drop', total >= 500);
+    try { updateDeckGlow(deck.filter(Boolean).length); } catch (e) {} // ログイン状態が変わったらグローを反映
   });
 })();
 
