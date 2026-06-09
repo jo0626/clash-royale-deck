@@ -335,10 +335,10 @@
   @media (prefers-reduced-motion: reduce) { body.perk-drop .deck-slots.deck-full { animation: none; } }
   /* ¥2,000特典「ボトル」：デッキに入れたお気に入りカードが特別に輝く（perk-bottleのみ・.slot.fav）
      ①縁を金のコニックグラデの艶が一周（選ばれし1枚） ②たまに斜めのシャインが走る（控えめ頻度） */
-  @property --favA { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
-  /* リムの回転は .right（デッキ枠の小さいサブツリー）で --favA を回す＝再生成でリセットせず、かつ全体再計算にならず軽い。
-     ※以前 body で回していてカードリスト(121枚)まで毎フレーム再計算→タブが落ちて不安定になっていた。 */
-  body.perk-bottle.has-fav .right { animation: favSpin 3.6s linear infinite; } /* デッキにお気に入りがある時だけ回す＝常時の負荷を無くして安定化 */
+  @property --favA { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  /* リム回転は「要素単位(inherits:false)」＋各スロットに負のanimation-delayを入れて共通の時計に同期。
+     → お気に入りが無い時は一切走らず、全体再計算も起きない＝軽くて落ちない。再生成しても位相が揃うので途切れない。
+     ※以前は ancestor で inherited な --favA を常時回していて、巨大DOMが毎フレーム再計算→タブが落ちて自動リロードしていた。 */
   body.perk-bottle .slot.filled.fav::before {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 4; pointer-events: none;
     /* 縁を弱く照らしつつ、白の細いグリントが一周＝端っこ(カードに当たらない位置)で弱めにテカっと */
@@ -347,7 +347,11 @@
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
     opacity: .9;
+    animation: favSpin 3.6s linear infinite;
+    animation-delay: var(--favDelay, 0s);
   }
+  /* 共有プレビューを開いている間はデッキ側アニメを止めて、重い画像生成にCPUを譲る（プレビューが出ない対策） */
+  body.share-open .slot.filled.fav::before, body.share-open .deck-slots.deck-full { animation-play-state: paused !important; }
   /* 斜めの差し込みシャインは廃止（カードに当たって強すぎたため）。光は縁(リム)＝カードに当たらない位置だけ。 */
   /* お気に入りを入れた瞬間の「ふわん」（柔らかく一瞬ふくらむ） */
   @keyframes favPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } 30% { transform: scale(1.07); box-shadow: 0 0 18px 5px rgba(255,224,138,.6); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } }
@@ -357,7 +361,7 @@
   .fav-heart svg { display: block; }
   @keyframes favHeart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.45); } 28% { opacity: .9; transform: translate(-50%,-74%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-160%) scale(.92); } }
   @keyframes favSpin { to { --favA: 360deg; } }
-  @media (prefers-reduced-motion: reduce) { body.perk-bottle.has-fav .right { animation: none; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { body.perk-bottle .slot.filled.fav::before { animation: none; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
   /* ¥500：ドラッグ中のスパンコール軌跡 */
   .spangle { position: fixed; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 2px; pointer-events: none; z-index: 3000;
     box-shadow: 0 0 6px rgba(255,215,120,.7); animation: spangleFall .68s ease-out forwards; }
@@ -1976,7 +1980,8 @@ function renderDeck() {
     if (c) {
       const mode = slotMode(c, i);
       const modeClass = mode === 'evolved' ? ' slot-evolved' : mode === 'hero' ? ' slot-hero' : '';
-      div.className = 'slot filled' + modeClass + (isFav(c.name) ? ' fav' : ''); // お気に入りは .fav（¥2,000特典でリムライト＋シャイン）
+      div.className = 'slot filled' + modeClass + (isFav(c.name) ? ' fav' : ''); // お気に入りは .fav（¥2,000特典でリムライト）
+      if (isFav(c.name)) div.style.setProperty('--favDelay', '-' + (performance.now() / 1000 % 3.6).toFixed(2) + 's'); // 共通時計に同期＝再生成しても途切れない
       div.title = 'クリックで外す';
       div.draggable = true;
       div.dataset.idx = i;
@@ -2334,7 +2339,7 @@ function openShareDialog(deckArr, deckName) {
     </div>
     <div class="share-hint">${byName ? '名前ボタンが光ってると、画像にあなたの名前が入ります。' : ''}閉じるときはこの外側をタップ</div>
   </div>`;
-  ov.onclick = (e) => { if (e.target === ov) ov.remove(); }; // 外側タップで閉じる（「あとで」ボタンは廃止）
+  ov.onclick = (e) => { if (e.target === ov) { ov.remove(); document.body.classList.remove('share-open'); } }; // 外側タップで閉じる
 
   const shByBtn = ov.querySelector('#shByBtn');
   const byOn = () => shByBtn && shByBtn.classList.contains('active');
@@ -2365,6 +2370,7 @@ function openShareDialog(deckArr, deckName) {
   const copyBtn = ov.querySelector('#shCopy');
   copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
   document.body.appendChild(ov);
+  document.body.classList.add('share-open'); // プレビュー中はデッキ側アニメを停止
 }
 
 // ===== 保存デッキの呼び出し（横スクロールで 1〜5 を選ぶ） =====

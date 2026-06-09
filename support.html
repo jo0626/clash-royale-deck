@@ -121,6 +121,22 @@
   .donate-btn.primary { background: linear-gradient(135deg, #8b5cf6, #d4537e); border-color: transparent; color: #fff; font-weight: 700; box-shadow: 0 4px 18px rgba(139,92,246,.35); }
   .donate-btn.primary .label small { color: rgba(255,255,255,.85); }
   .donate-btn.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  /* 特典内容を見る情報アイコン（カード左上） */
+  .grade-info { position: absolute; top: 6px; left: 6px; width: 19px; height: 19px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.4); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; z-index: 3; font-family: var(--font-head); }
+  .grade-info:hover { background: rgba(0,0,0,.65); }
+  /* 購入タップ時：すぐ飛ばず、ジェム◇が少し回って弾けてから決済へ */
+  .grade-card.purchasing { box-shadow: 0 0 0 2px rgba(255,255,255,.22), 0 0 24px rgba(255,255,255,.22); }
+  .grade-card.purchasing .grade-gem { animation: gemTap .7s ease; }
+  @keyframes gemTap { 0% { transform: rotate(45deg) scale(1); } 35% { transform: rotate(160deg) scale(1.25); } 100% { transform: rotate(405deg) scale(1); } }
+  /* 特典ポップアップ */
+  .perk-pop { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .perk-pop-box { background: var(--surface2); border: 1px solid var(--border-hi); border-radius: 14px; padding: 20px; max-width: 360px; width: 100%; }
+  .perk-pop-box h3 { font-family: var(--font-head); font-size: 18px; margin-bottom: 10px; }
+  .perk-pop-box ul { list-style: none; padding: 0; margin: 0; }
+  .perk-pop-box li { font-size: 13px; color: var(--text); padding: 5px 0 5px 18px; position: relative; line-height: 1.5; }
+  .perk-pop-box li::before { content: '✦'; position: absolute; left: 0; color: var(--accent); }
+  .perk-pop-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+  .perk-pop-close { margin-top: 12px; width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-hi); background: var(--surface); color: var(--text); cursor: pointer; }
 
   .prep-banner { margin: 4px 0 16px; padding: 12px 16px; border-radius: 10px; font-size: 13px; text-align: center;
     background: rgba(232,160,32,.12); border: 1px solid rgba(232,160,32,.4); color: #f0c54a; }
@@ -201,6 +217,7 @@
            他はStripeのPayment Link未作成のため、リンク無しのアイコン表示のまま。 -->
       <a class="grade-card g-1 stripe-donate" data-link="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00"
          href="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00" target="_blank" rel="noopener">
+        <button class="grade-info" type="button" data-perk="drop" aria-label="特典の内容">i</button>
         <span class="grade-badge">おすすめ</span>
         <span class="grade-gem"></span>
         <div class="grade-name">¥500</div>
@@ -208,6 +225,7 @@
       </a>
       <a class="grade-card g-2 stripe-donate" data-link="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01"
          href="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01" target="_blank" rel="noopener">
+        <button class="grade-info" type="button" data-perk="bottle" aria-label="特典の内容">i</button>
         <span class="grade-badge">人気</span>
         <span class="grade-gem"></span>
         <div class="grade-name">¥2,000</div>
@@ -260,6 +278,7 @@
   </div>
 
   <div class="note">
+    ※ グレードは<b>累計</b>の供給額で決まります。あとから追加で供給すると累計が増え、上位グレードが自動で解放されます。<br>
     ※ 金額は目安です。支援画面で任意の額を入力できます（月額ではなく1回きり）。<br>
     ※ 供給による違いは見た目（SNS共有画像の枠）のみで、デッキ作成・分析などの機能はすべての方が無料で利用できます。<br>
     ※ This material is unofficial and is not endorsed by Supercell.
@@ -290,6 +309,35 @@
   }
   if (document.readyState !== 'loading') init();
   else document.addEventListener('DOMContentLoaded', init);
+
+  // 特典内容ポップ（情報アイコン）＋ 購入タップ時のジェム演出
+  var PERKS = {
+    drop:   { title: '¥500 ひとしずく の特典', items: ['デッキ8枚そろうと枠がシャキーンと光り続ける', 'カードドラッグ中にスパンコールの軌跡（アカウントでON/OFF可）', 'SNS共有画像にグレード枠＋SUPPORTERラベル'] },
+    bottle: { title: '¥2,000 ボトル の特典（¥500の特典に加えて）', items: ['デッキに入れたお気に入りカードの縁が輝く', 'お気に入りを入れた瞬間にふわん＋ハート', 'お気に入り同士を一瞬つなぐ光の線', 'SNS共有画像が上位のグレード枠に'] }
+  };
+  function showPerk(key) {
+    var p = PERKS[key]; if (!p) return;
+    var ov = document.createElement('div'); ov.className = 'perk-pop';
+    ov.innerHTML = '<div class="perk-pop-box"><h3>' + p.title + '</h3><ul>' +
+      p.items.map(function (t) { return '<li>' + t + '</li>'; }).join('') +
+      '</ul><div class="perk-pop-note">※ 特典は随時追加されることがあります。</div>' +
+      '<button class="perk-pop-close" type="button">閉じる</button></div>';
+    ov.addEventListener('click', function (e) { if (e.target === ov || e.target.classList.contains('perk-pop-close')) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  document.querySelectorAll('.grade-info').forEach(function (b) {
+    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); showPerk(b.getAttribute('data-perk')); });
+  });
+  document.querySelectorAll('a.grade-card.stripe-donate').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      if (e.target.closest('.grade-info')) return;       // 情報アイコンは別処理
+      e.preventDefault();
+      if (a.classList.contains('purchasing')) return;    // 二重タップ防止
+      a.classList.add('purchasing');
+      var href = a.href;                                  // client_reference_id付きの最新href
+      setTimeout(function () { a.classList.remove('purchasing'); window.location.href = href; }, 700);
+    });
+  });
 })();
 </script>
 </body>
