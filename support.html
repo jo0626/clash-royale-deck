@@ -152,10 +152,14 @@
   @media (max-width:600px){.logo-icon{height:1.9em;width:1.9em}}
   /* 4アイコンをボディ先頭のバーへ（ヘッダーはロゴ＋下線だけ＝Index統一） */
   .topbar { padding:10px 20px; border-bottom:1px solid var(--border); background:var(--surface); justify-content:flex-end; }
+  /* ヘッダー＋アイコンバーをまとめて画面上部に固定 */
+  .sitebar { position: sticky; top: 0; z-index: 100; }
+  .sitebar header { position: static; }
 </style>
 </head>
 <body>
 
+<div class="sitebar">
 <header>
   <a class="logo" href="index.html"><img class="logo-icon" src="icon-192.png" alt="CR Deck Builders ロゴ" width="192" height="192"><div class="logo-text">CR Deck Builders<span>クラロワデッキ作成・診断ツール</span></div></a>
 </header>
@@ -165,6 +169,7 @@
     <a class="nav-icon active" href="support.html" title="支援・寄付"><span class="nav-emoji">💛</span></a>
     <a class="nav-icon" href="contact.html" title="リクエスト・お問い合わせ"><span class="nav-emoji">✉️</span></a>
 </nav>
+</div>
 
 <div class="container">
   <h1 class="page-title">支援・寄付</h1>
