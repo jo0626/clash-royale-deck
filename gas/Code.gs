@@ -1,31 +1,26 @@
 /**
  * CR Deck Builders – 人気デッキ自動更新 (Google Apps Script)
- * トップ層プレイヤーの currentDeck を集計し、頻度上位デッキを
- * decks.json として GitHub リポジトリへコミットする。
+ * トップ層プレイヤーの currentDeck / battlelog を集計し、人気デッキ・勝率デッキ・
+ * カードメタを decks.json として GitHub リポジトリ(data ブランチ)へコミットする。
  *
  * ★この版の要点：
  *   - 各カードを実データから「進化(evo) / ヒーロー(hero) / チャンピオン(champ) / 通常(norm)」に分類。
- *       champion : rarity === "champion"
- *       evo      : evolutionLevel>0 かつ iconUrls.evolutionMedium あり
- *       hero     : evolutionLevel>0 かつ iconUrls.heroMedium のみ（evolutionMedium なし）
- *     ＝ 進化とヒーローは同じ特殊枠の取り合い。プレイヤーが実際に使った形が出る。
- *   - デッキごとに各カードの形を多数決で確定し、特殊カードを前に並べて
- *     slots[] と forms[]（各スロットの形）を出力。サイトはこの forms 通りに絵柄を表示。
- *   - 取得失敗したプレイヤーを1回リトライして母数を1000に近づける。
- *
- * ★★ 追記（カードメタ／急上昇）：追加APIリクエストなしで、既存集計から
- *   - trending[] … 前回スナップショット比でデッキ使用が伸びたもの（急上昇）
- *   - cards[]    … カード単体の使用率(pop由来)・勝率(win由来)を「3日ローリング」で集計
- *   履歴は cardhist.json としてリポジトリに保存（更新ごとに最古を捨てて巡回）。
+ *   - デッキごとに形を多数決で確定し slots[]/forms[] を出力。
+ *   - ★★3日ローリング：デッキ(使用/勝率)もカードも全て「3日間の合算データ」で出す。
+ *       戦闘データ量＝信頼性なので、1回ぶんではなく3日分を貯めて集計する。
+ *       各スナップショットに「デッキ署名→[使用人数p, 試合数g, 勝ち数w]」を保存（上位250件）。
+ *       3日合算して使用率(延べ使用人数)・勝率を 100位 まで出力。
+ *       デッキは count(延べ使用人数) と games(試合数) の両方を載せる。
+ *   履歴は cardhist.json として data ブランチに保存（3日より古いスナップショットは捨てる）。
  *
  * スクリプトのプロパティ:
  *   CR_TOKEN, GITHUB_TOKEN, GITHUB_REPO("owner/repo"),
- *   GITHUB_PATH("decks.json"), GITHUB_BRANCH("main"),
- *   TOP_PLAYERS("1000"), TOP_DECKS("50"), INTERVAL_HOURS("12")
+ *   GITHUB_PATH("decks.json"), GITHUB_BRANCH("data"),
+ *   TOP_PLAYERS("1000"), INTERVAL_HOURS("6"), WIN_MIN_GAMES_3D("100")
  */
 
 var PROXY = 'https://proxy.royaleapi.dev/v1';
-var WINDOW_DAYS = 3; // カード集計のローリング期間（日）
+var WINDOW_DAYS = 3; // ローリング期間（日）。デッキ・カード共通。
 
 var SLUG2JP = {
   "skeletons": "スケルトン", "ice-spirit": "アイススピリット", "fire-spirit": "ファイアスピリット",
@@ -101,11 +96,6 @@ function normSlug(name) {
 
 function apiCardToJp(card) { return SLUG2JP[normSlug(card.name)] || null; }
 
-// 注意：APIの evolutionLevel は「装備中」ではなく「所持している進化レベル」も含めて
-// デッキ内のカードに付く（所持してれば付く）。進化枠は2つなので、
-// 1プレイヤー分はデッキ順で先頭2枚の特殊カードだけを装備中とみなし、
-// さらに全プレイヤーの多数決で「実際によく装備される2枚」に収束させる（updateDecks内）。
-
 function crGet(path, token) {
   var res = UrlFetchApp.fetch(PROXY + path, {
     method: 'get', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, muteHttpExceptions: true
@@ -125,17 +115,13 @@ function updateDecks() {
   var token = (prop('CR_TOKEN') || '').replace(/[^A-Za-z0-9._-]/g, '');
   if (!token) throw new Error('CR_TOKEN 未設定');
   var topN = parseInt(prop('TOP_PLAYERS', '1000'), 10);
-  var outN = parseInt(prop('TOP_DECKS', '50'), 10);
   var intervalHours = parseInt(prop('INTERVAL_HOURS', '6'), 10);
 
   var ranking = crGet('/locations/global/pathoflegend/players?limit=' + topN, token);
   var players = (ranking.items || []).slice(0, topN);
   var headers = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
 
-  // ---- バトルログから集計（6分制限回避・失敗は1回リトライ）----
-  // ★currentDeckのevolutionLevelは「所持」全部に付くが、バトルログのevolutionLevelは
-  //   「その試合で実際に進化/ヒーロー装備したカード」にだけ付く＝本物。
-  //   pop(使用率)=各プレイヤーの直前デッキ1個 / win(勝率)=決着した全試合の勝敗。
+  // ---- バトルログから集計（pop=各プレイヤーの直前デッキ1個 / win=決着した全試合の勝敗）----
   var pop = {}, win = {}, unmapped = {}, CHUNK = 40;
 
   function classifyDeck(cards) {
@@ -158,9 +144,6 @@ function updateDecks() {
   function tally(map, cards, won) {
     var d = classifyDeck(cards);
     if (!d) return false;
-    // デッキ識別キー：8枚の集合（順不同）＋ 特殊カード(進化/ヒーロー/チャンピオン)の集合（順不同）。
-    //   → 残り5枚の並びは無視・特殊スロット同士の入れ替えも無視。
-    //     ただし「どのカードを進化させたか」が違えば別デッキとして集計する。
     var special = [];
     d.jp.forEach(function (n, idx) { if (d.fm[idx] !== 'norm') special.push(n); });
     var key = d.jp.slice().sort().join('|') + '#' + special.slice().sort().join('|');
@@ -185,9 +168,9 @@ function updateDecks() {
       var b = battles[i];
       if (!isStd(b)) continue;
       var cards = b.team[0].cards;
-      if (evoCnt(cards) > 2) continue; // 特殊モード除外（進化3枚以上）
-      if (!gotPop) { if (tally(pop, cards, null)) gotPop = true; } // 使用率：直前デッキ1個だけ
-      var tc = b.team[0].crowns, oc = b.opponent[0].crowns;       // 勝率：決着試合のみ（引き分け除外）
+      if (evoCnt(cards) > 2) continue;
+      if (!gotPop) { if (tally(pop, cards, null)) gotPop = true; }
+      var tc = b.team[0].crowns, oc = b.opponent[0].crowns;
       if (typeof tc === 'number' && typeof oc === 'number' && tc !== oc) tally(win, cards, tc > oc);
     }
   }
@@ -208,19 +191,19 @@ function updateDecks() {
   }
   var allTags = players.map(function (p) { return p.tag; });
   var got1 = fetchTags(allTags);
-  var miss = allTags.filter(function (t) { return got1.indexOf(t) < 0; }); // HTTP失敗のみ再取得（二重集計防止）
+  var miss = allTags.filter(function (t) { return got1.indexOf(t) < 0; });
   if (miss.length) { Utilities.sleep(1200); fetchTags(miss); }
 
   var aggregated = Object.keys(pop).reduce(function (s, k) { return s + pop[k].count; }, 0);
   var winBattles = Object.keys(win).reduce(function (s, k) { return s + win[k].count; }, 0);
   Logger.log('ranking ' + players.length + ' / players(pop) ' + aggregated + ' / win-battles ' + winBattles + ' / unmapped ' + JSON.stringify(unmapped));
+  if (!Object.keys(pop).length) throw new Error('集計0件 unmapped=' + JSON.stringify(unmapped)); // API失敗時は履歴を汚さない
 
   // ---- デッキ確定（形＋ゲームと同じスロット配置）。pop/win共通 ----
-  //   index0(1枚目)=進化のみ / index1(2枚目)=チャンピオンorヒーロー / index2(3枚目)=進化orチャンピオンorヒーロー
   function finalizeDeck(r) {
     var champName = null, champBest = 0;
     r.cards.forEach(function (n) { var c = (r.votes[n] || {}).champ || 0; if (c > champBest) { champBest = c; champName = n; } });
-    var thr = Math.max(1, r.count * 0.25); // 上位2枚かつ25%以上が特殊装備（下限1＝低サンプルの急上昇でも進化/ヒーローを拾う。count≧8の人気デッキは影響なし）
+    var thr = Math.max(1, r.count * 0.25);
     var scored = r.cards.map(function (n) {
       var v = r.votes[n] || {};
       return { n: n, score: (v.evo || 0) + (v.hero || 0) + (v.both || 0), e: (v.evo || 0), h: (v.hero || 0) };
@@ -230,7 +213,7 @@ function updateDecks() {
     var cardForm = {};
     r.cards.forEach(function (n) { cardForm[n] = 'norm'; });
     if (champName) cardForm[champName] = 'champ';
-    picked.forEach(function (x) { cardForm[x.n] = (x.e > x.h) ? 'evo' : 'hero'; }); // 同数/判定不可はヒーロー優先
+    picked.forEach(function (x) { cardForm[x.n] = (x.e > x.h) ? 'evo' : 'hero'; });
     var groups = { evo: [], hero: [], champ: [], norm: [] };
     r.cards.forEach(function (n) { groups[cardForm[n] || 'norm'].push(n); });
     groups.norm.sort(function (a, b) { return (COST[a] || 0) - (COST[b] || 0); });
@@ -245,95 +228,101 @@ function updateDecks() {
     return { name: deckNameGuess(slots8), slots: slots8, forms: slots8.map(function (n) { return cardForm[n] || 'norm'; }) };
   }
 
-  // 使用率：人数の多い順
-  var popDecks = Object.keys(pop).map(function (k) { return pop[k]; })
-    .sort(function (a, b) { return b.count - a.count; }).slice(0, outN)
-    .map(function (r) { var d = finalizeDeck(r); d.count = r.count; return d; });
-
-  // 勝率：最低試合数以上で勝率の高い順（同率は試合数）。統計的にそのまま使えば勝率が良い順。
-  var winMin = parseInt(prop('WIN_MIN_GAMES', '30'), 10);
-  var winDecks = Object.keys(win).map(function (k) { return win[k]; })
-    .filter(function (r) { return r.count >= winMin; })
-    .sort(function (a, b) { var wa = a.wins / a.count, wb = b.wins / b.count; return (wb - wa) || (b.count - a.count); }).slice(0, outN)
-    .map(function (r) { var d = finalizeDeck(r); d.games = r.count; d.wins = r.wins; d.winRate = Math.round(r.wins / r.count * 1000) / 10; return d; });
-
-  Logger.log('popDecks ' + popDecks.length + ' / winDecks ' + winDecks.length + ' (winMin ' + winMin + ')');
-  if (!popDecks.length) throw new Error('集計0件 unmapped=' + JSON.stringify(unmapped));
-
-  // ===== ここから追記：カード単体（使用率/勝率）＋ 急上昇：3日ローリング =====
-  // 追加のAPIリクエストはなし。既存の pop / win 集計からカード単位を導出する。
+  // ===== 3日ローリング：デッキもカードも3日分の合算で出す =====
   var now = Date.now();
   var ghPath = prop('GITHUB_PATH', 'decks.json');
   var histPath = ghSiblingPath_(ghPath, 'cardhist.json');
+  var DECK_TOP = 100;   // 使用率・勝率ランキングを100位まで
+  var DK_KEEP = 250;    // 1スナップショットに保存するデッキ署名の上限（cardhist.jsonを1MB未満に保つ安全策）
+  var WIN_MIN_3D = parseInt(prop('WIN_MIN_GAMES_3D', '100'), 10); // 勝率は3日合計でこの試合数以上のみ
 
-  // カード使用率の素：直前デッキ(pop)にそのカードを入れている人数
+  // カード単体の素（従来どおり）
   var useNow = {};
-  Object.keys(pop).forEach(function (k) {
-    var r = pop[k];
-    r.cards.forEach(function (n) { useNow[n] = (useNow[n] || 0) + r.count; });
-  });
-  // カード勝率の素：決着した全試合(win)での出現数・勝ち数
+  Object.keys(pop).forEach(function (k) { pop[k].cards.forEach(function (n) { useNow[n] = (useNow[n] || 0) + pop[k].count; }); });
   var batNow = {};
-  Object.keys(win).forEach(function (k) {
-    var r = win[k];
-    r.cards.forEach(function (n) {
-      if (!batNow[n]) batNow[n] = [0, 0];
-      batNow[n][0] += r.count; batNow[n][1] += r.wins;
-    });
-  });
-  // デッキ使用数のスナップショット（急上昇の差分用）。多い順に200種まで。
-  var deckSig = {};
-  Object.keys(pop).sort(function (a, b) { return pop[b].count - pop[a].count; }).slice(0, 200)
-    .forEach(function (k) { deckSig[k] = pop[k].count; });
+  Object.keys(win).forEach(function (k) { var r = win[k]; r.cards.forEach(function (n) { if (!batNow[n]) batNow[n] = [0, 0]; batNow[n][0] += r.count; batNow[n][1] += r.wins; }); });
 
-  // 履歴に今回ぶんを追加し、3日より古いスナップショットを捨てる
-  var hist = ghReadJson_(histPath) || { snaps: [] };
-  hist.snaps.push({ t: now, players: aggregated, use: useNow, bat: batNow, decks: deckSig });
+  // デッキの素：署名→[使用人数p, 試合数g, 勝ち数w]。pop/win両方の署名を統合し上位DK_KEEP件に絞る。
+  var sigSet = {};
+  Object.keys(pop).forEach(function (s) { sigSet[s] = 1; });
+  Object.keys(win).forEach(function (s) { sigSet[s] = 1; });
+  var dkArr = Object.keys(sigSet).map(function (sig) {
+    return { sig: sig, p: (pop[sig] ? pop[sig].count : 0), g: (win[sig] ? win[sig].count : 0), w: (win[sig] ? win[sig].wins : 0) };
+  });
+  dkArr.sort(function (a, b) { return (b.p + b.g) - (a.p + a.g); });
+  var dkNow = {};
+  dkArr.slice(0, DK_KEEP).forEach(function (x) { dkNow[x.sig] = [x.p, x.g, x.w]; });
+
+  // 履歴へ追加し、3日より古いスナップショットを捨てる
+  var hist = ghReadJson_(histPath) || { snaps: [], dinfo: {} };
+  if (!hist.dinfo) hist.dinfo = {};
+  hist.snaps.push({ t: now, players: aggregated, use: useNow, bat: batNow, dk: dkNow });
   hist.snaps = hist.snaps.filter(function (s) { return s.t >= now - WINDOW_DAYS * 864e5; });
 
-  // カード単体（窓内：使用率は採用率の平均、勝率は合算）
+  // 3日合算（署名ごとに 延べ使用人数P / 試合数G / 勝ち数W）
+  var agg = {}, players3d = 0;
+  hist.snaps.forEach(function (s) {
+    players3d += (s.players || 0);
+    var dk = s.dk || {};
+    Object.keys(dk).forEach(function (sig) {
+      var a = agg[sig] || (agg[sig] = { P: 0, G: 0, W: 0 });
+      a.P += dk[sig][0] || 0; a.G += dk[sig][1] || 0; a.W += dk[sig][2] || 0;
+    });
+  });
+
+  // 表示用の絵柄：今回の集計(pop/win)から確定。無ければ過去に確定した絵柄(dinfo)を使う。
+  function renderSig(sig) {
+    if (pop[sig]) return finalizeDeck(pop[sig]);
+    if (win[sig]) return finalizeDeck(win[sig]);
+    if (hist.dinfo[sig]) return hist.dinfo[sig];
+    return null;
+  }
+  // dinfo更新（今回見た署名は最新の絵柄で上書き）＋窓外の署名を掃除
+  Object.keys(dkNow).forEach(function (sig) { var d = renderSig(sig); if (d) hist.dinfo[sig] = { name: d.name, slots: d.slots, forms: d.forms }; });
+  var live = {}; hist.snaps.forEach(function (s) { Object.keys(s.dk || {}).forEach(function (sig) { live[sig] = 1; }); });
+  Object.keys(hist.dinfo).forEach(function (sig) { if (!live[sig]) delete hist.dinfo[sig]; });
+
+  // 使用率ランキング（3日の延べ使用人数P順・100位）。count=延べ使用人数, games=試合数。
+  var popDecks = Object.keys(agg).sort(function (a, b) { return agg[b].P - agg[a].P; })
+    .map(function (sig) { var d = renderSig(sig); if (!d) return null; return { name: d.name, slots: d.slots, forms: d.forms, count: agg[sig].P, games: agg[sig].G }; })
+    .filter(Boolean).slice(0, DECK_TOP);
+
+  // 勝率ランキング（3日合計WIN_MIN_3D戦以上・勝率順・100位）。games=試合数, count=延べ使用人数。
+  var winDecks = Object.keys(agg).filter(function (sig) { return agg[sig].G >= WIN_MIN_3D; })
+    .sort(function (a, b) { var wa = agg[a].W / agg[a].G, wb = agg[b].W / agg[b].G; return (wb - wa) || (agg[b].G - agg[a].G); })
+    .map(function (sig) { var d = renderSig(sig); if (!d) return null; return { name: d.name, slots: d.slots, forms: d.forms, games: agg[sig].G, wins: agg[sig].W, winRate: Math.round(agg[sig].W / agg[sig].G * 1000) / 10, count: agg[sig].P }; })
+    .filter(Boolean).slice(0, DECK_TOP);
+
+  Logger.log('popDecks ' + popDecks.length + ' / winDecks ' + winDecks.length + ' (winMin3d ' + WIN_MIN_3D + ') / sigs ' + Object.keys(agg).length);
+
+  // カード単体（3日ローリング・従来どおり）
   var cards = aggregateCards_(hist.snaps);
 
-  // 急上昇：「過去3日分（基準）」vs「今回の更新」。
-  //   基準＝今回を除く過去スナップショットの合算採用率（count合計 / players合計）。
-  //   今回＝この更新の採用率（count / players）。
-  //   rise = 今回採用率 − 基準採用率（%ポイント）。正＝過去3日平均より今まさに伸びている。
-  //   6時間ごとの1〜2人ブレ対策で、今回2人以上使われたデッキのみ対象。基準が無い初回付近は出さない。
+  // 急上昇：今回 vs 過去3日（dkベース）
   var trending = [];
-  var prior = hist.snaps.slice(0, -1); // 今回ぶん（末尾）を除いた過去最大3日
+  var prior = hist.snaps.slice(0, -1);
   if (prior.length >= 1) {
     var baseCount = {}, basePlayers = 0;
-    prior.forEach(function (s) {
-      basePlayers += (s.players || 0);
-      var dk = s.decks || {};
-      Object.keys(dk).forEach(function (sig) { baseCount[sig] = (baseCount[sig] || 0) + dk[sig]; });
-    });
+    prior.forEach(function (s) { basePlayers += (s.players || 0); var dk = s.dk || {}; Object.keys(dk).forEach(function (sig) { baseCount[sig] = (baseCount[sig] || 0) + (dk[sig][0] || 0); }); });
     var curPlayers = aggregated || 1;
     Object.keys(pop).forEach(function (sig) {
       var cur = pop[sig].count;
-      if (cur < 2) return; // 今回2人以上のみ（単発1人ノイズ除外）
-      var curRate = cur / curPlayers;
-      var baseRate = basePlayers > 0 ? (baseCount[sig] || 0) / basePlayers : 0;
-      var rise = curRate - baseRate;
-      if (rise > 0) {
-        var d = finalizeDeck(pop[sig]);
-        trending.push({
-          name: d.name, slots: d.slots, forms: d.forms, count: cur,
-          delta: Math.round(rise * 1000) / 10 // 上昇ポイント(%)。フロントの判定にも使う
-        });
-      }
+      if (cur < 2) return;
+      var rise = (cur / curPlayers) - (basePlayers > 0 ? (baseCount[sig] || 0) / basePlayers : 0);
+      if (rise > 0) { var d = finalizeDeck(pop[sig]); trending.push({ name: d.name, slots: d.slots, forms: d.forms, count: cur, delta: Math.round(rise * 1000) / 10 }); }
     });
     trending.sort(function (a, b) { return b.delta - a.delta || b.count - a.count; });
     trending = trending.slice(0, 15);
   }
   Logger.log('cards ' + cards.length + ' / trending ' + trending.length + ' / snaps ' + hist.snaps.length);
-  // ===== 追記ここまで =====
 
   commitToGithub({
     updated: new Date().toISOString(),
-    players: aggregated,
+    players: players3d,          // 3日間の延べ集計人数（使用率の分母）
+    playersPerRun: aggregated,   // 今回1回ぶんの集計人数（参考）
     topPlayers: players.length,
     intervalHours: intervalHours,
+    windowDays: WINDOW_DAYS,
     cardsWindowDays: WINDOW_DAYS,
     decks: popDecks,
     winDecks: winDecks,
@@ -344,15 +333,12 @@ function updateDecks() {
 }
 
 // 窓内のスナップショットからカード単体を集計
-//   use  : 各スナップの採用率(人数/母数)を平均して % に
-//   win  : 窓内の出現数・勝ち数を合算して勝率 %（比率なので重複の影響を受けにくい）
 function aggregateCards_(snaps) {
   var keys = {}, n = snaps.length || 1;
   snaps.forEach(function (s) {
     Object.keys(s.use || {}).forEach(function (k) { keys[k] = 1; });
     Object.keys(s.bat || {}).forEach(function (k) { keys[k] = 1; });
   });
-  // 急上昇(rise)用：今回(最新スナップ) vs 過去3日(それ以外)の採用率
   var latest = snaps[snaps.length - 1] || { use: {}, players: 0 };
   var prior = snaps.slice(0, -1);
   var basePlayers = 0, baseUse = {};
@@ -371,7 +357,7 @@ function aggregateCards_(snaps) {
     });
     var use = Math.round(useSum / n * 1000) / 10;
     var winr = g > 0 ? Math.round(w / g * 1000) / 10 : null;
-    var rise = null; // 過去ぶんが無い初回付近は null（フロントは急上昇に出さない）
+    var rise = null;
     if (prior.length >= 1 && latest.players > 0) {
       var curRate = (latest.use && latest.use[name] ? latest.use[name] : 0) / latest.players;
       var baseRate = basePlayers > 0 ? (baseUse[name] || 0) / basePlayers : 0;
@@ -382,14 +368,13 @@ function aggregateCards_(snaps) {
   return out;
 }
 
-// GITHUB_PATH と同じディレクトリの別ファイルパスを作る（例: decks.json → cardhist.json）
 function ghSiblingPath_(mainPath, name) {
   var i = mainPath.lastIndexOf('/');
   return (i >= 0 ? mainPath.slice(0, i + 1) : '') + name;
 }
 
 function ghReadJson_(path) {
-  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'main');
+  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'data');
   if (!ghToken || !repo) return null;
   var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
   var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/contents/' + path + '?ref=' + branch,
@@ -402,7 +387,7 @@ function ghReadJson_(path) {
 }
 
 function ghWriteJson_(path, obj) {
-  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'main');
+  var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'data');
   if (!ghToken || !repo) throw new Error('GITHUB_TOKEN / GITHUB_REPO 未設定');
   var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
   var api = 'https://api.github.com/repos/' + repo + '/contents/' + path;
@@ -424,7 +409,7 @@ function commitToGithub(payload) {
   var ghToken = prop('GITHUB_TOKEN');
   var repo = prop('GITHUB_REPO');
   var path = prop('GITHUB_PATH', 'decks.json');
-  var branch = prop('GITHUB_BRANCH', 'main');
+  var branch = prop('GITHUB_BRANCH', 'data');
   if (!ghToken || !repo) throw new Error('GITHUB_TOKEN / GITHUB_REPO 未設定');
 
   var api = 'https://api.github.com/repos/' + repo + '/contents/' + path;
