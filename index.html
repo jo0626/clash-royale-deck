@@ -302,6 +302,16 @@
   .avg-trend svg { display: block; }
   .avg-trend .avg-diff { font-family: var(--font-head); font-weight: 700; font-size: 12px; }
   .deck-header.previewing .avg-val { transition: color 0.1s; }
+  /* 入れ替え確定時：平均コストが0.01刻みでロール（ドゥルル）＋上下バウンス */
+  .avg-val.rolling { animation: avgRoll 0.34s cubic-bezier(.34,1.56,.64,1); transition: color 0.12s; }
+  @keyframes avgRoll {
+    0%   { transform: translateY(0)    scale(1);    }
+    22%  { transform: translateY(-3px) scale(1.16); }
+    48%  { transform: translateY(2px)  scale(0.97); }
+    72%  { transform: translateY(-1px) scale(1.05); }
+    100% { transform: translateY(0)    scale(1);    }
+  }
+  @media (prefers-reduced-motion: reduce) { .avg-val.rolling { animation: none; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
   .sdk-card { position: relative; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden;
@@ -1945,20 +1955,53 @@ function renderDeck() {
   }
 
   updateActionButtons();
-  showDeckStats(deck); // 実デッキの統計を表示
+  showDeckStats(deck, true); // 実デッキの統計を表示（入れ替え時は平均コストをロール）
+}
+
+// 平均コストを「現在の表示値→目標値」へ0.01刻みでロール（ドゥルル）。
+// animate=false なら即時セット（プレビュー・初期描画用）。
+let _avgRollRAF = null;
+function setAvgVal(to, animate) {
+  const el = document.getElementById('avgVal');
+  if (!el) return;
+  const from = parseFloat(el.textContent);
+  const target = (to == null) ? null : +to;
+  if (_avgRollRAF) { cancelAnimationFrame(_avgRollRAF); _avgRollRAF = null; el.classList.remove('rolling'); }
+  // アニメ不可／無効／対象が数値でない／差が0.01未満なら即時
+  if (!animate || target == null || !isFinite(from) || !isFinite(target) || Math.abs(target - from) < 0.005) {
+    el.textContent = (target == null) ? '—' : target.toFixed(2);
+    el.style.color = '';
+    return;
+  }
+  const up = target > from;                          // 上昇=赤 / 下降=青（ホバーの色分けと統一）
+  el.style.color = up ? '#e05050' : '#3a8ef0';
+  const steps = Math.abs(target - from) / 0.01;
+  const dur = Math.max(170, Math.min(650, steps * 14)); // 0.01あたり~14ms、短すぎ/長すぎ防止
+  const start = performance.now();
+  el.classList.remove('rolling'); void el.offsetWidth; el.classList.add('rolling'); // バウンス再生
+  function frame(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const eased = 1 - Math.pow(1 - t, 2);            // easeOut
+    let v = from + (target - from) * eased;
+    v = Math.round(v / 0.01) * 0.01;                 // 0.01刻みに量子化＝ドゥルル
+    el.textContent = v.toFixed(2);
+    if (t < 1) { _avgRollRAF = requestAnimationFrame(frame); }
+    else { el.textContent = target.toFixed(2); el.style.color = ''; el.classList.remove('rolling'); _avgRollRAF = null; }
+  }
+  _avgRollRAF = requestAnimationFrame(frame);
 }
 
 // 平均コスト・枚数・コストバーを指定の8枠配列から表示（プレビューにも使う）
 let _previewActive = false;
-function showDeckStats(arr) {
+function showDeckStats(arr, animate) {
   const filled = arr.filter(d => d);
   document.getElementById('deckCount').textContent = filled.length + '/8';
   if (filled.length > 0) {
     const avg = (filled.reduce((s, c) => s + (c.cost || 0), 0) / filled.length);
-    document.getElementById('avgVal').textContent = avg.toFixed(2);
+    setAvgVal(avg, animate);
     document.getElementById('avgSub').textContent = filled.length < 8 ? '（' + filled.length + '枚）' : '';
   } else {
-    document.getElementById('avgVal').textContent = '—';
+    setAvgVal(null, animate);
     document.getElementById('avgSub').textContent = '';
   }
   const bar = document.getElementById('costBar');

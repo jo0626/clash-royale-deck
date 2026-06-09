@@ -7,16 +7,20 @@ service cloud.firestore {
       // 自分のドキュメントだけ読める
       allow read: if request.auth != null && request.auth.uid == uid;
 
-      // 作成時：tier は free でのみ作れる（不正な初期グレードを防ぐ）
+      // 作成時：tier は free・donatedTotal は 0 でのみ作れる（不正な初期グレード/累計を防ぐ）
       allow create: if request.auth != null
                     && request.auth.uid == uid
-                    && request.resource.data.tier == 'free';
+                    && request.resource.data.tier == 'free'
+                    && request.resource.data.get('donatedTotal', 0) == 0;
 
-      // 更新時：tier はクライアントから変更不可（寄付グレードは運営/サーバーのみ）
+      // 更新時：tier と donatedTotal はクライアントから変更不可
+      //   （寄付グレード・累計額はサービスアカウント＝Worker のみが書く。
+      //     500/2000は表示上は買い切りに見せるが、内部は donatedTotal 累計で管理）
       // crTag・displayName・theme などは自由に更新OK
       allow update: if request.auth != null
                     && request.auth.uid == uid
-                    && request.resource.data.tier == resource.data.tier;
+                    && request.resource.data.tier == resource.data.tier
+                    && request.resource.data.get('donatedTotal', 0) == resource.data.get('donatedTotal', 0);
 
       // 削除は不可
       allow delete: if false;
