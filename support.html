@@ -148,21 +148,30 @@
     いただいた支援は、<b>サーバーの防衛（維持費）</b>・カードデータの更新・新機能の開発に使わせていただきます。
   </p>
 
-  <!-- ▼ 準備中バナー -->
-  <div class="prep-banner">🔧 支援機能は現在<b>準備中</b>です。もう少しだけお待ちください！</div>
+  <!-- ▼ ログイン推奨ヒント（ログイン中はJSで非表示） -->
+  <p id="donateLoginHint" class="page-sub" style="margin:0 0 12px; font-size:12px;">
+    💡 <b>ログインしてから</b>供給すると、供給額が記録されて自動でグレードが解放されます（未ログインでも支援は可能です）。
+  </p>
 
-  <!-- ▼ 寄付リンク（準備中につき無効化。再開時はコメント内の href に戻す）
-       Stripe: https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00
-       OFUSE : https://ofuse.me/o?uid=186138 -->
+  <!-- ▼ 寄付リンク。ログイン中はJSで ?client_reference_id=<uid> を付与し、誰の供給かを記録する。
+       Stripe ¥500 : https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00
+       Stripe ¥2,000: https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01
+       OFUSE        : https://ofuse.me/o?uid=186138 -->
   <div class="donate-buttons">
-    <span class="donate-btn is-disabled" aria-disabled="true">
+    <a class="donate-btn stripe-donate" data-link="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00"
+       href="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00" target="_blank" rel="noopener">
       <span class="emoji">💧</span>
-      <span class="label">エリクサーを供給する<small>準備中</small></span>
-    </span>
-    <span class="donate-btn is-disabled" aria-disabled="true">
+      <span class="label">¥500 ひとしずくを供給<small>クレカ / Stripe</small></span>
+    </a>
+    <a class="donate-btn stripe-donate" data-link="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01"
+       href="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01" target="_blank" rel="noopener">
+      <span class="emoji">🫙</span>
+      <span class="label">¥2,000 ボトルを供給<small>クレカ / Stripe</small></span>
+    </a>
+    <a class="donate-btn" href="https://ofuse.me/o?uid=186138" target="_blank" rel="noopener">
       <span class="emoji">🛡️</span>
-      <span class="label">防衛資金を送る（OFUSE）<small>準備中</small></span>
-    </span>
+      <span class="label">防衛資金を送る（OFUSE）<small>任意の額</small></span>
+    </a>
   </div>
 
   <div class="grade-section">
@@ -224,5 +233,27 @@
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
 <script type="module" src="auth.js"></script>
+<script>
+// ログイン中はStripeリンクに ?client_reference_id=<uid> を付与＝webhookが「誰の供給か」を記録できる。
+// 未ログインでも支援は可能（その場合は donationsUnclaimed に退避され、後でメール照合/手動反映）。
+(function () {
+  function apply(user) {
+    var uid = (user && user.uid) ? user.uid : '';
+    document.querySelectorAll('a.stripe-donate').forEach(function (a) {
+      var base = a.getAttribute('data-link');
+      a.href = uid ? (base + '?client_reference_id=' + encodeURIComponent(uid)) : base;
+    });
+    var hint = document.getElementById('donateLoginHint');
+    if (hint) hint.style.display = uid ? 'none' : '';
+  }
+  function init() {
+    if (window.CRAuth && window.CRAuth.onChange) {
+      window.CRAuth.onChange(function (user) { apply(user); }); // 状態変化＋初回即時に発火
+    } else { apply(null); setTimeout(init, 300); } // auth.js読み込み待ち
+  }
+  if (document.readyState !== 'loading') init();
+  else document.addEventListener('DOMContentLoaded', init);
+})();
+</script>
 </body>
 </html>
