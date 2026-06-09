@@ -333,6 +333,26 @@
     50%     { filter: brightness(1.12) drop-shadow(0 0 12px rgba(38,198,160,.6)); }
   }
   @media (prefers-reduced-motion: reduce) { body.perk-drop .deck-slots.deck-full { animation: none; } }
+  /* ¥2,000特典「ボトル」：デッキに入れたお気に入りカードが特別に輝く（perk-bottleのみ・.slot.fav）
+     ①縁を金のコニックグラデの艶が一周（選ばれし1枚） ②たまに斜めのシャインが走る（控えめ頻度） */
+  @property --favA { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  body.perk-bottle .slot.filled.fav::before {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 4; pointer-events: none;
+    background: conic-gradient(from var(--favA), transparent 0 38%, #ffe08a 52%, #fff 60%, #ffd76a 68%, transparent 82% 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: favSpin 3.6s linear infinite;
+  }
+  body.perk-bottle .slot.filled.fav::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: 5; pointer-events: none;
+    background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.5) 47%, rgba(255,255,255,.88) 50%, rgba(255,255,255,.5) 53%, transparent 62%);
+    background-size: 250% 100%; background-position: 210% 0;
+    animation: favShine 6.5s ease-in-out infinite;
+  }
+  @keyframes favSpin { to { --favA: 360deg; } }
+  @keyframes favShine { 0%,80% { background-position: 210% 0; } 90% { background-position: -60% 0; } 100% { background-position: -60% 0; } }
+  @media (prefers-reduced-motion: reduce) { body.perk-bottle .slot.filled.fav::before, body.perk-bottle .slot.filled.fav::after { animation: none; } body.perk-bottle .slot.filled.fav::after { opacity: 0; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
   /* SNS共有プレビュー＝実際の共有画像(/ogimg)。グリッド全幅で表示 */
@@ -1939,7 +1959,7 @@ function renderDeck() {
     if (c) {
       const mode = slotMode(c, i);
       const modeClass = mode === 'evolved' ? ' slot-evolved' : mode === 'hero' ? ' slot-hero' : '';
-      div.className = 'slot filled' + modeClass;
+      div.className = 'slot filled' + modeClass + (isFav(c.name) ? ' fav' : ''); // お気に入りは .fav（¥2,000特典でリムライト＋シャイン）
       div.title = 'クリックで外す';
       div.draggable = true;
       div.dataset.idx = i;
@@ -2112,7 +2132,7 @@ function updateActionButtons() {
   const n = deck.filter(Boolean).length;
   const saveBtn = document.getElementById('saveBtn');
   const analyzeBtn = document.getElementById('analyzeBtn');
-  if (saveBtn) saveBtn.disabled = (n === 0);          // 1枚でもあれば途中保存OK
+  if (saveBtn) saveBtn.disabled = false;              // 0枚でも保存OK（空スロットとして保存できる）
   if (analyzeBtn) analyzeBtn.setAttribute('aria-disabled', n < 8 ? 'true' : 'false'); // 8枚で活性
   const cta = document.getElementById('emptyDeckCta'); // 空(0枚)の時だけ「人気デッキから作る」を表示
   if (cta) cta.classList.toggle('show', n === 0);
@@ -2121,7 +2141,6 @@ function updateActionButtons() {
 // デッキ保存（5スロット・クラウド）。未ログインならログインを促す
 async function openSlotSaveDialog() {
   const filled = deck.filter(Boolean);
-  if (filled.length === 0) { showToast('デッキが空です'); return; }
   if (!window.CRAuth) { showToast('ログイン機能の読み込み中です'); return; }
   if (!CRAuth.getUser()) {
     if (CRAuth.hasSession && CRAuth.hasSession()) { showToast('ログイン確認中です。少し待ってからもう一度'); return; } // ラグ中は未ログイン扱いにしない
@@ -2420,7 +2439,8 @@ init();
   if (!window.CRAuth) { setTimeout(hookPerks, 100); return; }
   CRAuth.onChange((user, profile) => {
     const total = (profile && profile.donatedTotal) || 0;
-    document.body.classList.toggle('perk-drop', total >= 500);
+    document.body.classList.toggle('perk-drop', total >= 500);     // ¥500: デッキ枠グロー
+    document.body.classList.toggle('perk-bottle', total >= 2000);  // ¥2,000: デッキ内のお気に入りカードが輝く
     try { updateDeckGlow(deck.filter(Boolean).length); } catch (e) {} // ログイン状態が変わったらグローを反映
   });
 })();
