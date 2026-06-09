@@ -336,28 +336,26 @@
   /* ¥2,000特典「ボトル」：デッキに入れたお気に入りカードが特別に輝く（perk-bottleのみ・.slot.fav）
      ①縁を金のコニックグラデの艶が一周（選ばれし1枚） ②たまに斜めのシャインが走る（控えめ頻度） */
   @property --favA { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
-  /* リムの回転は body 側で --favA を回し続ける＝スロットが再生成(カード追加)されてもリセットせず回り続ける */
-  body.perk-bottle { animation: favSpin 3.6s linear infinite; }
+  /* リムの回転は .right（デッキ枠の小さいサブツリー）で --favA を回す＝再生成でリセットせず、かつ全体再計算にならず軽い。
+     ※以前 body で回していてカードリスト(121枚)まで毎フレーム再計算→タブが落ちて不安定になっていた。 */
+  body.perk-bottle .right { animation: favSpin 3.6s linear infinite; }
   body.perk-bottle .slot.filled.fav::before {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px; z-index: 4; pointer-events: none;
-    background: conic-gradient(from var(--favA), transparent 0 40%, #ffe08a 54%, #fff 61%, #ffd76a 69%, transparent 84% 100%);
+    background: conic-gradient(from var(--favA), transparent 0 42%, #ffe08a 56%, #fff 62%, #ffd76a 70%, transparent 86% 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
             mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: .85;
   }
-  /* 斜めシャインは控えめに（差し込みを弱める＋頻度も落とす） */
-  body.perk-bottle .slot.filled.fav::after {
-    content: ''; position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: 5; pointer-events: none;
-    background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.16) 48%, rgba(255,255,255,.38) 50%, rgba(255,255,255,.16) 52%, transparent 60%);
-    background-size: 250% 100%; background-position: 210% 0;
-    animation: favShine 8s ease-in-out infinite;
-  }
+  /* 斜めの差し込みシャインは廃止（カードに当たって強すぎたため）。光は縁(リム)＝カードに当たらない位置だけ。 */
   /* お気に入りを入れた瞬間の「ふわん」（柔らかく一瞬ふくらむ） */
-  @keyframes favPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } 30% { transform: scale(1.07); box-shadow: 0 0 18px 5px rgba(255,224,138,.65); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } }
+  @keyframes favPop { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } 30% { transform: scale(1.07); box-shadow: 0 0 18px 5px rgba(255,224,138,.6); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,224,138,0); } }
   body.perk-bottle .slot.fav.fav-pop { animation: favPop .5s ease-out; z-index: 6; }
+  /* ふわん時にさりげなく舞うハート */
+  .fav-heart { position: fixed; transform: translate(-50%,-50%); font-size: 15px; color: #ff9bc0; pointer-events: none; z-index: 3001; text-shadow: 0 0 6px rgba(255,150,190,.7); animation: favHeart .7s ease-out forwards; }
+  @keyframes favHeart { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.5); } 25% { opacity: .95; transform: translate(-50%,-72%) scale(1); } 100% { opacity: 0; transform: translate(-50%,-155%) scale(.9); } }
   @keyframes favSpin { to { --favA: 360deg; } }
-  @keyframes favShine { 0%,82% { background-position: 210% 0; } 91% { background-position: -60% 0; } 100% { background-position: -60% 0; } }
-  @media (prefers-reduced-motion: reduce) { body.perk-bottle { animation: none; } body.perk-bottle .slot.filled.fav::after { animation: none; opacity: 0; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { body.perk-bottle .right { animation: none; } body.perk-bottle .slot.fav.fav-pop { animation: none; } }
   /* ¥500：ドラッグ中のスパンコール軌跡 */
   .spangle { position: fixed; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 2px; pointer-events: none; z-index: 3000;
     box-shadow: 0 0 6px rgba(255,215,120,.7); animation: spangleFall .68s ease-out forwards; }
@@ -367,7 +365,7 @@
   }
   /* ¥2,000：お気に入り同士を一瞬つなぐ金線 */
   .fav-link-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 1200; }
-  .fav-link-overlay polyline { fill: none; stroke: #ffe08a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(255,215,120,.9)); }
+  .fav-link-overlay path { fill: none; stroke: rgba(255,238,190,.55); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(255,215,120,.5)) drop-shadow(0 0 9px rgba(255,215,120,.25)); }
   @media (prefers-reduced-motion: reduce){ .spangle { display: none; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
@@ -2065,20 +2063,29 @@ function flashFavLinks() {
   const favs = Array.from(document.querySelectorAll('#deckSlots .slot.filled.fav'));
   if (favs.length < 2) return;
   const pts = favs.map(el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+  // 直線でなく、midを垂直方向へ少し持ち上げた緩い曲線でつなぐ＝平面的でなく奥行き(3D)を感じる空気感
+  let d = 'M ' + pts[0][0].toFixed(1) + ' ' + pts[0][1].toFixed(1);
+  for (let i = 1; i < pts.length; i++) {
+    const x0 = pts[i - 1][0], y0 = pts[i - 1][1], x1 = pts[i][0], y1 = pts[i][1];
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+    const off = Math.min(46, len * 0.22);
+    const cx = (x0 + x1) / 2 - dy / len * off, cy = (y0 + y1) / 2 + dx / len * off;
+    d += ' Q ' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + x1.toFixed(1) + ' ' + y1.toFixed(1);
+  }
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'fav-link-overlay');
-  const poly = document.createElementNS(NS, 'polyline');
-  poly.setAttribute('points', pts.map(p => p[0] + ',' + p[1]).join(' '));
-  svg.appendChild(poly);
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', d);
+  svg.appendChild(path);
   document.body.appendChild(svg);
-  const len = poly.getTotalLength ? poly.getTotalLength() : 600;
-  poly.style.strokeDasharray = len; poly.style.strokeDashoffset = len;
-  poly.animate(
-    [{ strokeDashoffset: len, opacity: 1 }, { strokeDashoffset: 0, opacity: 1, offset: 0.45 }, { strokeDashoffset: 0, opacity: 0 }],
-    { duration: 950, easing: 'ease-out' }
+  const total = path.getTotalLength ? path.getTotalLength() : 600;
+  path.style.strokeDasharray = total; path.style.strokeDashoffset = total;
+  path.animate(
+    [{ strokeDashoffset: total, opacity: 0 }, { strokeDashoffset: 0, opacity: 0.9, offset: 0.5 }, { strokeDashoffset: 0, opacity: 0 }],
+    { duration: 1100, easing: 'ease-out' }
   );
-  setTimeout(() => svg.remove(), 1000);
+  setTimeout(() => svg.remove(), 1150);
 }
 
 // ¥2,000特典：お気に入りを入れた瞬間、そのスロットを「ふわん」と一瞬ふくらませる
@@ -2088,7 +2095,14 @@ function popFavSlots(names) {
     deck.forEach((c, i) => {
       if (c && c.name === name) {
         const el = document.querySelector('#deckSlots .slot[data-idx="' + i + '"]');
-        if (el) { el.classList.remove('fav-pop'); void el.offsetWidth; el.classList.add('fav-pop'); setTimeout(() => el.classList.remove('fav-pop'), 600); }
+        if (!el) return;
+        el.classList.remove('fav-pop'); void el.offsetWidth; el.classList.add('fav-pop');
+        setTimeout(() => el.classList.remove('fav-pop'), 600);
+        // さりげなくハートがふわっと舞う
+        const r = el.getBoundingClientRect();
+        const h = document.createElement('div'); h.className = 'fav-heart'; h.textContent = '❤';
+        h.style.left = (r.left + r.width / 2) + 'px'; h.style.top = (r.top + r.height * 0.42) + 'px';
+        document.body.appendChild(h); setTimeout(() => h.remove(), 720);
       }
     });
   });
