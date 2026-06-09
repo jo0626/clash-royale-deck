@@ -335,6 +335,8 @@
   @media (prefers-reduced-motion: reduce) { body.perk-drop .deck-slots.deck-full { animation: none; } }
   /* 共有ポップのデッキプレビュー */
   .share-deck { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 12px; }
+  /* SNS共有プレビュー＝実際の共有画像(/ogimg)。グリッド全幅で表示 */
+  .share-ogimg { grid-column: 1 / -1; width: 100%; aspect-ratio: 1200 / 630; object-fit: cover; border-radius: 10px; display: block; background: var(--surface2); }
   .sdk-card { position: relative; aspect-ratio: 3/4; border-radius: 8px; overflow: hidden;
     background: var(--surface2); border: 1px solid var(--border); }
   .sdk-card.empty { background: rgba(255,255,255,0.03); }
@@ -2177,6 +2179,8 @@ function buildDeckShareUrl(deckArr) {
   return base + '?deck=' + encodeURIComponent(names.join(','));
 }
 function openShareDialog(deckArr, deckName) {
+  // SNS共有は8枚そろっているときだけ表示（揃ってなければ保存通知のみ）
+  if ((deckArr || []).filter(Boolean).length < 8) { showToast('✅ 保存しました'); return; }
   // 共有リンクは Cloudflare Worker の /share（SNSにデッキ画像が展開される）。グレードはログイン中のtier。
   // 共有リンクは短くするため、カードを英字スラッグ(hog-rider等)で渡す（日本語名のURLエンコードは巨大化するため）。
   // Worker側(/share・/ogimg)でスラッグ→日本語に戻す。旧リンク（日本語名）も引き続き動く。
@@ -2187,16 +2191,8 @@ function openShareDialog(deckArr, deckName) {
   const url = 'https://crdeckbuilders.com/share?deck=' + slugs.join(',') + '&g=' + grade; // スラッグなのでURLエンコード不要＝短い
   const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
   const lineText = 'あなたのデッキを共有しましょう！';
-  // デッキのプレビュー（8枚を4×2＝コの字順で。進化⚡/ヒーロー👑/チャンピオン🏆も表示）
-  const preview = (deckArr || []).slice(0, 8).map((c, i) => {
-    if (!c) return '<div class="sdk-card empty"></div>';
-    const img = slotCardImg(c, i);
-    const mode = slotMode(c, i);
-    const cls = 'sdk-card' + (mode === 'evolved' ? ' evo' : '') + (c.champion ? ' champ' : (mode === 'hero' ? ' hero' : ''));
-    const pip = COST_COLORS[Math.min(c.cost, 9)] || '#888';
-    const bdg = mode === 'evolved' ? '⚡' : c.champion ? '🏆' : mode === 'hero' ? '👑' : '';
-    return `<div class="${cls}"><span class="sdk-pip" style="background:${pip}">${c.cost}</span>${bdg ? `<span class="sdk-bdg">${bdg}</span>` : ''}<img src="${img}" alt="${c.name}" loading="lazy"></div>`;
-  }).join('');
+  // プレビューは実際のSNS共有画像（Worker /ogimg）をそのまま表示する（SNSに出るのと同じ見た目＝グレード枠込み）
+  const ogimgBase = 'https://crdeckbuilders.com/ogimg?deck=' + slugs.join(',') + '&g=' + grade;
 
   // ログイン中なら「share by 〇〇」を入れるか選べる（画像にクリエイター名が載る）
   const byName = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
@@ -2206,7 +2202,7 @@ function openShareDialog(deckArr, deckName) {
   ov.className = 'slot-pop';
   ov.innerHTML = `<div class="slot-pop-box">
     <div class="slot-pop-title">✅ 保存しました！このデッキを共有する？</div>
-    <div class="share-deck">${preview}</div>
+    <div class="share-deck"><img class="share-ogimg" id="shImg" src="${ogimgBase}" alt="SNS共有プレビュー画像"></div>
     <div class="share-btns">
       ${byName ? `<button class="share-b sns-byname active" id="shByBtn" aria-pressed="true">👤 「share by ${byNameEsc}」を入れて投稿</button>` : ''}
       <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
@@ -2219,11 +2215,13 @@ function openShareDialog(deckArr, deckName) {
 
   const shByBtn = ov.querySelector('#shByBtn');
   const byOn = () => shByBtn && shByBtn.classList.contains('active');
-  const finalUrl = () => url + (byName && byOn() ? '&by=' + encodeURIComponent(byName) : '');
+  const byParam = () => (byName && byOn() ? '&by=' + encodeURIComponent(byName) : '');
+  const finalUrl = () => url + byParam();
   const syncLinks = () => {
     const u = finalUrl();
     ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(u);
     ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + u);
+    const img = ov.querySelector('#shImg'); if (img) img.src = ogimgBase + byParam(); // プレビュー画像も名前ON/OFFで切替
   };
   if (shByBtn) shByBtn.onclick = () => {
     shByBtn.classList.toggle('active');
