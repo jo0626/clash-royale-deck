@@ -315,7 +315,13 @@
   @media (prefers-reduced-motion: reduce) { .avg-val.rolling { animation: none; } }
   /* ¥500特典「ひとしずく」：累計500円以上のみ。カードが増えるほど枠が徐々に光り（box-shadowはJSが枚数で設定）、
      8枚で「シャキーン」と最大光→そのまま継続。8→7で抜くと消える時はフェード（transition）。 */
-  body.perk-drop .deck-slots { transition: box-shadow 0.55s ease, filter 0.35s ease; }
+  body.perk-drop .deck-slots {
+    transition: box-shadow 1s ease, filter 1s ease, background 1s ease;
+    border-radius: 14px;
+    background:
+      radial-gradient(125% 70% at 50% -8%, rgba(38,198,160,.12), transparent 55%),
+      linear-gradient(165deg, #19232e 0%, #0e151d 100%);
+  }
   body.perk-drop .deck-slots.deck-full { animation: deckPop 0.95s ease-out, deckPulse 3s ease-in-out 0.95s infinite; }
   @keyframes deckPop {
     0%   { filter: brightness(1) saturate(1); transform: scale(1); }
@@ -1989,11 +1995,15 @@ function updateDeckGlow(n) {
   el.classList.toggle('deck-full', perk && n === 8); // 8枚到達時だけ付与＝再描画(入れ替え)では再発火しない
   if (!perk || n === 0) { el.style.boxShadow = ''; return; }
   const t = n / 8;                                   // 0.125 .. 1（徐々に強く）
-  const blur = Math.round(6 + 20 * t);
+  const blur = Math.round(8 + 26 * t);
   const spread = (1 + 2 * t).toFixed(1);
-  const ai = (0.15 + 0.5 * t).toFixed(2);            // inset（内側）の濃さ
+  const ai = (0.15 + 0.5 * t).toFixed(2);            // inset（内側の縁）の濃さ
   const ao = (0.12 + 0.45 * t).toFixed(2);           // outer（外側）の濃さ
-  el.style.boxShadow = 'inset 0 0 ' + blur + 'px ' + spread + 'px rgba(38,198,160,' + ai + '), 0 0 ' + Math.round(blur * 0.9) + 'px 2px rgba(38,198,160,' + ao + ')';
+  const wash = (0.10 + 0.28 * t).toFixed(2);         // 内側を満たすティール＝背景の色づき（8枚で最大→減ると1秒でフェード）
+  el.style.boxShadow =
+    'inset 0 0 ' + blur + 'px ' + spread + 'px rgba(38,198,160,' + ai + '), ' +
+    'inset 0 0 ' + Math.round(blur * 3.2) + 'px 0 rgba(38,198,160,' + wash + '), ' +
+    '0 0 ' + Math.round(blur * 0.9) + 'px 2px rgba(38,198,160,' + ao + ')';
 }
 
 // 平均コストを「現在の表示値→目標値」へ0.01刻みでロール（ドゥルル）。
