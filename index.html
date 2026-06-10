@@ -1211,6 +1211,8 @@ function toggleFav(name, e) {
 // 固定文はi18nのbody監視が挿入時に自動翻訳するので、ここでは動的文字列だけT/TRで包む。
 function T(key, vars, fb) { return window.CRI18N ? CRI18N.t(key, vars) : (fb != null ? fb : key); }
 function TR(s) { return window.CRI18N ? CRI18N.tr(s) : s; }
+// 言語切替時：数値入りの動的表示（平均コストの枚数など）を現在言語で作り直す
+window.addEventListener('crlangchange', () => { try { showDeckStats(deck); } catch (e) {} });
 
 // お気に入り解除の確認ダイアログ
 function openFavRemoveDialog(name) {
@@ -2198,7 +2200,7 @@ function showDeckStats(arr, animate) {
   if (filled.length > 0) {
     const avg = (filled.reduce((s, c) => s + (c.cost || 0), 0) / filled.length);
     setAvgVal(avg, animate);
-    document.getElementById('avgSub').textContent = filled.length < 8 ? '（' + filled.length + '枚）' : '';
+    document.getElementById('avgSub').textContent = filled.length < 8 ? T('avg.n', { n: filled.length }, '（' + filled.length + '枚）') : '';
   } else {
     setAvgVal(null, animate);
     document.getElementById('avgSub').textContent = '';
@@ -2509,7 +2511,7 @@ function initSlotScrub() {
     bar = document.createElement('div');
     bar.className = 'scrub-bar';
     bar.innerHTML = segSlots.map((s, i) =>
-      `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${(s.slots||[]).length}枚</span></div>`
+      `<div class="scrub-seg${i === baseIdx ? ' on' : ''}" data-i="${i}"><span class="sn">${s.slot}</span><span class="snm">${T('cards.n', { n: (s.slots||[]).length }, (s.slots||[]).length + '枚')}</span></div>`
     ).join('');
     // 各スロットはタップでも移動できる
     bar.querySelectorAll('.scrub-seg').forEach(seg => {
@@ -2517,7 +2519,7 @@ function initSlotScrub() {
     });
     hint = document.createElement('div');
     hint.className = 'scrub-hint';
-    hint.textContent = '指を離さず左右になぞってデッキ切替';
+    hint.textContent = TR('指を離さず左右になぞってデッキ切替');
     document.body.appendChild(bar);
     document.body.appendChild(hint);
     const r = btn.getBoundingClientRect();

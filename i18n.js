@@ -43,7 +43,27 @@
       "slot.n": "スロット{n}",
       "cards.n": "{n}枚",
       "fav.removeQ": "{name} をお気に入りから外す？",
-      "swap.withWhich": "{name} をどちらと入れ替える？"
+      "swap.withWhich": "{name} をどちらと入れ替える？",
+      // ビルダー/デッキ一覧の動的文字列（数値・名前入り）
+      "avg.n": "（{n}枚）",
+      "decks.nPlayersUse": "{n}人",
+      "decks.winPct": "勝率 {p}%",
+      "decks.nGames": "{n}戦",
+      "decks.nUsed": "{n}人使用",
+      "decks.withCard": "「{name}」を含むデッキ",
+      "decks.envOfName": "{name}さんの環境",
+      "crank.hintWinMe": "そのカードを入れた相手に、あなたが勝てた割合（対面{n}回以上）。低い＝苦手な相手。",
+      "crank.hintWin": "直近3日の対戦結果から算出（{n}戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。",
+      "crank.hintRise": "過去3日間と比べ、今回の更新で使用率が伸びたカード順。",
+      "crank.hintUseMe": "直近の対戦で、あなたが当たった割合（対面率）。よく当たる相手カード順。",
+      "crank.hintUse": "過去3日間で、トップ層のデッキに入っている割合。今この環境で「数が多い」カード。",
+      "crank.subWin": "{g}戦 ・ 使用{u}",
+      "crank.subRise": "使用 {u} ・ 勝率 {w}",
+      "crank.subUse": "勝率 {w} ・ {g}戦",
+      "mm.medUse": "中央 使用率{v}%",
+      "mm.medWin": "中央 勝率{v}%",
+      "decks.whoName": "{name}さん",
+      "decks.meNote": "{who}の直近 {n}戦の対戦相手から集計（{who}のトロフィー帯）。このページを開くたびに精度UP。"
     },
     en: {
       "toast.movedToSlot": "Moved {name} to slot {n}",
@@ -73,6 +93,54 @@
       "cards.n": "{n} cards",
       "fav.removeQ": "Remove {name} from favorites?",
       "swap.withWhich": "Swap {name} with which?",
+      // ビルダー/デッキ一覧の動的文字列（数値・名前入り）
+      "avg.n": "({n} cards)",
+      "decks.nPlayersUse": "{n} players",
+      "decks.winPct": "Win rate {p}%",
+      "decks.nGames": "{n} games",
+      "decks.nUsed": "{n} players",
+      "decks.withCard": "Decks with “{name}”",
+      "decks.envOfName": "{name}'s meta",
+      "crank.hintWinMe": "Your win rate against opponents using that card ({n}+ encounters). Low = tough matchup.",
+      "crank.hintWin": "From the last 3 days of battles ({n}+ games). Low usage but high win rate = a hidden gem.",
+      "crank.hintRise": "Cards whose usage grew in this update compared with the last 3 days.",
+      "crank.hintUseMe": "How often you faced each card in recent battles, most frequent first.",
+      "crank.hintUse": "Share of top-player decks including the card over the last 3 days.",
+      "crank.subWin": "{g} games · {u} used",
+      "crank.subRise": "{u} used · {w} win",
+      "crank.subUse": "{w} win · {g} games",
+      // decks.html の動的描画（文字一致）
+      "が使用": "",
+      "急上昇": "Rising",
+      "▶ このデッキを作成ツールで開く": "▶ Open this deck in the builder",
+      "該当するカードがありません": "No matching cards",
+      "ログインすると使えます": "Sign in to use this",
+      "右上のアカウントからクラロワIDを登録すると使えます": "Register your Clash Royale ID from the account menu (top right)",
+      "カードの急上昇は準備中です": "Card rising is coming soon",
+      "この領域に表示中のカードはありません": "No cards shown in this region",
+      "ランキングからカードをタップすると": "Tap a card in the ranking below",
+      "ここに分布で表示されます": "and it will appear here on the map",
+      "（4つの領域をタップすると拡大）": "(Tap a quadrant to zoom)",
+      "※ サンプル表示です（集計データ連携の準備中）": "※ Sample data (live aggregation is being set up)",
+      "「あなたの対面」はログイン＆クラロワID登録で使えます（右上のアカウントから）。": "“Your matchups” requires sign-in and a Clash Royale ID (account menu, top right).",
+      "対戦データを取得中…": "Fetching battle data…",
+      "を表示中": "showing",
+      "このカードでデッキ検索": "Find decks with this card",
+      "指を離さず左右になぞってデッキ切替": "Slide left/right without lifting your finger to switch decks",
+      "mm.medUse": "Median usage {v}%",
+      "mm.medWin": "Median win {v}%",
+      "decks.whoName": "{name}’s",
+      "decks.meNote": "Aggregated from opponents in {who} last {n} battles ({who} trophy range). Accuracy improves each time you open this page.",
+      "タップで全体に戻る": "Tap to return to the full view",
+      "目立たないが勝ってる": "Quietly winning",
+      "安定": "Stable",
+      "チャレンジング": "Challenging",
+      "人気だが勝ってない": "Popular but not winning",
+      "対面率 →": "Matchup rate →",
+      "使用率 →": "Usage →",
+      "あなたの勝率 ↑": "Your win rate ↑",
+      "勝率 ↑": "Win rate ↑",
+      "あなた": "your",
       // ポップアップ／トーストの固定文（body監視・walkで文字一致）
       "枚": "cards", "空き": "empty", "編集中": "editing",
       "入れ替える？": "Swap?", "いま": "Now", "これに": "To this", "入れる": "Add",
@@ -434,8 +502,9 @@
   if (DICT.en) Object.assign(DICT.en, CARD_EN);
 
   function pickLang() {
-    try { const s = localStorage.getItem('cr_lang'); if (s && LANGS.includes(s)) return s; } catch (e) {}
+    // URLの ?lang= を最優先（共有リンクで言語指定できる）→ 保存済み → ブラウザ言語
     try { const u = (new URLSearchParams(location.search).get('lang') || '').toLowerCase(); if (u && LANGS.includes(u)) return u; } catch (e) {}
+    try { const s = localStorage.getItem('cr_lang'); if (s && LANGS.includes(s)) return s; } catch (e) {}
     const n = (navigator.language || 'ja').toLowerCase(); // 例: 'es-mx','pt-br','ja-jp'
     if (LANGS.includes(n)) return n;
     const base = n.split('-')[0];

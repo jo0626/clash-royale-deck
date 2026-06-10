@@ -441,16 +441,16 @@ document.getElementById('ownedToggle').addEventListener('click', () => {
   const loggedIn = window.CRAuth && CRAuth.getUser && CRAuth.getUser();
   if (!loggedIn) {
     if (window.CRAuth && CRAuth.hasSession && CRAuth.hasSession()) {
-      document.getElementById('ownedNote').textContent = 'ログイン確認中です。少し待ってからもう一度';
+      document.getElementById('ownedNote').textContent = _tr('ログイン確認中です。少し待ってからもう一度');
       return;
     }
     if (window.CRAuth && CRAuth.signIn) CRAuth.signIn();
-    else document.getElementById('ownedNote').textContent = 'ログインすると使えます';
+    else document.getElementById('ownedNote').textContent = _tr('ログインすると使えます');
     return;
   }
   onlyOwned = !onlyOwned;
   document.getElementById('ownedToggle').setAttribute('aria-pressed', onlyOwned ? 'true' : 'false');
-  if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = '右上のアカウントからクラロワIDを登録すると使えます'; }
+  if (onlyOwned && !ownedSet) { document.getElementById('ownedNote').textContent = _tr('右上のアカウントからクラロワIDを登録すると使えます'); }
   applyDecks();
 });
 
@@ -475,7 +475,7 @@ function renderCardPop(q) {
   q = (q || '').trim();
   if (!q) { _cardPop.classList.remove('open'); _cardPop.innerHTML = ''; return; }
   const matches = _ALL_CARD_NAMES.filter(n => cardMatches(n, q)).slice(0, 30);
-  if (!matches.length) { _cardPop.innerHTML = '<div class="pop-empty">該当するカードがありません</div>'; _cardPop.classList.add('open'); return; }
+  if (!matches.length) { _cardPop.innerHTML = '<div class="pop-empty">' + _tr('該当するカードがありません') + '</div>'; _cardPop.classList.add('open'); return; }
   _cardPop.innerHTML = matches.map(n => {
     const info = CARD_INFO[n] || {};
     return '<div class="pop-card" data-n="' + n.replace(/"/g, '&quot;') + '">'
@@ -504,7 +504,7 @@ _cardPop.addEventListener('click', (e) => {
   if (!card) return;
   cardFilter = card.getAttribute('data-n');
   _cardChip.style.display = 'inline-flex';
-  _cardChip.innerHTML = '「' + cardFilter + '」を含むデッキ <span class="x">✕</span>';
+  _cardChip.innerHTML = _t('decks.withCard', { name: cardFilter }) + ' <span class="x">✕</span>';
   _cardSearch.value = ''; _syncClear(); _cardPop.classList.remove('open'); _cardPop.innerHTML = '';
   _cardSearch.blur();
   applyDecks();
@@ -518,27 +518,30 @@ function renderDecks(decks) {
   decks.forEach((d, idx) => {
     const avg = (d.slots.reduce((s,n)=> s + (CARD_INFO[n]?CARD_INFO[n].c:0), 0) / d.slots.length).toFixed(1);
     let headHtml;
+    const avgLbl = _tr('平均コスト');
     if (d.delta != null) {
       // 急上昇タブ：3日窓の前半→直近で使用が伸びたデッキ（単発の差分ではなく合算比較）
-      headHtml = '<span class="stat-trend"><span class="arrow">▲</span> 急上昇</span>'
-        + (d.count != null ? '<span class="stat-sep">' + d.count + '人使用</span>' : '')
-        + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>';
+      headHtml = '<span class="stat-trend"><span class="arrow">▲</span> ' + _tr('急上昇') + '</span>'
+        + (d.count != null ? '<span class="stat-sep">' + _t('decks.nUsed', { n: d.count }) + '</span>' : '')
+        + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>';
     } else if (d.winRate != null) {
       // 勝率タブ：勝率 ＋ 対戦数（3日合計）＋ 使用人数
-      headHtml = '<span class="stat-win">勝率 ' + d.winRate + '%</span>'
-        + '<span class="stat-sep">' + (d.games || 0) + '戦</span>'
-        + (d.count != null ? '<span class="stat-sep">' + d.count + '人使用</span>' : '')
-        + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>';
+      headHtml = '<span class="stat-win">' + _t('decks.winPct', { p: d.winRate }) + '</span>'
+        + '<span class="stat-sep">' + _t('decks.nGames', { n: (d.games || 0) }) + '</span>'
+        + (d.count != null ? '<span class="stat-sep">' + _t('decks.nUsed', { n: d.count }) + '</span>' : '')
+        + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>';
     } else {
       // 使用率タブ：使用人数（3日延べ）＋ ％ ＋ 対戦数（何回使われたか）
       const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
-      const gamesTxt = (d.games != null) ? '<span class="stat-sep">' + d.games + '戦</span>' : '';
+      const gamesTxt = (d.games != null) ? '<span class="stat-sep">' + _t('decks.nGames', { n: d.games }) + '</span>' : '';
+      const useSep = _tr('が使用');
       headHtml = (pct != null)
-        ? ('<span class="stat-use">' + d.count + '人</span><span class="stat-sep">が使用</span>'
+        ? ('<span class="stat-use">' + _t('decks.nPlayersUse', { n: d.count }) + '</span>'
+           + (useSep ? '<span class="stat-sep">' + useSep + '</span>' : '')
            + '<span class="stat-pct">' + pct + '%</span>'
            + gamesTxt
-           + '<span class="stat-avg">平均コスト <b>' + avg + '</b></span>')
-        : ('<span class="stat-avg">平均コスト <b>' + avg + '</b></span>'
+           + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>')
+        : ('<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>'
            + (d.sub ? '<span class="stat-sep">' + d.sub + '</span>' : ''));
     }
     // forms[]（GASが実データから出す各スロットの形）優先。なければ旧ロジック
@@ -566,7 +569,7 @@ function renderDecks(decks) {
       '<div class="deck-card-head"><span class="deck-rank">#'+(idx+1)+'</span>'+
       '<div class="deck-stat-line">'+headHtml+'</div></div>'+
       '<div class="deck-cards-grid">'+mini+'</div>'+
-      '<a class="load-btn" href="'+url+'">▶ このデッキを作成ツールで開く</a>';
+      '<a class="load-btn" href="'+url+'">' + _tr('▶ このデッキを作成ツールで開く') + '</a>';
     wrap.appendChild(el);
   });
 }
@@ -643,22 +646,22 @@ function renderCrank() {
     list = list.filter(c => (c.games || 0) >= minGames());
     list.sort((a, b) => (b.win || 0) - (a.win || 0) || (b.games || 0) - (a.games || 0));
     hint.textContent = me
-      ? 'そのカードを入れた相手に、あなたが勝てた割合（対面' + minGames() + '回以上）。低い＝苦手な相手。'
-      : '直近3日の対戦結果から算出（' + minGames() + '戦以上）。使用率は低いのに勝率が高い＝玄人好みの「隠れ強カード」。';
+      ? _t('crank.hintWinMe', { n: minGames() })
+      : _t('crank.hintWin', { n: minGames() });
   } else if (_ctab === 'rise') {
     list = list.filter(c => c.rise != null && c.rise > 0);
     list.sort((a, b) => (b.rise || 0) - (a.rise || 0));
-    hint.textContent = '過去3日間と比べ、今回の更新で使用率が伸びたカード順。';
+    hint.textContent = _t('crank.hintRise');
   } else {
     list.sort((a, b) => (b.use || 0) - (a.use || 0));
     hint.textContent = me
-      ? '直近の対戦で、あなたが当たった割合（対面率）。よく当たる相手カード順。'
-      : '過去3日間で、トップ層のデッキに入っている割合。今この環境で「数が多い」カード。';
+      ? _t('crank.hintUseMe')
+      : _t('crank.hintUse');
   }
   // 急上昇のデータがまだ無いときは準備中
   if (_ctab === 'rise' && !list.length) {
-    wrap.innerHTML = '<div class="coming-soon"><div class="big">🔥</div>カードの急上昇は準備中です'
-      + '<div class="note" style="margin-top:8px">数回の更新でデータがたまり次第、自動で表示されます</div></div>';
+    wrap.innerHTML = '<div class="coming-soon"><div class="big">🔥</div>' + _tr('カードの急上昇は準備中です')
+      + '<div class="note" style="margin-top:8px">' + _tr('数回の更新でデータがたまり次第、自動で表示されます') + '</div></div>';
     return;
   }
   // 使用率/勝率は全カードを表示（上限なし）。急上昇は rise>0 で既に絞り済み。
@@ -670,13 +673,13 @@ function renderCrank() {
     const useTxt = (c.use != null ? c.use + '%' : '—');
     let big, sub, barPct, barCol, statCls;
     if (_ctab === 'win') {
-      big = winTxt; sub = (c.games || 0) + '戦 ・ 使用' + useTxt;
+      big = winTxt; sub = _t('crank.subWin', { g: (c.games || 0), u: useTxt });
       barPct = Math.max(0, Math.min(100, c.win || 0)); barCol = '#e8a020'; statCls = 'win';
     } else if (_ctab === 'rise') {
-      big = '▲' + (c.rise || 0); sub = '使用 ' + useTxt + ' ・ 勝率 ' + winTxt;
+      big = '▲' + (c.rise || 0); sub = _t('crank.subRise', { u: useTxt, w: winTxt });
       barPct = Math.round((c.rise || 0) / maxRise * 100); barCol = '#ff8a3c'; statCls = 'win';
     } else {
-      big = useTxt; sub = '勝率 ' + winTxt + ' ・ ' + (c.games || 0) + '戦';
+      big = useTxt; sub = _t('crank.subUse', { w: winTxt, g: (c.games || 0) });
       barPct = Math.round((c.use || 0) / maxUse * 100); barCol = '#3a8ef0'; statCls = 'use';
     }
     return '<div class="crank-row' + (sel ? ' sel' : '') + '" data-n="' + String(c.name).replace(/"/g, '&quot;') + '">'
@@ -686,7 +689,7 @@ function renderCrank() {
       + '<span class="crank-name">' + c.name + '</span>'
       + '<span class="crank-bar"><i style="width:' + barPct + '%;background:' + barCol + '"></i></span>'
       + '<span class="crank-stat ' + statCls + '"><span class="big">' + big + '</span><span class="sub">' + sub + '</span></span>'
-      + '<button class="crank-go" type="button" data-go="' + String(c.name).replace(/"/g, '&quot;') + '" title="このカードでデッキ検索" aria-label="このカードでデッキ検索">🔍</button>'
+      + '<button class="crank-go" type="button" data-go="' + String(c.name).replace(/"/g, '&quot;') + '" title="' + _tr('このカードでデッキ検索') + '" aria-label="' + _tr('このカードでデッキ検索') + '">🔍</button>'
       + '<span class="crank-check">' + (sel ? '✓' : '＋') + '</span>'
       + '</div>';
   }).join('');
@@ -711,7 +714,7 @@ function gotoDeckSearch(cardName) {
   if (!cardName) return;
   cardFilter = cardName;
   const chip = document.getElementById('cardChip');
-  if (chip) { chip.style.display = 'inline-flex'; chip.innerHTML = '「' + cardName + '」を含むデッキ <span class="x">✕</span>'; }
+  if (chip) { chip.style.display = 'inline-flex'; chip.innerHTML = _t('decks.withCard', { name: cardName }) + ' <span class="x">✕</span>'; }
   activeTab = 'pop';
   document.querySelectorAll('.deck-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === 'pop'));
   setSeg('decks');
@@ -730,7 +733,7 @@ document.getElementById('mmAll').addEventListener('click', () => {
 function updateMeLabel() {
   const el = document.getElementById('meLabel'); if (!el) return;
   const nm = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
-  el.textContent = nm ? (nm + 'さんの環境') : 'あなたの環境';
+  el.textContent = nm ? _t('decks.envOfName', { name: nm }) : _tr('あなたの環境');
 }
 const _meToggleBtn = document.getElementById('meToggle');
 if (_meToggleBtn) _meToggleBtn.addEventListener('click', () => setCardMode(_cardMode === 'me' ? 'env' : 'me'));
@@ -835,11 +838,11 @@ function renderMetaMap() {
     let base =
         '<div class="mm-axis v zoom" style="left:' + vEdge + '%"></div>'
       + '<div class="mm-axis h zoom" style="top:' + hEdge + '%"></div>'
-      + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">中央 使用率' + uS.med + '%</div>'
-      + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">中央 勝率' + wS.med + '%</div>'
-      + '<div class="mm-zhint">タップで全体に戻る</div>'
-      + '<div class="mm-ztitle">' + QLABEL[Q] + '</div>';
-    if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">この領域に表示中のカードはありません</div>'; return; }
+      + '<div class="mm-zline" style="left:' + (right ? '2px' : 'auto') + ';right:' + (right ? 'auto' : '2px') + ';top:50%;transform:translateY(-50%)">' + _t('mm.medUse', { v: uS.med }) + '</div>'
+      + '<div class="mm-zline" style="' + (top ? 'bottom:2px' : 'top:2px') + ';left:50%;transform:translateX(-50%)">' + _t('mm.medWin', { v: wS.med }) + '</div>'
+      + '<div class="mm-zhint">' + _tr('タップで全体に戻る') + '</div>'
+      + '<div class="mm-ztitle">' + _tr(QLABEL[Q]) + '</div>';
+    if (!cards.length) { map.innerHTML = base + '<div class="mm-empty">' + _tr('この領域に表示中のカードはありません') + '</div>'; return; }
     map.innerHTML = base + cards.map(c => ptHtml(c, sx(c), sy(c), false)).join('');
     return;
   }
@@ -848,9 +851,9 @@ function renderMetaMap() {
   const base =
       '<div class="mm-q tl" data-q="tl"></div><div class="mm-q tr" data-q="tr"></div><div class="mm-q bl" data-q="bl"></div><div class="mm-q br" data-q="br"></div>'
     + '<div class="mm-axis v"></div><div class="mm-axis h"></div>'
-    + '<div class="mm-qlabel tl">目立たないが勝ってる</div><div class="mm-qlabel tr">安定</div>'
-    + '<div class="mm-qlabel bl">チャレンジング</div><div class="mm-qlabel br">人気だが勝ってない</div>'
-    + '<div class="mm-axlabel x">' + (_cardMode === 'me' ? '対面率 →' : '使用率 →') + '</div><div class="mm-axlabel y">' + (_cardMode === 'me' ? 'あなたの勝率 ↑' : '勝率 ↑') + '</div>';
+    + '<div class="mm-qlabel tl">' + _tr('目立たないが勝ってる') + '</div><div class="mm-qlabel tr">' + _tr('安定') + '</div>'
+    + '<div class="mm-qlabel bl">' + _tr('チャレンジング') + '</div><div class="mm-qlabel br">' + _tr('人気だが勝ってない') + '</div>'
+    + '<div class="mm-axlabel x">' + (_cardMode === 'me' ? _tr('対面率 →') : _tr('使用率 →')) + '</div><div class="mm-axlabel y">' + (_cardMode === 'me' ? _tr('あなたの勝率 ↑') : _tr('勝率 ↑')) + '</div>';
   // 軸メモリ（実数値）：左の余白に勝率(上=max/中=中央値/下=min)、下の余白に使用率(左=min/中=中央値/右=max)
   const ticks =
       '<div class="mm-tick y y-top">' + wS.max + '%</div>'
@@ -860,7 +863,7 @@ function renderMetaMap() {
     + '<div class="mm-tick x x-mid">' + uS.med + '%</div>'
     + '<div class="mm-tick x x-right">' + uS.max + '%</div>';
   if (!sel.length) {
-    map.innerHTML = '<div class="mm-plot">' + base + '<div class="mm-empty">ランキングからカードをタップすると<br>ここに分布で表示されます<br><span style="font-size:10px;color:var(--text-dim)">（4つの領域をタップすると拡大）</span></div></div>' + ticks;
+    map.innerHTML = '<div class="mm-plot">' + base + '<div class="mm-empty">' + _tr('ランキングからカードをタップすると') + '<br>' + _tr('ここに分布で表示されます') + '<br><span style="font-size:10px;color:var(--text-dim)">' + _tr('（4つの領域をタップすると拡大）') + '</span></div></div>' + ticks;
     return;
   }
   const showLab = sel.length <= 12; // 多いとラベルが被るので、選択が少ないときだけ名前を出す
@@ -875,7 +878,7 @@ function initCardMeta(isSample) {
   ENV_CARDS = CARDS_DATA.slice();        // 環境メタを保持
   if (_cardMode !== 'me') CARDS_DATA = ENV_CARDS;
   const note = document.getElementById('cardsNote');
-  if (note && _cardMode !== 'me') note.textContent = isSample ? '※ サンプル表示です（集計データ連携の準備中）' : '';
+  if (note && _cardMode !== 'me') note.textContent = isSample ? _tr('※ サンプル表示です（集計データ連携の準備中）') : '';
   renderCrank(); renderMetaMap();
 }
 
@@ -935,11 +938,11 @@ async function setCardMode(mode, force) {
     const tag = (window.CRAuth && CRAuth.getCrTag && CRAuth.getCrTag()) || '';
     if (!tag) {
       const cn = document.getElementById('cardsNote');
-      if (cn) cn.textContent = '「あなたの対面」はログイン＆クラロワID登録で使えます（右上のアカウントから）。';
+      if (cn) cn.textContent = _tr('「あなたの対面」はログイン＆クラロワID登録で使えます（右上のアカウントから）。');
       return;
     }
     const cn = document.getElementById('cardsNote');
-    if (cn) cn.textContent = '対戦データを取得中…';
+    if (cn) cn.textContent = _tr('対戦データを取得中…');
     await loadMeCards(force);
   }
   _cardMode = mode;
@@ -949,7 +952,7 @@ async function setCardMode(mode, force) {
   const tg = document.getElementById('meToggle');
   if (tg) { tg.classList.toggle('active', mode === 'me'); tg.setAttribute('aria-pressed', mode === 'me' ? 'true' : 'false'); }
   const suf = document.getElementById('meSuffix');
-  if (suf) suf.textContent = (mode === 'me') ? 'を表示中' : 'で見る';
+  if (suf) suf.textContent = (mode === 'me') ? _tr('を表示中') : _tr('で見る');
   const riseTab = document.querySelector('#crankTabs .crank-tab[data-ctab="rise"]');
   if (riseTab) riseTab.style.display = (mode === 'me') ? 'none' : '';
   document.querySelectorAll('#crankTabs .crank-tab').forEach(b => b.classList.toggle('active', b.getAttribute('data-ctab') === _ctab));
@@ -957,9 +960,9 @@ async function setCardMode(mode, force) {
   if (refreshBtn) refreshBtn.style.display = (mode === 'me') ? '' : 'none';
   const cn = document.getElementById('cardsNote');
   const _nm = (window.CRAuth && CRAuth.getDisplayName && CRAuth.getDisplayName()) || '';
-  const who = _nm ? _nm + 'さん' : 'あなた';
+  const who = _nm ? _t('decks.whoName', { name: _nm }) : _tr('あなた');
   if (cn) cn.textContent = (mode === 'me')
-    ? (who + 'の直近 ' + ME_COUNT + '戦の対戦相手から集計（' + who + 'のトロフィー帯）。このページを開くたびに精度UP。')
+    ? _t('decks.meNote', { who: who, n: ME_COUNT })
     : (window.__cardsNoteEnv || '');
   renderCrank(); renderMetaMap();
 }
@@ -970,6 +973,8 @@ async function setCardMode(mode, force) {
 // 集計テキスト（更新間隔・母数・最終更新など）。動的＝i18nのt()で言語対応。言語切替時に再描画する。
 let _agg = { top: null, sample: null, hrs: 6, cardsReal: false, updated: null };
 function _t(k, v) { return window.CRI18N ? CRI18N.t(k, v) : k; }
+// 固定の日本語文をそのまま辞書で訳す（ja=原文のまま／未訳は英語→原文フォールバック）
+function _tr(s) { return window.CRI18N ? CRI18N.tr(s) : s; }
 function srcTextI18n() {
   if (_agg.top) return _agg.sample ? _t('decks.srcTop', { n: _agg.top, p: _agg.sample }) : _t('decks.srcTopNoSample', { n: _agg.top });
   return _agg.sample ? _t('decks.srcGenericSample', { p: _agg.sample }) : _t('decks.srcGeneric');
@@ -993,8 +998,18 @@ function renderAggText() {
     }
   }
 }
-// 言語切替時：集計テキストとタブ説明を現在言語で作り直す
-window.addEventListener('crlangchange', () => { try { renderAggText(); updateDeckTabDesc(); } catch (e) {} });
+// 言語切替時：集計テキスト・タブ説明＋動的描画（デッキ一覧/カードランキング/分布図/チップ等）を現在言語で作り直す
+window.addEventListener('crlangchange', () => {
+  try { renderAggText(); updateDeckTabDesc(); } catch (e) {}
+  try { applyDecks(); } catch (e) {}
+  try { renderCrank(); renderMetaMap(); } catch (e) {}
+  try { updateMeLabel(); } catch (e) {}
+  try {
+    if (cardFilter && _cardChip && _cardChip.style.display !== 'none') {
+      _cardChip.innerHTML = _t('decks.withCard', { name: cardFilter }) + ' <span class="x">✕</span>';
+    }
+  } catch (e) {}
+});
 
 const DECKS_DATA_URL = 'https://raw.githubusercontent.com/rea-fi-lia/clash-royale-deck/data/decks.json';
 fetch(DECKS_DATA_URL, { cache: 'no-store' })
