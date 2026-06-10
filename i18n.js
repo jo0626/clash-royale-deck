@@ -40,6 +40,11 @@
       "ユニット": "Units",
       "呪文": "Spells",
       "建物": "Buildings",
+      "限界突破": "Evolution",
+      "ヒーロー": "Hero",
+      "チャンピオン": "Champion",
+      "コスト": "Cost",
+      "コスト順に並べ替え": "Sort by cost",
       // 支援(support)
       "支援・寄付": "Support",
       "開発者にエリクサーを供給する": "Supply Elixir to the developer",
@@ -134,13 +139,22 @@
     const sel = document.createElement('select');
     sel.id = 'crLangSel'; sel.setAttribute('data-no-i18n', '');
     sel.setAttribute('aria-label', 'Language');
-    sel.style.cssText = 'margin-left:8px;background:var(--surface2,#1e2230);color:var(--text,#e8eaf0);border:1px solid var(--border-hi,rgba(255,255,255,.15));border-radius:8px;font-size:12px;padding:4px 6px;cursor:pointer;flex:0 0 auto;';
+    // margin-left:auto で右側へ。アカウント(#cr-account)はこの直後に並ぶようにして、はみ出し/二段化を防ぐ。
+    sel.style.cssText = 'margin-left:auto;background:var(--surface2,#1e2230);color:var(--text,#e8eaf0);border:1px solid var(--border-hi,rgba(255,255,255,.15));border-radius:8px;font-size:12px;padding:4px 6px;cursor:pointer;flex:0 0 auto;max-width:40vw;';
     LANGS.forEach(l => {
       const o = document.createElement('option'); o.value = l; o.textContent = LANG_NAMES[l] || l;
       if (l === lang) o.selected = true; sel.appendChild(o);
     });
     sel.addEventListener('change', () => setLang(sel.value));
-    header.appendChild(sel);
+    const acct = document.getElementById('cr-account');
+    if (acct && acct.parentNode === header) header.insertBefore(sel, acct); // アカウントの前＝[select][account]で右寄せ
+    else header.appendChild(sel);
+    // はみ出さないための微調整（アカウントは自分でauto押し出ししない＝selectの直後に並ぶ／狭い時は折り返す）
+    if (!document.getElementById('crI18nStyle')) {
+      const st = document.createElement('style'); st.id = 'crI18nStyle';
+      st.textContent = 'header{flex-wrap:wrap;row-gap:6px} #cr-account{margin-left:8px} #cr-account .cr-avatar-btn{max-width:46vw}';
+      document.head.appendChild(st);
+    }
   }
 
   // 公開API（将来：描画後に CRI18N.apply() を呼べばカード名等も訳せる）
