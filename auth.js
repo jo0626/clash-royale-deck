@@ -41,13 +41,21 @@ import { firebaseConfig, isConfigured, crPlayerApiUrl } from "./firebase-config.
 // Firebase SDK は動的に読み込む（CDNが遅くてもUIが先に出るように）。
 // 読み込んだ関数はここに入る。
 let FB = null;
-async function loadFirebase() {
-  const [appMod, authMod, fsMod] = await Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
-  ]);
-  return { ...appMod, ...authMod, ...fsMod };
+async function loadFirebase(tries) {
+  tries = tries || 0;
+  try {
+    const [appMod, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"),
+    ]);
+    return { ...appMod, ...authMod, ...fsMod };
+  } catch (e) {
+    // SDKの動的読み込みが一時的に失敗することがある（回線不調等）→ 数回リトライ。
+    if (tries >= 4) throw e;
+    await new Promise(r => setTimeout(r, 1500 * (tries + 1)));
+    return loadFirebase(tries + 1);
+  }
 }
 
 // ---- グレード（寄付グレード）定義 — 着せ替え解放の土台 -------------
@@ -125,9 +133,29 @@ if (!isConfigured) {
       }
       changeCallbacks.forEach(fn => { try { fn(user, currentProfile); } catch (e) {} });
     });
+
+    // 長時間タブを開きっぱなしにした後など、トークンが失効していることがある。
+    // タブに戻ってきたら（再表示時）トークンを強制リフレッシュ＝Firestore操作が失効で失敗するのを防ぐ。
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && auth && auth.currentUser) {
+        auth.currentUser.getIdToken(true).catch(() => {});
+      }
+    });
   }).catch((e) => {
     console.error("[CRAuth] Firebase SDKの読み込みに失敗:", e);
-    setLoggedOutUI(true);
+    clearHint();            // 失敗時は前回アバターを残さず「ログイン」を出す（偽ログイン状態で固まらない）
+    setLoggedOutUI(false);
+  });
+
+  // ウォッチドッグ：一定時間たっても認証が解決しない＝SDK読み込み失敗等で固まっている。
+  // その場合は前回ヒント（アバター）を消して「ログイン」を出し、ユーザーが押し直せるようにする（無言で固まらせない）。
+  setTimeout(() => {
+    if (!_authReady) { clearHint(); setLoggedOutUI(false); }
+  }, 10000);
+
+  // オフラインから復帰したのに未解決なら、リロードで再初期化を促す（回線復旧時の自動回復）。
+  window.addEventListener("online", () => {
+    if (!_authReady) { try { location.reload(); } catch (e) {} }
   });
 }
 
