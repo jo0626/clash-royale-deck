@@ -487,17 +487,9 @@ function applyAvatarUI(info) {
   ab.style.display = "inline-flex";
   document.getElementById("crAvatarImg").src = info.photoURL || "https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png";
   document.getElementById("crAvatarName").textContent = (info.displayName || "プレイヤー").split(" ")[0];
-  const tier = info.tier || "free";
-  const t = TIERS[tier] || TIERS.free;
+  // tierの文字チップ（ゲスト/◯◯支援）は廃止＝出さない。ランクは将来アイコンの変化で表現する。
   const chip = document.getElementById("crTierChip");
-  if (tier === "free") {
-    chip.style.display = "none"; // 無料(ゲスト)はチップを出さない
-  } else {
-    chip.style.display = "";
-    chip.textContent = t.label;
-    chip.style.background = t.color;
-    chip.style.color = "#000";
-  }
+  if (chip) chip.style.display = "none";
 }
 
 // 表示名の解決：mode="game" かつ ゲーム内名があればそれ、無ければアカウント名

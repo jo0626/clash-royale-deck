@@ -152,7 +152,14 @@
     // はみ出さないための微調整（アカウントは自分でauto押し出ししない＝selectの直後に並ぶ／狭い時は折り返す）
     if (!document.getElementById('crI18nStyle')) {
       const st = document.createElement('style'); st.id = 'crI18nStyle';
-      st.textContent = 'header{flex-wrap:wrap;row-gap:6px} #cr-account{margin-left:8px} #cr-account .cr-avatar-btn{max-width:46vw}';
+      st.textContent =
+        'header{flex-wrap:nowrap !important;align-items:center !important;gap:10px}' +   /* ロゴ・言語・アカウントを必ず同じ行に */
+        '.logo{flex:0 0 auto}' +
+        '#crLangSel{flex:0 0 auto}' +
+        '#cr-account{margin-left:8px;min-width:0;flex:0 1 auto}' +
+        '#cr-account .cr-avatar-btn{max-width:100%;align-items:center}' +
+        /* 名前は長い時だけ2段で折り返す（おおよそ10〜14文字超で2段） */
+        '#cr-account #crAvatarName{white-space:normal;line-height:1.12;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;text-align:left;max-width:14ch}';
       document.head.appendChild(st);
     }
   }
