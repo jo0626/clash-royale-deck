@@ -1207,12 +1207,17 @@ function toggleFav(name, e) {
   justFaved = null;
 }
 
+// i18nヘルパー：T=プレースホルダ補間翻訳（名前/数字入りの動的文字列用）、TR=単純翻訳（カード名など）。
+// 固定文はi18nのbody監視が挿入時に自動翻訳するので、ここでは動的文字列だけT/TRで包む。
+function T(key, vars, fb) { return window.CRI18N ? CRI18N.t(key, vars) : (fb != null ? fb : key); }
+function TR(s) { return window.CRI18N ? CRI18N.tr(s) : s; }
+
 // お気に入り解除の確認ダイアログ
 function openFavRemoveDialog(name) {
   const ov = document.createElement('div');
   ov.className = 'swap-overlay';
   ov.innerHTML = `<div class="swap-box">
-    <div class="swap-title">「${name}」をお気に入りから外す？</div>
+    <div class="swap-title">${T('fav.removeQ', { name: TR(name) })}</div>
     <div class="swap-options">
       <button class="btn swap-remove-btn">外す</button>
       <button class="btn btn-ghost swap-keep-btn">キャンセル</button>
@@ -1473,7 +1478,7 @@ function getFiltered() {
 
 function render() {
   const filtered = getFiltered();
-  document.getElementById('countInfo').textContent = filtered.length + ' / ' + CARDS.length + ' 枚';
+  document.getElementById('countInfo').innerHTML = filtered.length + ' / ' + CARDS.length + ' <span class="cw">枚</span>';
   const list = document.getElementById('cardList');
   list.innerHTML = '';
   filtered.forEach(c => {
@@ -1514,6 +1519,7 @@ function render() {
     div.onclick = () => { if (isDragging) return; toggleDeck(c); }; // ドラッグ中のタップは無視
     list.appendChild(div);
   });
+  if (window.CRI18N) CRI18N.apply(); // 再描画後にUI全体を再翻訳（コスト/枚数など監視外の文言が日本語に戻るのを防ぐ）
 }
 
 
@@ -1602,11 +1608,11 @@ function openImageReplaceDialog(card, idxs, opts) {
       return `<div class="swap-opt" data-idx="${i}">
         ${img ? `<img src="${img}" alt="">` : ''}
         <div class="swap-opt-name">${d ? d.name : ''}</div>
-        <div class="swap-opt-slot">スロット${i + 1}</div>
+        <div class="swap-opt-slot">${T('slot.n', { n: i + 1 })}</div>
       </div>`;
     };
     ov.innerHTML = `<div class="swap-box">
-      <div class="swap-title">${card.name} をどちらと入れ替える？</div>
+      <div class="swap-title">${T('swap.withWhich', { name: TR(card.name) })}</div>
       <div class="swap-choose">
         ${sideHtml(idxs[0])}
         <div class="swap-center"><div class="ft-cap">入れる</div>${cardImg}<div class="ft-name">${card.name}</div></div>
@@ -1628,11 +1634,11 @@ function openChampSwapDialog(card) {
     return `<div class="swap-opt" data-idx="${i}">
       ${d.img ? `<img src="${d.img}" alt="">` : ''}
       <div class="swap-opt-name">${d.name}</div>
-      <div class="swap-opt-slot">スロット${i + 1}</div>
+      <div class="swap-opt-slot">${T('slot.n', { n: i + 1 })}</div>
     </div>`;
   }).join('');
   ov.innerHTML = `<div class="swap-box">
-    <div class="swap-title">${card.name} をどちらと入れ替える？</div>
+    <div class="swap-title">${T('swap.withWhich', { name: TR(card.name) })}</div>
     <div class="swap-options">${opts}</div>
     <button class="btn btn-ghost swap-cancel">キャンセル</button>
   </div>`;
@@ -1646,9 +1652,9 @@ function openChampSwapDialog(card) {
       const empty = deck.findIndex(d => d === null);
       if (empty >= 0) {
         deck[empty] = displaced;
-        showToast(displaced.name + ' をスロット' + (empty + 1) + 'へ移動');
+        showToast(T('toast.movedToSlot', { name: TR(displaced.name), n: empty + 1 }));
       } else {
-        showToast(displaced.name + ' をデッキから外しました');
+        showToast(T('toast.removedFromDeck', { name: TR(displaced.name) }));
       }
       ov.remove();
       renderDeck(); render();
@@ -2278,7 +2284,7 @@ async function openSlotSaveDialog() {
   ov.className = 'slot-pop';
   const chips = [1,2,3,4,5].map(i => {
     const s = slots.find(x => x.slot === i);
-    const sub = s ? `${(s.slots||[]).length}枚` : '空き';
+    const sub = s ? T('cards.n', { n: (s.slots||[]).length }) : '空き';
     const isCur = currentSlot === i;
     const isSel = selected === i;
     return `<div class="slot-chip ${s?'':'empty'}${isCur?' current':''}${isSel?' selected':''}" data-slot="${i}">
@@ -2287,7 +2293,7 @@ async function openSlotSaveDialog() {
     </div>`;
   }).join('');
   ov.innerHTML = `<div class="slot-pop-box">
-    <div class="slot-pop-title">保存するスロットを選んで「保存」（${filled.length}枚）</div>
+    <div class="slot-pop-title">保存するスロットを選んで「保存」<span class="t-num"> (${filled.length})</span></div>
     <div class="slot-grid">${chips}</div>
     <button class="btn btn-primary" id="slotSaveConfirm" style="width:100%;margin-top:4px"${selected?'':' disabled'}>保存</button>
   </div>`;
@@ -2364,8 +2370,8 @@ function openShareDialog(deckArr, deckName) {
   while (slugs.length && slugs[slugs.length - 1] === '') slugs.pop();
   const grade = (window.CRAuth && CRAuth.getProfile && CRAuth.getProfile() && CRAuth.getProfile().tier) || 'free';
   const url = 'https://crdeckbuilders.com/share?deck=' + slugs.join(',') + '&g=' + grade; // スラッグなのでURLエンコード不要＝短い
-  const xText = 'クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders';
-  const lineText = 'あなたのデッキを共有しましょう！';
+  const xText = T('share.xText');
+  const lineText = T('share.lineText');
   // プレビューは実際のSNS共有画像（Worker /ogimg）をそのまま表示する（SNSに出るのと同じ見た目＝グレード枠込み）
   const ogimgBase = 'https://crdeckbuilders.com/ogimg?deck=' + slugs.join(',') + '&g=' + grade;
   const ogimgFree = 'https://crdeckbuilders.com/ogimg?deck=' + slugs.join(',') + '&g=free'; // 枠無し＝最も軽い。プレビューが出ない時の最終フォールバック
@@ -2380,7 +2386,7 @@ function openShareDialog(deckArr, deckName) {
     <div class="slot-pop-title">✅ 保存しました！このデッキを共有する？</div>
     <div class="share-deck" id="shRep"></div>
     <div class="share-btns">
-      ${byName ? `<button class="share-b sns-byname active" id="shByBtn" aria-pressed="true">👤 「share by ${byNameEsc}」を入れて投稿</button>` : ''}
+      ${byName ? `<button class="share-b sns-byname active" id="shByBtn" aria-pressed="true">${T('share.byBtn', { name: byNameEsc })}</button>` : ''}
       <a class="share-b sns-x" id="shX" target="_blank" rel="noopener">𝕏 でポスト</a>
       <a class="share-b sns-line" id="shLine" target="_blank" rel="noopener">LINEで送る</a>
       <button class="share-b sns-copy" id="shCopy">🔗 リンクをコピー</button>
@@ -2398,6 +2404,7 @@ function openShareDialog(deckArr, deckName) {
     ov.querySelector('#shX').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(xText) + '&url=' + encodeURIComponent(u);
     ov.querySelector('#shLine').href = 'https://line.me/R/msg/text/?' + encodeURIComponent(lineText + '\n' + u);
     const rep = ov.querySelector('#shRep'); if (rep) rep.innerHTML = shareReplica(deckArr, grade, (byName && byOn()) ? byName : ''); // プレビューはページ内描画＝軽量・即時・by安定
+    if (window.CRI18N) CRI18N.applyTo(ov); // 再同期で作り直した部分（プレビュー等）を再翻訳
   };
   if (shByBtn) shByBtn.onclick = () => {
     shByBtn.classList.toggle('active');
@@ -2406,7 +2413,7 @@ function openShareDialog(deckArr, deckName) {
   };
   syncLinks();
   const copyBtn = ov.querySelector('#shCopy');
-  copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = '✓ コピーしました'; }); };
+  copyBtn.onclick = () => { navigator.clipboard.writeText(finalUrl()).then(() => { copyBtn.textContent = TR('✓ コピーしました'); }); };
   document.body.appendChild(ov);
   document.body.classList.add('share-open'); // プレビュー中はデッキ側アニメを停止
 }
@@ -2431,7 +2438,7 @@ async function openSlotLoadPicker() {
   ov.className = 'slot-pop';
   const chips = [1,2,3,4,5].map(i => {
     const s = slots.find(x => x.slot === i);
-    const nm = s ? `${(s.slots || []).length}枚` : '空き'; // デッキ名（スロット2等）ではなく枚数表示
+    const nm = s ? T('cards.n', { n: (s.slots || []).length }) : '空き'; // デッキ名ではなく枚数表示
     const cur = currentSlot === i ? ' current' : '';
     return `<div class="slot-chip ${s?'':'empty'}${cur}" data-slot="${i}" ${s?'':'data-empty="1"'}>
       <span class="num">${i}</span><span class="nm">${nm}</span>
@@ -2585,7 +2592,7 @@ function promptDeckName(placeholder) {
 let _toastTimer = null;
 function showToast(msg, ms) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  t.textContent = (window.CRI18N ? CRI18N.tr(msg) : msg); t.classList.add('show'); // 固定文は自動翻訳（動的文はT()で翻訳済み＝素通り）
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2200);
 }

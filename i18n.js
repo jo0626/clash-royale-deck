@@ -15,7 +15,102 @@
 
   // 原文(日本語) → 各言語。キーは画面に出る日本語テキスト（trimして照合）。
   const DICT = {
+    // 日本語テンプレ（t()用。{name}等のプレースホルダを含む動的文字列の原文）
+    ja: {
+      "toast.movedToSlot": "{name} をスロット{n}へ移動",
+      "toast.removedFromDeck": "{name} をデッキから外しました",
+      "decks.srcTop": "世界トップ{n}ランカー（過去3日で延べ{p}人分を集計）",
+      "decks.srcTopNoSample": "世界トップ{n}ランカー",
+      "decks.srcGenericSample": "世界上位ランカー延べ{p}人",
+      "decks.srcGeneric": "世界上位ランカー",
+      "decks.subMain": "<b>{hrs}時間ごとに更新されます。</b>{src}の<b>過去3日間の使用デッキ</b>を集計しています。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。",
+      "decks.noteMain": "{hrs}時間ごとに更新／{src}の過去3日間のデッキから集計",
+      "decks.noteSample": "※ サンプル表示です（集計データ連携の準備中）",
+      "decks.lastUpdated": "最終更新 {t}",
+      "decks.fetchFail": "※ 集計データの取得に失敗したため、代表的な型を表示しています",
+      "decks.descWin": "<b>過去3日間</b>の対戦結果（合計100戦以上）から、<b>勝率が高い</b>デッキ順に表示されます。",
+      "decks.descTrend": "<b>過去3日間</b>と比べ、<b>使用人数が伸びた</b>デッキ順に表示されます。",
+      "decks.descUsage": "<b>過去3日間</b>で、実際に使っている<b>人数と％が多い</b>デッキ順に表示されます。",
+      "decks.descUsageN": "<b>過去3日間</b>で、延べ<b>{n}人</b>の内、実際に使っている<b>人数と％が多い</b>デッキ順に表示されます。",
+      "decks.trendSoon": "急上昇は準備中です",
+      "decks.trendSoonNote": "数回の更新でデータがたまり次第、自動で表示されます",
+      "decks.ownedCount": "{shown} / {total} デッキが今のカードで組めます",
+      "decks.ownedCountFiltered": "{shown} / {total} デッキ（絞り込み中）",
+      "decks.ownedHint": "ログインしてクラロワIDを登録すると使えます",
+      "share.byBtn": "👤 「share by {name}」を入れて投稿",
+      "share.xText": "クラロワデッキが完成したよ！あなたもデッキを作ろう！ #クラロワ #CRDeckBuilders",
+      "share.lineText": "あなたのデッキを共有しましょう！",
+      "slot.n": "スロット{n}",
+      "cards.n": "{n}枚",
+      "fav.removeQ": "{name} をお気に入りから外す？",
+      "swap.withWhich": "{name} をどちらと入れ替える？"
+    },
     en: {
+      "toast.movedToSlot": "Moved {name} to slot {n}",
+      "toast.removedFromDeck": "Removed {name} from the deck",
+      "decks.srcTop": "the top {n} ranked players ({p} entries)",
+      "decks.srcTopNoSample": "the top {n} ranked players",
+      "decks.srcGenericSample": "top players ({p} entries)",
+      "decks.srcGeneric": "top players",
+      "decks.subMain": "<b>Updated every {hrs} hours.</b> Aggregating <b>decks used over the last 3 days</b> by {src}. Sign in and set your Clash Royale ID to filter to <b>only decks you can build</b>.",
+      "decks.noteMain": "Updated every {hrs}h · from {src}, last 3 days",
+      "decks.noteSample": "※ Sample data (live aggregation is being set up)",
+      "decks.lastUpdated": "Last updated {t}",
+      "decks.fetchFail": "※ Couldn't load aggregated data; showing representative archetypes",
+      "decks.descWin": "Sorted by <b>highest win rate</b>, from match results over the <b>last 3 days</b> (100+ games total).",
+      "decks.descTrend": "Sorted by decks whose <b>player count grew</b> compared with the <b>last 3 days</b>.",
+      "decks.descUsage": "Sorted by decks <b>most used</b> (by player count and %) over the <b>last 3 days</b>.",
+      "decks.descUsageN": "Of <b>{n} entries</b> over the <b>last 3 days</b>, sorted by decks <b>most used</b> (by count and %).",
+      "decks.trendSoon": "Rising is coming soon",
+      "decks.trendSoonNote": "It will appear automatically once a few updates have gathered data",
+      "decks.ownedCount": "{shown} / {total} decks can be built with your current cards",
+      "decks.ownedCountFiltered": "{shown} / {total} decks (filtered)",
+      "decks.ownedHint": "Sign in and register your Clash Royale ID to use this",
+      "share.byBtn": "👤 Post with “share by {name}”",
+      "share.xText": "I just built a Clash Royale deck! Build yours too! #ClashRoyale #CRDeckBuilders",
+      "share.lineText": "Let's share your deck!",
+      "slot.n": "Slot {n}",
+      "cards.n": "{n} cards",
+      "fav.removeQ": "Remove {name} from favorites?",
+      "swap.withWhich": "Swap {name} with which?",
+      // ポップアップ／トーストの固定文（body監視・walkで文字一致）
+      "枚": "cards", "空き": "empty", "編集中": "editing",
+      "入れ替える？": "Swap?", "いま": "Now", "これに": "To this", "入れる": "Add",
+      "をどちらと入れ替える？": "— swap with which?",
+      "をお気に入りから外す？": "— remove from favorites?",
+      "外す": "Remove", "キャンセル": "Cancel", "閉じる": "Close", "スロット": "Slot",
+      "保存するスロットを選んで「保存」": "Pick a slot, then “Save”",
+      "呼び出すデッキを選ぶ（横スクロール）": "Pick a deck to load (scroll sideways)",
+      "✅ 保存しました！このデッキを共有する？": "✅ Saved! Share this deck?",
+      "𝕏 でポスト": "Post on 𝕏", "LINEで送る": "Send via LINE", "🔗 リンクをコピー": "🔗 Copy link",
+      "名前ボタンが光ってると、画像にあなたの名前が入ります。": "When the name button is lit, your name appears on the image.",
+      "閉じるときはこの外側をタップ": "Tap outside to close",
+      "✓ コピーしました": "✓ Copied",
+      // トースト
+      "8枚そろうと分析できます": "Analysis unlocks at 8 cards",
+      "✅ 保存しました": "✅ Saved", "保存に失敗しました": "Failed to save",
+      "スロットを選んでください": "Please pick a slot", "このスロットは空です": "This slot is empty",
+      "ログイン機能の読み込み中です": "Sign-in is still loading",
+      "ログイン確認中です。少し待ってからもう一度": "Checking your sign-in — please try again shortly",
+      "呼び出しにはログインが必要です": "Loading decks requires sign-in",
+      "スロットの取得に失敗しました": "Failed to load slots",
+      "保存済みデッキがありません": "No saved decks yet",
+      "保存にはログインが必要です": "Saving requires sign-in",
+      "デッキを読み込みました": "Deck loaded",
+      // support.html 特典ポップ（「i」ボタン）
+      "¥500 ひとしずく 💧": "¥500 — A Drop 💧",
+      "¥2,000 ボトル": "¥2,000 — Bottle",
+      "あなたの供給で、開発のエリクサーが少し貯まります。": "Your supply tops up a little Elixir for development.",
+      "その気持ちが本当に励みになります。": "That support truly keeps me going.",
+      "これからも全員無料で、もっと使いやすく育てていきます。": "I'll keep everything free for everyone and keep making it better.",
+      "たっぷりの供給、心からありがとう！": "Thank you so much for the generous supply!",
+      "いただいた分はサーバー維持・データ更新・新機能に大切に使います。": "I'll use it carefully for servers, data updates, and new features.",
+      "これからもどうぞよろしくお願いします 🙏": "Thanks for your continued support 🙏",
+      "※ 供給は純粋な応援です。ゲームの機能はすべて無料で使えます。": "※ Supply is purely support. All game features are free for everyone.",
+      "⚠ デッキは8枚まで": "⚠ Up to 8 cards",
+      "⚠ すでに追加済み": "⚠ Already added",
+      "⚠ チャンピオンは1枚まで": "⚠ Only 1 Champion allowed",
+      "⚠ チャンピオンはスロット2か3のみ": "⚠ Champions go in slot 2 or 3 only",
       // ヘッダー / ナビ
       "クラロワデッキ作成・診断ツール": "Clash Royale Deck Builder & Analyzer",
       "デッキ作成": "Deck Builder",
@@ -363,6 +458,22 @@
     return src;
   }
 
+  // プレースホルダ補間翻訳。JS生成文字列（トースト・動的注記など）用。
+  // 探索順：現在言語 → 英語 → 日本語テンプレ → キーそのもの。{name}などをvarsで置換。
+  function fmt(s, vars) {
+    return vars ? String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m)) : s;
+  }
+  function t(key, vars) {
+    const d = DICT[lang], de = DICT.en, dj = DICT.ja;
+    let s = (d && d[key] != null) ? d[key]
+          : (de && de[key] != null) ? de[key]
+          : (dj && dj[key] != null) ? dj[key]
+          : key;
+    return fmt(s, vars);
+  }
+  // 既存DOMのサブツリーを翻訳（body直下に動的生成されるポップアップ用）。
+  function applyTo(el) { if (el && lang !== 'ja') translateText(el); }
+
   function translateText(root) {
     if (!root) return;
     const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -420,6 +531,8 @@
     if (!LANGS.includes(l)) return;
     lang = l; try { localStorage.setItem('cr_lang', l); } catch (e) {}
     walk();
+    // 言語切替を各ページに通知（動的注記などをページ側で再描画してもらう）
+    try { window.dispatchEvent(new CustomEvent('crlangchange', { detail: { lang: l } })); } catch (e) {}
   }
 
   // 動的描画コンテナだけを限定監視（childListのみ＝再描画時だけ。毎フレームではない）
@@ -483,13 +596,27 @@
     }
   }
 
-  window.CRI18N = { setLang: setLang, apply: walk, get lang() { return lang; }, langs: LANGS };
+  window.CRI18N = { setLang: setLang, apply: walk, applyTo: applyTo, t: t, tr: tr, get lang() { return lang; }, langs: LANGS };
+
+  // body直下に動的生成されるポップアップ（スロット選択・SNS共有・確認ダイアログ・トースト等）を
+  // 挿入時に翻訳。childListのみ＝直下追加の瞬間だけ発火（パーティクル等はテキスト無しで実質ノーコスト）。
+  function observeBody() {
+    const mo = new MutationObserver(muts => {
+      if (lang === 'ja') return;
+      const adds = [];
+      muts.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) adds.push(n); }));
+      if (!adds.length) return;
+      requestAnimationFrame(() => adds.forEach(n => { if (n.isConnected) translateText(n); }));
+    });
+    mo.observe(document.body, { childList: true });
+  }
 
   function init() {
     injectSwitcher();
     walk();
     observe('cardList');
     observe('deckSlots');
+    observeBody();
     setTimeout(walk, 800);   // 初期描画の取りこぼし対策（1回だけ）
   }
   if (document.readyState !== 'loading') init();

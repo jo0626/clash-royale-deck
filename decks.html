@@ -386,12 +386,12 @@ function applyDecks() {
   // 急上昇がまだ空（前回スナップショット未蓄積）のときは集計中を表示
   if (activeTab === 'trend' && list.length === 0) {
     document.getElementById('deckList').innerHTML =
-      '<div class="coming-soon"><div class="big">🔥</div>急上昇は準備中です'
-      + '<div class="note" style="margin-top:8px">数回の更新でデータがたまり次第、自動で表示されます</div></div>';
+      '<div class="coming-soon"><div class="big">🔥</div>' + _t('decks.trendSoon')
+      + '<div class="note" style="margin-top:8px">' + _t('decks.trendSoonNote') + '</div></div>';
   }
   if (note) {
-    if (onlyOwned && ownedSet) note.textContent = shown.length + ' / ' + list.length + ' デッキ' + (cardFilter ? '（絞り込み中）' : 'が今のカードで組めます');
-    else note.textContent = ownedSet ? '' : (onlyOwned ? 'ログインしてクラロワIDを登録すると使えます' : '');
+    if (onlyOwned && ownedSet) note.textContent = _t(cardFilter ? 'decks.ownedCountFiltered' : 'decks.ownedCount', { shown: shown.length, total: list.length });
+    else note.textContent = ownedSet ? '' : (onlyOwned ? _t('decks.ownedHint') : '');
   }
 }
 // タブごとの説明文（押すたびに切り替え）
@@ -401,11 +401,11 @@ function updateDeckTabDesc() {
   const n = PLAYERS_TOTAL || 0;
   let t;
   if (activeTab === 'win') {
-    t = '<b>過去3日間</b>の対戦結果（合計100戦以上）から、<b>勝率が高い</b>デッキ順に表示されます。';
+    t = _t('decks.descWin');
   } else if (activeTab === 'trend') {
-    t = '<b>過去3日間</b>と比べ、<b>使用人数が伸びた</b>デッキ順に表示されます。';
+    t = _t('decks.descTrend');
   } else {
-    t = '<b>過去3日間</b>で、' + (n ? '延べ<b>' + n + '人</b>の内、' : '') + '実際に使っている<b>人数と％が多い</b>デッキ順に表示されます。';
+    t = n ? _t('decks.descUsageN', { n: n }) : _t('decks.descUsage');
   }
   el.innerHTML = t;
 }
@@ -967,6 +967,35 @@ async function setCardMode(mode, force) {
 // データ(decks.json)はGASが「同じリポジトリの data ブランチ」に更新する → raw から取得。
 // サイト本体(main)をManus等で丸ごと差し替えても、data ブランチは触らないので消えない。
 // 取得できなければ同一オリジンの decks.json、それも無ければ内蔵DECKSにフォールバック（移行中も壊れない）。
+// 集計テキスト（更新間隔・母数・最終更新など）。動的＝i18nのt()で言語対応。言語切替時に再描画する。
+let _agg = { top: null, sample: null, hrs: 6, cardsReal: false, updated: null };
+function _t(k, v) { return window.CRI18N ? CRI18N.t(k, v) : k; }
+function srcTextI18n() {
+  if (_agg.top) return _agg.sample ? _t('decks.srcTop', { n: _agg.top, p: _agg.sample }) : _t('decks.srcTopNoSample', { n: _agg.top });
+  return _agg.sample ? _t('decks.srcGenericSample', { p: _agg.sample }) : _t('decks.srcGeneric');
+}
+function renderAggText() {
+  const src = srcTextI18n();
+  const sub = document.getElementById('pageSub');
+  if (sub) sub.innerHTML = _t('decks.subMain', { hrs: _agg.hrs, src: src });
+  window.__cardsNoteEnv = _agg.cardsReal ? _t('decks.noteMain', { hrs: _agg.hrs, src: src }) : _t('decks.noteSample');
+  const cn = document.getElementById('cardsNote');
+  if (cn && _cardMode !== 'me') cn.textContent = window.__cardsNoteEnv;
+  const note = document.getElementById('aggNote');
+  if (note) {
+    if (_agg.updated) {
+      const isJa = !window.CRI18N || CRI18N.lang === 'ja';
+      const d = new Date(_agg.updated);
+      const ts = d.toLocaleString(isJa ? 'ja-JP' : undefined, { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      note.textContent = _t('decks.lastUpdated', { t: ts });
+    } else {
+      note.textContent = _t('decks.fetchFail');
+    }
+  }
+}
+// 言語切替時：集計テキストとタブ説明を現在言語で作り直す
+window.addEventListener('crlangchange', () => { try { renderAggText(); updateDeckTabDesc(); } catch (e) {} });
+
 const DECKS_DATA_URL = 'https://raw.githubusercontent.com/rea-fi-lia/clash-royale-deck/data/decks.json';
 fetch(DECKS_DATA_URL, { cache: 'no-store' })
   .then(r => { if (!r.ok) throw 0; return r.json(); })
@@ -981,31 +1010,16 @@ fetch(DECKS_DATA_URL, { cache: 'no-store' })
     CARDS_DATA = cardsReal ? j.cards : CARDS_SAMPLE;
     initCardMeta(!cardsReal);
     PLAYERS_TOTAL = (j && j.players) ? j.players : 0;
-    const sample = (j && j.players) ? j.players : null;
-    const srcText = (j && j.topPlayers)
-      ? ('世界トップ' + j.topPlayers + 'ランカー' + (sample ? '（過去3日で延べ' + sample + '人分を集計）' : ''))
-      : (sample ? ('世界上位ランカー延べ' + sample + '人') : '世界上位ランカー');
-    const hrs = (j && j.intervalHours) ? j.intervalHours : 6;
-    UPDATE_HRS = hrs;
+    _agg.sample = (j && j.players) ? j.players : null;
+    _agg.top = (j && j.topPlayers) ? j.topPlayers : null;
+    _agg.hrs = (j && j.intervalHours) ? j.intervalHours : 6;
+    _agg.cardsReal = cardsReal;
+    _agg.updated = (j && j.updated) ? j.updated : null;
+    UPDATE_HRS = _agg.hrs;
     // 勝率タブが無ければ非表示
     const winTabBtn = document.querySelector('.deck-tab[data-tab="win"]');
     if (winTabBtn) winTabBtn.style.display = WIN_DECKS.length ? '' : 'none';
-    const sub = document.getElementById('pageSub');
-    if (sub) sub.innerHTML = '<b>' + hrs + '時間ごとに更新されます。</b>' + srcText + 'の<b>過去3日間の使用デッキ</b>を集計しています。ログインしてクラロワIDを設定すると<b>自分のカードで組めるデッキだけ</b>に絞り込めます。';
-    window.__cardsNoteEnv = cardsReal
-      ? (hrs + '時間ごとに更新／' + srcText + 'の過去3日間のデッキから集計')
-      : '※ サンプル表示です（集計データ連携の準備中）';
-    const cn = document.getElementById('cardsNote');
-    if (cn && _cardMode !== 'me') cn.textContent = window.__cardsNoteEnv;
-    const note = document.getElementById('aggNote');
-    if (note) {
-      if (j && j.updated) {
-        const d = new Date(j.updated);
-        note.textContent = '最終更新 ' + d.toLocaleString('ja-JP', { year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
-      } else {
-        note.textContent = '※ 集計データの取得に失敗したため、代表的な型を表示しています';
-      }
-    }
+    renderAggText();
     updateDeckTabDesc();
     applyDecks();
   })
