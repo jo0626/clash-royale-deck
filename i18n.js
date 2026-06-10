@@ -73,7 +73,34 @@
       // アカウント
       "🔑 ログイン": "🔑 Sign in",
       "ログアウト": "Sign out",
-      "✨ ドラッグの軌跡": "✨ Drag trail"
+      "✨ ドラッグの軌跡": "✨ Drag trail",
+      // 供給メニューのティア名（短い語句＝文字一致）
+      "ひとしずく 💧": "A Drop 💧", "ボトル": "Bottle", "ポンプ": "Pump", "ドラム缶": "Drum", "タンク": "Tank", "プール": "Pool", "製造所": "Factory", "ダム": "Dam", "エリクサーの泉": "Elixir Spring", "隠し": "Hidden",
+      // strategy / contact の短文
+      "デッキ分析": "Deck Analysis",
+      "← デッキ作成ツールに戻る": "← Back to the deck builder",
+      "X（旧Twitter）の DM やメンションでもお気軽にどうぞ。": "Feel free to DM or mention me on X (formerly Twitter).",
+      // 段落（data-i18n、<b>/<br>を含む）
+      "sup.intro": "This tool is run for free. If you enjoy it, I'd be glad if you'd send the developer some <b>Elixir</b> 💧<br>Your support goes toward <b>server upkeep</b>, card-data updates, and new features.",
+      "sup.menuNote": "Thank you, always! Your supply goes toward server upkeep, card-data updates, and new features. Supply is purely a way to cheer me on — every feature is free for everyone.",
+      "sup.notes": "※ Your supply is recorded as a <b>cumulative</b> total. Thank you so much, truly.<br>※ Amounts are a guide; you can enter any amount on the payment screen (one-time, not monthly).<br>※ Supply is purely support. All features — deck building, analysis, and more — are free for everyone.<br>※ This material is unofficial and is not endorsed by Supercell.",
+      "con.intro": "“I'd love this feature,” “this card is missing,” “this part is hard to use” — anything is welcome.<br>Your feedback helps make this tool better, little by little.",
+      "strat.sub": "Visualize your deck's average elixir and cost curve, plus its offense / defense / spell balance, to grasp its strengths and weaknesses.",
+      "strat.soon": "Analysis is coming soon.<br>We're building visualizations for deck balance<br>and elixir cost curves.",
+      // index: 分析ボタン（矢印付き）
+      "デッキ分析へ →": "Analyze deck →",
+      // decks: 見出し・タブ・解説（静的テキスト＝文字一致）
+      "世界上位ランカーの使用デッキを集計して掲載しています。": "Aggregated from the decks used by the world's top-ranked players.",
+      "📊 使用率": "📊 Usage", "🏅 勝率": "🏅 Win rate", "🔥 急上昇": "🔥 Rising",
+      "🃏 組めるデッキだけ表示": "🃏 Only decks I can build",
+      "※ メタは随時変わります。代表的な型を掲載しています。": "※ The meta shifts constantly. These are representative archetypes.",
+      "カード": "Cards", "カード人気・メタ": "Card popularity & meta",
+      "カード1枚ごとの使用率と勝率を、マップ上の位置で表示。「安定」「目立たないが勝ってる」「チャレンジング」など、そのカードが今の環境でどれだけポテンシャルを持つかが一目でわかる。": "Each card's usage and win rate, plotted by position on the map. See at a glance how much potential a card has in the current meta — “stable,” “quietly winning,” “challenging,” and more.",
+      "※ 勝率は「そのカードを入れたデッキ」が勝った割合です。カード単体の力とは限りませんが、勝てるデッキに採用されている＝強い構築の一員として機能しているという意味合いで表示しています。": "※ Win rate is the share of wins for decks that include the card. It isn't the card's power in isolation, but being used in winning decks means it works as part of a strong build.",
+      "あなたの環境": "Your region", "で見る": "view", "↻ 更新": "↻ Refresh",
+      "メタマップ・Tier": "Meta map & Tiers", "全て表示": "Show all", "選択をクリア": "Clear selection",
+      "下のランキングでカードをタップすると、ここに表示されます。横=使用率の順位（右ほど人気）／縦=勝率の順位（上ほど高い）。": "Tap a card in the ranking below to show it here. Horizontal = usage rank (further right = more popular) / Vertical = win-rate rank (higher = better).",
+      "※ 使用率・勝率・急上昇いずれも直近3日間のデータから算出（更新ごとに最古を捨てて巡回）。": "※ Usage, win rate and rising are all computed from the last 3 days of data (each update drops the oldest day)."
     },
     es: {
       "クラロワデッキ作成・診断ツール": "Creador y analizador de mazos de Clash Royale",
@@ -343,7 +370,7 @@
         const p = n.parentNode; if (!p) return NodeFilter.FILTER_REJECT;
         const tag = p.nodeName;
         if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEXTAREA') return NodeFilter.FILTER_REJECT;
-        if (p.closest && p.closest('[data-no-i18n]')) return NodeFilter.FILTER_REJECT;
+        if (p.closest && (p.closest('[data-no-i18n]') || p.closest('[data-i18n]'))) return NodeFilter.FILTER_REJECT; // data-i18n要素は要素単位で訳す
         return NodeFilter.FILTER_ACCEPT;
       }
     });
@@ -369,9 +396,22 @@
     });
   }
 
+  // data-i18n="key" の要素は innerHTML ごと差し替え（<b>や<br>を含む長文・段落用）。未訳は英語→原文の順でフォールバック。
+  function translateEls() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      let o = el.dataset.i18nOrig; if (o == null) { o = el.innerHTML; el.dataset.i18nOrig = o; }
+      if (lang === 'ja') { if (el.innerHTML !== o) el.innerHTML = o; return; }
+      const d = DICT[lang], de = DICT.en;
+      const rep = (d && d[key] != null) ? d[key] : (de && de[key] != null ? de[key] : null);
+      el.innerHTML = (rep != null) ? rep : o;
+    });
+  }
+
   function walk() {
     document.documentElement.setAttribute('lang', lang);
     document.documentElement.setAttribute('dir', RTL[lang] ? 'rtl' : 'ltr');
+    translateEls();
     translateText(document.body);
     translateAttrs();
   }
