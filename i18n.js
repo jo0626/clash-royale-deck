@@ -54,7 +54,7 @@
       "エリクサー供給メニュー": "Elixir Supply Menu",
       "おすすめ": "Recommended",
       "人気": "Popular",
-      "特典の内容": "What you get",
+      "開発者からのメッセージ": "A message from the developer",
       "閉じる": "Close",
       // 問い合わせ(contact)
       "種類": "Type",
