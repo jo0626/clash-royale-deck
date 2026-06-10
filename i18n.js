@@ -4,7 +4,7 @@
  *   ・UI文言は読み込み時＋言語切替時にDOM全体を1回走査。
  *   ・カード名など動的描画は #cardList / #deckSlots だけを限定監視（childListのみ＝
  *     ユーザー操作の再描画時だけ発火。毎フレームではないので軽い／落ちない）。
- *  追加言語：LANGS と DICT に足すだけ。RTL(ar/fa)は dir=rtl を自動設定。
+ *  追加言語：LANGS と DICT に足すだけ。レイアウトは全言語LTR固定（ar/faの文字はbidiで自動RTL描画）。
  * ============================================================= */
 (function () {
   const LANGS = ['ja', 'en', 'es', 'pt-br', 'fr', 'de', 'ru', 'ko', 'zh-cn', 'ar', 'tr', 'it', 'id', 'th', 'vi', 'zh-tw', 'fa', 'nl'];
@@ -517,7 +517,6 @@
 
   let lang = pickLang();
   const origText = new WeakMap();
-  const RTL = { ar: 1, fa: 1 };
 
   function tr(src) {
     if (lang === 'ja') return src;
@@ -590,7 +589,9 @@
 
   function walk() {
     document.documentElement.setAttribute('lang', lang);
-    document.documentElement.setAttribute('dir', RTL[lang] ? 'rtl' : 'ltr');
+    // レイアウトは全言語で固定（LTR）。アラビア語/ペルシャ語の「文字」は
+    // ブラウザのbidi処理で自動的に右→左で描画されるので、UIの左右反転はしない。
+    document.documentElement.setAttribute('dir', 'ltr');
     translateEls();
     translateText(document.body);
     translateAttrs();
