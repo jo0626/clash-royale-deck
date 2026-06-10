@@ -9,6 +9,9 @@
 (function () {
   const LANGS = ['ja', 'en', 'es', 'pt-br', 'fr', 'de', 'ru', 'ko', 'zh-cn', 'ar', 'tr', 'it', 'id', 'th', 'vi', 'zh-tw', 'fa', 'nl'];
   const LANG_NAMES = { ja: '日本語', en: 'English', es: 'Español', 'pt-br': 'Português', 'zh-cn': '简体中文', fr: 'Français', de: 'Deutsch', ru: 'Русский', ko: '한국어', ar: 'العربية', tr: 'Türkçe', it: 'Italiano', id: 'Indonesia', th: 'ไทย', vi: 'Tiếng Việt', 'zh-tw': '繁體中文', fa: 'فارسی', nl: 'Nederlands' };
+  // 閉じている時の2文字コード / 開いた時の国旗
+  const LANG_CODE = { ja: 'JP', en: 'EN', es: 'ES', 'pt-br': 'PT', 'zh-cn': 'ZH', fr: 'FR', de: 'DE', ru: 'RU', ko: 'KO', ar: 'AR', tr: 'TR', it: 'IT', id: 'ID', th: 'TH', vi: 'VI', 'zh-tw': 'TW', fa: 'FA', nl: 'NL' };
+  const LANG_FLAG = { ja: '🇯🇵', en: '🇬🇧', es: '🇪🇸', 'pt-br': '🇧🇷', 'zh-cn': '🇨🇳', fr: '🇫🇷', de: '🇩🇪', ru: '🇷🇺', ko: '🇰🇷', ar: '🇸🇦', tr: '🇹🇷', it: '🇮🇹', id: '🇮🇩', th: '🇹🇭', vi: '🇻🇳', 'zh-tw': '🇹🇼', fa: '🇮🇷', nl: '🇳🇱' };
 
   // 原文(日本語) → 各言語。キーは画面に出る日本語テキスト（trimして照合）。
   const DICT = {
@@ -393,28 +396,49 @@
 
   function injectSwitcher() {
     const header = document.querySelector('header');
-    if (!header || document.getElementById('crLangSel')) return;
-    const sel = document.createElement('select');
-    sel.id = 'crLangSel'; sel.setAttribute('data-no-i18n', '');
-    sel.setAttribute('aria-label', 'Language');
-    sel.style.cssText = 'margin-left:auto;background:var(--surface2,#1e2230);color:var(--text,#e8eaf0);border:1px solid var(--border-hi,rgba(255,255,255,.15));border-radius:8px;font-size:12px;padding:4px 6px;cursor:pointer;flex:0 0 auto;max-width:34vw;';
+    if (!header || document.getElementById('crLang')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'crLang'; wrap.setAttribute('data-no-i18n', '');
+    wrap.style.cssText = 'position:relative;flex:0 0 auto;margin-left:auto;';
+
+    const btn = document.createElement('button');
+    btn.id = 'crLangBtn'; btn.type = 'button'; btn.setAttribute('aria-label', 'Language');
+    btn.style.cssText = 'display:flex;align-items:center;gap:3px;background:var(--surface2,#1e2230);color:var(--text,#e8eaf0);border:1px solid var(--border-hi,rgba(255,255,255,.15));border-radius:8px;font-size:12px;font-weight:700;padding:5px 7px;cursor:pointer;line-height:1;';
+    function updateBtn() { btn.innerHTML = '<span>' + (LANG_CODE[lang] || lang.toUpperCase().slice(0, 2)) + '</span><span style="opacity:.55;font-size:10px">▾</span>'; }
+    updateBtn();
+
+    const menu = document.createElement('div');
+    menu.id = 'crLangMenu';
+    menu.style.cssText = 'position:absolute;top:calc(100% + 4px);right:0;display:none;background:var(--surface,#161920);border:1px solid var(--border-hi,rgba(255,255,255,.15));border-radius:10px;padding:4px;max-height:60vh;overflow:auto;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:150px;';
     LANGS.forEach(l => {
-      const o = document.createElement('option'); o.value = l; o.textContent = LANG_NAMES[l] || l;
-      if (l === lang) o.selected = true; sel.appendChild(o);
+      const it = document.createElement('button'); it.type = 'button';
+      it.textContent = (LANG_FLAG[l] || '') + '  ' + (LANG_NAMES[l] || l);
+      it.style.cssText = 'display:block;width:100%;text-align:left;background:none;border:none;color:var(--text,#e8eaf0);font-size:13px;padding:7px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;';
+      it.onmouseenter = () => it.style.background = 'var(--surface2,#1e2230)';
+      it.onmouseleave = () => it.style.background = 'none';
+      it.onclick = () => { setLang(l); updateBtn(); menu.style.display = 'none'; };
+      menu.appendChild(it);
     });
-    sel.addEventListener('change', () => setLang(sel.value));
+
+    btn.onclick = (e) => { e.stopPropagation(); menu.style.display = menu.style.display === 'block' ? 'none' : 'block'; };
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) menu.style.display = 'none'; });
+
+    wrap.appendChild(btn); wrap.appendChild(menu);
     const acct = document.getElementById('cr-account');
-    if (acct && acct.parentNode === header) header.insertBefore(sel, acct);
-    else header.appendChild(sel);
+    if (acct && acct.parentNode === header) header.insertBefore(wrap, acct);
+    else header.appendChild(wrap);
+
     if (!document.getElementById('crI18nStyle')) {
       const st = document.createElement('style'); st.id = 'crI18nStyle';
       st.textContent =
         'header{flex-wrap:nowrap !important;align-items:center !important;gap:10px}' +
         '.logo{flex:0 0 auto}' +
-        '#crLangSel{flex:0 0 auto}' +
+        '#crLang{flex:0 0 auto}' +
         '#cr-account{margin-left:8px;min-width:0;flex:0 1 auto}' +
         '#cr-account .cr-avatar-btn{max-width:100%;align-items:center}' +
-        '#cr-account #crAvatarName{white-space:normal;line-height:1.12;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;text-align:left;max-width:14ch}';
+        '#cr-account #crAvatarName{white-space:normal;line-height:1.12;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;text-align:left;max-width:14ch}' +
+        /* ロール説明（自由文の日本語）は非日本語では非表示にして混在を防ぐ（将来ロール自体を廃止予定） */
+        'html:not([lang="ja"]) .card-role{display:none}';
       document.head.appendChild(st);
     }
   }
