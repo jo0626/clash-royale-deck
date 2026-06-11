@@ -223,7 +223,6 @@
       <a class="grade-card g-1 stripe-donate" data-link="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00"
          href="https://donate.stripe.com/eVq6oI5Kn66sd7fgh9gYU00" target="_blank" rel="noopener">
         <button class="grade-info" type="button" data-perk="drop" aria-label="開発者からのメッセージ">i</button>
-        <span class="grade-badge">おすすめ</span>
         <span class="grade-gem"></span>
         <div class="grade-name">¥500</div>
         <div class="grade-cond">ひとしずく 💧</div>
@@ -231,7 +230,6 @@
       <a class="grade-card g-2 stripe-donate" data-link="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01"
          href="https://donate.stripe.com/4gM6oI1u78eAd7f2qjgYU01" target="_blank" rel="noopener">
         <button class="grade-info" type="button" data-perk="bottle" aria-label="開発者からのメッセージ">i</button>
-        <span class="grade-badge">人気</span>
         <span class="grade-gem"></span>
         <div class="grade-name">¥2,000</div>
         <div class="grade-cond">ボトル</div>
@@ -290,20 +288,22 @@
   </div>
 
   <div class="note" data-i18n="sup.notes">
-    ※ いただいた供給は<b>累計</b>で記録しています。いつも本当にありがとうございます。<br>
+    ※ <b>ログイン中の場合</b>、いただいた供給は<b>累計</b>で記録しています。いつも本当にありがとうございます。<br>
+    ※ OFUSEでの応援も累計に反映できます。メッセージに<b>このサイトのログインメールアドレス</b>を添えてください。<br>
     ※ 金額は目安です。支援画面で任意の額を入力できます（月額ではなく1回きり）。<br>
     ※ 供給は純粋な応援です。デッキ作成・分析など、すべての機能は誰でも無料で使えます。<br>
-    ※ This material is unofficial and is not endorsed by Supercell.
+    ※ This material is unofficial and is not endorsed by Supercell. For more information see Supercell's <a href='https://supercell.com/en/fan-content-policy/' target='_blank' rel='noopener' style='color:#8a90a0;'>Fan Content Policy</a>.
   </div>
 </div>
 
 <div class="footer-signature">
   <span class="by-text">By</span> <span class="creator-name">rea-fi-lia</span>
+  <div style="font-size:10px;color:#6b7080;margin-top:10px;letter-spacing:0;line-height:1.6;font-family:sans-serif;">This material is unofficial and is not endorsed by Supercell.<br>For more information see Supercell's <a href="https://supercell.com/en/fan-content-policy/" target="_blank" rel="noopener" style="color:#8a90a0;">Fan Content Policy</a>.</div>
 </div>
 
 <!-- ログイン（Firebase）。ヘッダーにログインボタンが自動で付きます -->
-<script type="module" src="auth.js?v=260611"></script>
-<script defer src="i18n.js?v=260611"></script>
+<script type="module" src="auth.js?v=260612"></script>
+<script defer src="i18n.js?v=260612"></script>
 <script>
 // ログイン中はStripeリンクに ?client_reference_id=<uid> を付与＝webhookが「誰の供給か」を記録できる。
 // 未ログインでも支援は可能（その場合は donationsUnclaimed に退避され、後でメール照合/手動反映）。
