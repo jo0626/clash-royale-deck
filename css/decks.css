@@ -228,3 +228,4 @@
 .ms-share { flex:0 0 44px; text-align:right; font-size:12px; font-weight:700; color:var(--text); }
 .ms-win { flex:0 0 76px; text-align:right; font-size:10px; color:var(--text-muted); }
 @media (max-width:480px){ .ms-name{flex-basis:78px;} .ms-win{flex-basis:64px;} }
+.ms-suf { font-size:10px; margin-left:2px; }

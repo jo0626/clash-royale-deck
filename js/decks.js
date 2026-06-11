@@ -732,11 +732,14 @@ function renderMetaShare() {
   el.style.display = '';
   el.innerHTML = '<div class="ms-title">' + _tr('🧭 環境シェア（勝ち筋別・過去3日）') + '</div>'
     + top.map(m => {
-      const info = CARD_INFO[m.k];
-      const img = (info && info.i) ? '<img src="' + info.i + '" alt="' + m.k + '" loading="lazy">' : '';
+      const base = String(m.k).replace(/[⚡👑]+$/, '');
+      const suf = String(m.k).slice(base.length);
+      const info = CARD_INFO[base];
+      const src = info ? ((suf === '⚡' && info.iv) ? info.iv : (suf === '👑' && info.ih) ? info.ih : info.i) : '';
+      const img = src ? '<img src="' + src + '" alt="' + base + '" loading="lazy">' : '';
       return '<div class="ms-row">'
         + '<span class="ms-ico">' + img + '</span>'
-        + '<span class="ms-name"><span>' + m.k + '</span></span>'
+        + '<span class="ms-name"><span>' + base + '</span>' + (suf ? '<span class="ms-suf">' + suf + '</span>' : '') + '</span>'
         + '<span class="ms-bar"><i style="width:' + Math.round((m.share || 0) / maxS * 100) + '%"></i></span>'
         + '<span class="ms-share">' + (m.share || 0) + '%</span>'
         + '<span class="ms-win">' + (m.win != null ? _t('decks.winPct', { p: m.win }) : '') + '</span>'

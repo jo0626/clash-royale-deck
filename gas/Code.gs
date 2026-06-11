@@ -113,12 +113,28 @@ function deckNameGuess(slots) {
 
 // ★勝ち筋（アーキタイプ）判定。配列の順序＝優先度（上から先に見つかったカード＝そのデッキの勝ち筋）。
 //   調整したくなったらこの配列を並べ替え・追加するだけ。該当なしは「その他」。
+// 2026-06-11 オーナー監修の36枚（重ビートダウン→攻城→空→ホグ/橋前→サブ勝ち筋の順。下ほど「他に無い時だけ主軸」）
 var ARCH_WINCONS = ['ラヴァハウンド', 'ゴーレム', 'エレクトロジャイアント', 'エリクサーゴーレム', '三銃士',
-  '巨大クロスボウ', '迫撃砲', 'ロイヤルジャイアント', 'ジャイアント', 'エアバルーン', 'スケルトンラッシュ',
-  'ホグライダー', 'ロイヤルホグ', 'ラムライダー', '攻城バーバリアン', 'ペッカ', 'メガナイト',
-  'ゴブリンドリル', 'ウォールブレイカー', 'ディガー'];
+  'ゴブジャイアント', 'ジャイアント', '巨大スケルトン', 'スパーキー', '見習い親衛隊', 'ペッカ', 'メガナイト',
+  'ボスアサシン', 'ロイヤルジャイアント', '巨大クロスボウ', '迫撃砲', 'エアバルーン', 'スケルトンバレル',
+  'ホグライダー', 'ロイヤルホグ', 'ラムライダー', '攻城バーバリアン', 'エリートバーバリアン', 'プリンス',
+  'ゴブリンマシン', 'ゴブリンシュタイン', 'モンク', 'アーチャークイーン', 'ゴールドナイト', 'スケルトンラッシュ',
+  'ゴブリンバレル', 'ゴブリンドリル', 'ウォールブレイカー', 'マイティディガー', 'ディガー', 'ロケット'];
 function archOf_(jpArr) {
   for (var i = 0; i < ARCH_WINCONS.length; i++) if (jpArr.indexOf(ARCH_WINCONS[i]) >= 0) return ARCH_WINCONS[i];
+  return 'その他';
+}
+// ★形態つき勝ち筋：同じカードでも 通常 / ⚡限界突破 / 👑ヒーロー を別の勝ち筋として返す
+//   （フォーム不明 both はヒーロー扱い＝finalizeDeck と同じタイブレーク）
+function archForm_(jpArr, forms) {
+  for (var i = 0; i < ARCH_WINCONS.length; i++) {
+    var idx = jpArr.indexOf(ARCH_WINCONS[i]);
+    if (idx >= 0) {
+      var f = forms ? forms[idx] : null;
+      var suf = (f === 'evo') ? '⚡' : (f === 'hero' || f === 'both') ? '👑' : '';
+      return ARCH_WINCONS[i] + suf;
+    }
+  }
   return 'その他';
 }
 
@@ -127,6 +143,16 @@ function wilson_(w, g) {
   if (!g) return 0;
   var z = 1.96, p = w / g, n = g;
   return (p + z * z / (2 * n) - z * Math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)) / (1 + z * z / n);
+}
+
+// ★回転係数：cyc=最安4枚の合計（理論上の最速回転）/ hvy=最高4枚の合計（最も重い回り）。
+//   表示用ではなく分析用の素データとして各デッキに付与（勝率×回転速度の相関分析などに使う）。
+function cycHvy_(slots) {
+  var cs = (slots || []).map(function (n) { return COST[n] || 0; }).sort(function (a, b) { return a - b; });
+  var cyc = 0, hvy = 0;
+  for (var i = 0; i < 4 && i < cs.length; i++) cyc += cs[i];
+  for (var j = Math.max(0, cs.length - 4); j < cs.length; j++) hvy += cs[j];
+  return { cyc: cyc, hvy: hvy };
 }
 
 function updateDecks() {
@@ -236,7 +262,7 @@ function updateDecks() {
       if (od && sameSig_(d.jp, od.jp)) continue;   // ★完全ミラー除外
       tally(win, d, tc > oc, tc, oc);
       if (od) {                                     // ★相性（アーキタイプ別）
-        var k = archOf_(d.jp) + '|' + archOf_(od.jp);
+        var k = archForm_(d.jp, d.fm) + '|' + archForm_(od.jp, od.fm);
         var mm = muNow[k] || (muNow[k] = [0, 0]);
         mm[0]++; if (tc > oc) mm[1]++;
       }
@@ -362,8 +388,12 @@ function updateDecks() {
     });
   });
 
-  // ★署名→アーキタイプ（勝ち筋）。署名の前半=ソート済み8枚なのでそこから判定できる
-  function archOfSig_(sig) { return archOf_(sig.split('#')[0].split('|')); }
+  // ★署名→アーキタイプ（勝ち筋・形態つき）。確定済みの絵柄（forms）があれば ⚡/👑 を付けて返す
+  function archOfSig_(sig) {
+    var d = renderSig(sig);
+    if (d && d.slots && d.forms) return archForm_(d.slots, d.forms);
+    return archOf_(sig.split('#')[0].split('|'));
+  }
   // ★王冠系の表示値：c3=勝利のうち3クラウンだった割合(%) / cd=1試合あたりの平均クラウン差
   function crownOut_(a) {
     if (!a.G || (a.CF + a.CA) <= 0) return null;
@@ -388,6 +418,7 @@ function updateDecks() {
       var d = renderSig(sig); if (!d) return null;
       var a = agg[sig], cr = crownOut_(a);
       var o = { name: d.name, slots: d.slots, forms: d.forms, count: a.P, games: a.G, arch: archOfSig_(sig) };
+      var ch = cycHvy_(d.slots); o.cyc = ch.cyc; o.hvy = ch.hvy;
       if (a.G > 0) o.winRate = Math.round(a.W / a.G * 1000) / 10;
       if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
       return o;
@@ -404,6 +435,7 @@ function updateDecks() {
       var o = { name: d.name, slots: d.slots, forms: d.forms, games: a.G, wins: a.W,
         winRate: Math.round(a.W / a.G * 1000) / 10, lb: Math.round(wilson_(a.W, a.G) * 1000) / 10,
         count: a.P, arch: archOfSig_(sig) };
+      var ch = cycHvy_(d.slots); o.cyc = ch.cyc; o.hvy = ch.hvy;
       if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
       return o;
     })
@@ -461,6 +493,34 @@ function updateDecks() {
     ghWriteJson_(muPath, mu);
     Logger.log('matchups +' + Object.keys(muNow).length + ' pairs');
   }
+
+  // ★月次署名ダイジェスト（長期リフト/バージョン比較分析用）：sigごとの[使用人数,試合数,勝ち数]を月別ファイルへ累積。
+  //   表示は3日窓のまま。キーはカードをインデックス化して圧縮（"3.17.45..|nnehnncn" 形式・形態1文字つき）。
+  //   ファイルは月ごとに分割（sighist-YYYY-MM.json）＝読み書きが常に小さい。
+  try {
+    var mkey2 = new Date().toISOString().slice(0, 7);
+    var shPath = ghSiblingPath_(ghPath, 'sighist-' + mkey2 + '.json');
+    var sh = ghReadJson_(shPath) || { cards: [], sigs: {} };
+    if (!sh.cards) sh.cards = [];
+    if (!sh.sigs) sh.sigs = {};
+    var cidx = {};
+    sh.cards.forEach(function (n, i) { cidx[n] = i; });
+    Object.keys(dkNow).forEach(function (sig) {
+      var d = renderSig(sig); if (!d || !d.slots) return;
+      var pairs = d.slots.map(function (n, i) {
+        if (cidx[n] == null) { cidx[n] = sh.cards.length; sh.cards.push(n); }
+        return { x: cidx[n], f: ((d.forms && d.forms[i]) || 'norm').charAt(0) }; // n/e/h/c
+      });
+      pairs.sort(function (a, b) { return a.x - b.x; });
+      var key = pairs.map(function (q) { return q.x; }).join('.') + '|' + pairs.map(function (q) { return q.f; }).join('');
+      var v = dkNow[sig];
+      var t = sh.sigs[key] || (sh.sigs[key] = [0, 0, 0]);
+      t[0] += v[0] || 0; t[1] += v[1] || 0; t[2] += v[2] || 0;
+    });
+    sh.updated = new Date().toISOString();
+    ghWriteJson_(shPath, sh);
+    Logger.log('sighist ' + Object.keys(sh.sigs).length + ' sigs');
+  } catch (e) { Logger.log('sighist error ' + ((e && e.message) || e)); }
 
   hist.lastT = newLastT; // ★対戦の二重カウント防止のしおりを保存
 
