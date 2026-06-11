@@ -652,3 +652,63 @@ function createTriggers() {
   });
   ScriptApp.newTrigger('updateDecks').timeBased().everyHours(6).create();
 }
+
+
+// =============================================================
+//  ★カード属性タグ表（オーナー監修用）
+//  buildTagSheet(): card-stats.json を読んで Googleスプレッドシート「CRDB カード属性タグ表」を作成/更新。
+//    初回実行時に SpreadsheetApp の権限承認が出る。URLは実行ログに出る（TAG_SHEET_ID に保存）。
+//  exportTagSheet(): 監修済みシートを読み取り card-tags.json として data ブランチへ書き出す。
+// =============================================================
+var TAG_MANUAL_COLS = ['タゲ取り適性', 'リセット持ち', 'スタン/凍結/減速', '突進・チャージ', 'スポーン持続', '回復/サポート', 'タンクキラー', 'メモ'];
+
+function buildTagSheet() {
+  var data = ghReadJson_('card-stats.json');
+  if (!data || !data.cards) throw new Error('card-stats.json が読めない');
+  var head = ['カード名', 'コスト', 'タイプ', 'レア', 'HP16', 'DPS16', '自動タグ（機械生成）', '自動タグ修正（差し替え時のみ記入）'].concat(TAG_MANUAL_COLS);
+  var rows = data.cards.map(function (c) {
+    var base = [c.jp, (c.n && c.n.cost != null) ? c.n.cost : '', (c.n && c.n.type) || '', (c.n && c.n.rarity) || '',
+      c.hp16 || '', c.dps16 || '', (c.tags || []).join('、'), ''];
+    return base.concat(TAG_MANUAL_COLS.map(function () { return ''; }));
+  });
+  var ss = null, id = prop('TAG_SHEET_ID', '');
+  if (id) { try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } }
+  if (!ss) {
+    ss = SpreadsheetApp.create('CRDB カード属性タグ表');
+    PropertiesService.getScriptProperties().setProperty('TAG_SHEET_ID', ss.getId());
+  }
+  var sh = ss.getSheets()[0];
+  sh.clear();
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+  sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(1);
+  sh.autoResizeColumns(1, 7);
+  Logger.log('タグ表URL: ' + ss.getUrl());
+  return ss.getUrl();
+}
+
+function exportTagSheet() {
+  var id = prop('TAG_SHEET_ID', '');
+  if (!id) throw new Error('TAG_SHEET_ID なし（先に buildTagSheet を実行）');
+  var sh = SpreadsheetApp.openById(id).getSheets()[0];
+  var vals = sh.getDataRange().getValues();
+  var head = vals[0];
+  var out = {};
+  for (var i = 1; i < vals.length; i++) {
+    var row = vals[i], jp = String(row[0] || '').trim();
+    if (!jp) continue;
+    var auto = String(row[7] || '').trim() || String(row[6] || '').trim(); // 修正列が空なら機械生成列
+    var tags = auto ? auto.split(/[、,]/).map(function (t) { return t.trim(); }).filter(Boolean) : [];
+    for (var m = 0; m < TAG_MANUAL_COLS.length - 1; m++) { // 最後のメモ列はタグにしない
+      var v = String(row[8 + m] || '').trim();
+      if (v && v !== '-') tags.push(TAG_MANUAL_COLS[m]);
+    }
+    var memo = String(row[8 + TAG_MANUAL_COLS.length - 1] || '').trim();
+    out[jp] = { tags: tags };
+    if (memo) out[jp].memo = memo;
+  }
+  ghWriteJson_('card-tags.json', { updated: new Date().toISOString(), source: 'CRDB カード属性タグ表（オーナー監修）', cards: out });
+  Logger.log('card-tags.json 書き出し: ' + Object.keys(out).length + '枚');
+  return Object.keys(out).length;
+}
