@@ -217,6 +217,8 @@ function renderDecks(decks) {
       // 勝率タブ：勝率 ＋ 対戦数（3日合計）＋ 使用人数
       headHtml = '<span class="stat-win">' + _t('decks.winPct', { p: d.winRate }) + '</span>'
         + '<span class="stat-sep">' + _t('decks.nGames', { n: (d.games || 0) }) + '</span>'
+        + (d.c3 != null ? '<span class="stat-sep">' + _t('decks.c3', { p: d.c3 }) + '</span>' : '')
+        + (d.cd != null ? '<span class="stat-sep">' + _t('decks.cd', { v: (d.cd > 0 ? '+' + d.cd : d.cd) }) + '</span>' : '')
         + (d.count != null ? '<span class="stat-sep">' + _t('decks.nUsed', { n: d.count }) + '</span>' : '')
         + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>';
     } else {
@@ -529,7 +531,7 @@ function renderMetaMap() {
     return '<div class="mm-pt" style="left:' + x.toFixed(1) + '%;top:' + y.toFixed(1) + '%" title="' + c.name + _fmark(c) + ' 使用' + (c.use || 0) + '% / 勝率' + (c.win || 0) + '%">'
       + (_cardImgF(c) ? '<img src="' + _cardImgF(c) + '" alt="' + c.name + '">' : '')
       + (_fmark(c) ? '<span class="fbadge">' + _fmark(c) + '</span>' : '')
-      + (lab ? '<span class="lab">' + c.name + _fmark(c) + '</span>' : '') + '</div>';
+      + (lab ? '<span class="lab">' + c.name + (_fmark(c) ? '<i class="fm">' + _fmark(c) + '</i>' : '') + '</span>' : '') + '</div>';
   };
 
   // ===== ズーム表示（1象限を拡大。中央線が端に来て、線からの近さが見える） =====
@@ -708,7 +710,7 @@ function renderAggText() {
 }
 // 言語切替時：集計テキスト・タブ説明＋動的描画（デッキ一覧/カードランキング/分布図/チップ等）を現在言語で作り直す
 window.addEventListener('crlangchange', () => {
-  try { renderAggText(); updateDeckTabDesc(); } catch (e) {}
+  try { renderAggText(); updateDeckTabDesc(); renderMetaShare(); } catch (e) {}
   try { applyDecks(); } catch (e) {}
   try { renderCrank(); renderMetaMap(); } catch (e) {}
   try { updateMeLabel(); } catch (e) {}
@@ -718,6 +720,29 @@ window.addEventListener('crlangchange', () => {
     }
   } catch (e) {}
 });
+
+// ★メタシェア（勝ち筋別の環境占有率。GASの j.meta）
+let META = [];
+function renderMetaShare() {
+  const el = document.getElementById('metaShare');
+  if (!el) return;
+  if (!META || META.length < 2) { el.style.display = 'none'; return; }
+  const top = META.slice(0, 10);
+  const maxS = Math.max(1, ...top.map(m => m.share || 0));
+  el.style.display = '';
+  el.innerHTML = '<div class="ms-title">' + _tr('🧭 環境シェア（勝ち筋別・過去3日）') + '</div>'
+    + top.map(m => {
+      const info = CARD_INFO[m.k];
+      const img = (info && info.i) ? '<img src="' + info.i + '" alt="' + m.k + '" loading="lazy">' : '';
+      return '<div class="ms-row">'
+        + '<span class="ms-ico">' + img + '</span>'
+        + '<span class="ms-name"><span>' + m.k + '</span></span>'
+        + '<span class="ms-bar"><i style="width:' + Math.round((m.share || 0) / maxS * 100) + '%"></i></span>'
+        + '<span class="ms-share">' + (m.share || 0) + '%</span>'
+        + '<span class="ms-win">' + (m.win != null ? _t('decks.winPct', { p: m.win }) : '') + '</span>'
+        + '</div>';
+    }).join('');
+}
 
 const DECKS_DATA_URL = 'https://raw.githubusercontent.com/rea-fi-lia/clash-royale-deck/data/decks.json';
 fetch(DECKS_DATA_URL, { cache: 'no-store' })
@@ -732,6 +757,8 @@ fetch(DECKS_DATA_URL, { cache: 'no-store' })
     const cardsReal = j && Array.isArray(j.cards) && j.cards.length;
     CARDS_DATA = cardsReal ? j.cards : CARDS_SAMPLE;
     initCardMeta(!cardsReal);
+    META = (j && Array.isArray(j.meta)) ? j.meta : [];
+    renderMetaShare();
     PLAYERS_TOTAL = (j && j.players) ? j.players : 0;
     _agg.sample = (j && j.players) ? j.players : null;
     _agg.top = (j && j.topPlayers) ? j.topPlayers : null;

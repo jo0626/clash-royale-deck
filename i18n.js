@@ -49,6 +49,8 @@
       "decks.nPlayersUse": "{n}人",
       "decks.winPct": "勝率 {p}%",
       "decks.nGames": "{n}戦",
+      "decks.c3": "3冠率 {p}%",
+      "decks.cd": "クラウン差 {v}",
       "decks.nUsed": "{n}人使用",
       "decks.withCard": "「{name}」を含むデッキ",
       "decks.envOfName": "{name}さんの環境",
@@ -96,7 +98,7 @@
       // ビルダー/デッキ一覧の動的文字列（数値・名前入り）
       "avg.n": "({n} cards)",
       "decks.nPlayersUse": "{n} players",
-      "decks.winPct": "Win rate {p}%",
+      "decks.c3": "3-crown {p}%", "decks.cd": "crown diff {v}", "🧭 環境シェア（勝ち筋別・過去3日）": "🧭 Meta share (by win condition, last 3 days)", "その他": "Other", "decks.winPct": "Win rate {p}%",
       "decks.nGames": "{n} games",
       "decks.nUsed": "{n} players",
       "decks.withCard": "Decks with “{name}”",

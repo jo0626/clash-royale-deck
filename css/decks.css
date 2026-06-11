@@ -214,3 +214,17 @@
 .crank-ico .fbadge { position:absolute; bottom:-3px; right:-5px; font-size:12px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)); z-index:2; }
 .crank-name .fmark { font-size:11px; }
 .mm-pt .fbadge { position:absolute; top:-7px; right:-8px; font-size:10px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)); }
+.mm-pt .lab .fm { font-style:normal; }
+
+/* ★環境シェア（勝ち筋別） */
+.meta-share { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin:0 0 14px; }
+.ms-title { font-family:var(--font-head); font-size:14px; font-weight:700; letter-spacing:.5px; margin-bottom:8px; color:var(--text); }
+.ms-row { display:flex; align-items:center; gap:8px; padding:3px 0; }
+.ms-ico { width:24px; height:29px; flex:0 0 auto; display:flex; align-items:center; }
+.ms-ico img { width:100%; height:100%; object-fit:contain; }
+.ms-name { flex:0 0 96px; font-size:11px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-bar { flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.ms-bar i { display:block; height:100%; background:linear-gradient(90deg,#3a8ef0,#8b5cf6); border-radius:4px; }
+.ms-share { flex:0 0 44px; text-align:right; font-size:12px; font-weight:700; color:var(--text); }
+.ms-win { flex:0 0 76px; text-align:right; font-size:10px; color:var(--text-muted); }
+@media (max-width:480px){ .ms-name{flex-basis:78px;} .ms-win{flex-basis:64px;} }

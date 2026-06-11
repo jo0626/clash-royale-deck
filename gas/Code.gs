@@ -111,6 +111,24 @@ function deckNameGuess(slots) {
   return 'おすすめデッキ';
 }
 
+// ★勝ち筋（アーキタイプ）判定。配列の順序＝優先度（上から先に見つかったカード＝そのデッキの勝ち筋）。
+//   調整したくなったらこの配列を並べ替え・追加するだけ。該当なしは「その他」。
+var ARCH_WINCONS = ['ラヴァハウンド', 'ゴーレム', 'エレクトロジャイアント', 'エリクサーゴーレム', '三銃士',
+  '巨大クロスボウ', '迫撃砲', 'ロイヤルジャイアント', 'ジャイアント', 'エアバルーン', 'スケルトンラッシュ',
+  'ホグライダー', 'ロイヤルホグ', 'ラムライダー', '攻城バーバリアン', 'ペッカ', 'メガナイト',
+  'ゴブリンドリル', 'ウォールブレイカー', 'ディガー'];
+function archOf_(jpArr) {
+  for (var i = 0; i < ARCH_WINCONS.length; i++) if (jpArr.indexOf(ARCH_WINCONS[i]) >= 0) return ARCH_WINCONS[i];
+  return 'その他';
+}
+
+// ★Wilson下限（95%）：少サンプルの「まぐれ勝率」を統計的に抑えた保証値。勝率ランキングの並び替えに使う。
+function wilson_(w, g) {
+  if (!g) return 0;
+  var z = 1.96, p = w / g, n = g;
+  return (p + z * z / (2 * n) - z * Math.sqrt((p * (1 - p) + z * z / (4 * n)) / n)) / (1 + z * z / n);
+}
+
 function updateDecks() {
   var token = (prop('CR_TOKEN') || '').replace(/[^A-Za-z0-9._-]/g, '');
   if (!token) throw new Error('CR_TOKEN 未設定');
@@ -121,8 +139,29 @@ function updateDecks() {
   var players = (ranking.items || []).slice(0, topN);
   var headers = { Authorization: 'Bearer ' + token, Accept: 'application/json' };
 
+  // ---- 履歴を先に読む（対戦の二重カウント防止用 lastT を使うため） ----
+  var ghPath = prop('GITHUB_PATH', 'decks.json');
+  var histPath = ghSiblingPath_(ghPath, 'cardhist.json');
+  var hist = ghReadJson_(histPath) || { snaps: [], dinfo: {} };
+  if (!hist.dinfo) hist.dinfo = {};
+  var lastT = hist.lastT || {};   // tag → 前回処理した最新の battleTime
+  var newLastT = {};
+
   // ---- バトルログから集計（pop=各プレイヤーの直前デッキ1個 / win=決着した全試合の勝敗）----
+  // ★2026-06-11改修：
+  //   - ランク戦のみ集計（type/gameMode で判定。観測したモード名は typeSeen でログ出力）
+  //   - battleTime で「前回より新しい試合」だけ勝敗カウント＝6hごとの取得での二重カウント排除
+  //   - 完全ミラー（同一8枚）は勝率系から除外（必ず1勝1敗＝勝率を50%に薄めるだけのノイズ）
+  //   - 王冠数を集計（3クラウン率・平均クラウン差）
+  //   - 相手デッキとのアーキタイプ別 相性（matchups.json に月別累積）
   var pop = {}, win = {}, unmapped = {}, CHUNK = 40;
+  var muNow = {};       // ' 自分arch|相手arch' → [試合数, 勝ち数]（今回ぶん）
+  var typeSeen = {};    // 観測した type/gameMode の分布（ランク判定の検証用ログ）
+
+  function isRanked_(b) {
+    var t = b.type || '', gm = (b.gameMode && b.gameMode.name) || '';
+    return t === 'pathOfLegend' || /ranked|path.?of.?legend/i.test(t) || /ranked|path.?of.?legend/i.test(gm);
+  }
 
   function classifyDeck(cards) {
     var jp = [], fm = [], ok = true;
@@ -141,15 +180,18 @@ function updateDecks() {
     });
     return (ok && jp.length === 8) ? { jp: jp, fm: fm } : null;
   }
-  function tally(map, cards, won) {
-    var d = classifyDeck(cards);
+  function tally(map, d, won, tc, oc) {
     if (!d) return false;
     var special = [];
     d.jp.forEach(function (n, idx) { if (d.fm[idx] !== 'norm') special.push(n); });
     var key = d.jp.slice().sort().join('|') + '#' + special.slice().sort().join('|');
-    var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {}, vwins: {} });
+    var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {}, vwins: {}, c3: 0, cf: 0, ca: 0 });
     e.count++;
     if (won === true) e.wins++;
+    if (typeof tc === 'number' && typeof oc === 'number') {
+      e.cf += tc; e.ca += oc;                     // 王冠（自分/相手）の合計
+      if (won === true && tc === 3) e.c3++;       // 3クラウン勝利の数
+    }
     d.jp.forEach(function (n, idx) {
       var v = e.votes[n] || (e.votes[n] = { evo: 0, hero: 0, both: 0, champ: 0, norm: 0 });
       v[d.fm[idx]]++;
@@ -166,18 +208,40 @@ function updateDecks() {
       && b.team[0] && b.team[0].cards && b.team[0].cards.length === 8;
   }
   function evoCnt(cards) { var k = 0; for (var j = 0; j < cards.length; j++) if (cards[j].evolutionLevel > 0) k++; return k; }
-  function processLog(battles) {
+  function sameSig_(a, b) { return a.slice().sort().join('|') === b.slice().sort().join('|'); }
+
+  function processLog(battles, tag) {
     if (!battles || !battles.length) return;
     var gotPop = false;
+    var seenT = lastT[tag] || '';
+    var maxT = newLastT[tag] || seenT;
     for (var i = 0; i < battles.length; i++) {
       var b = battles[i];
       if (!isStd(b)) continue;
+      var tk = (b.type || '?') + '/' + ((b.gameMode && b.gameMode.name) || '?');
+      typeSeen[tk] = (typeSeen[tk] || 0) + 1;
+      if (!isRanked_(b)) continue;                 // ★ランク戦のみ
       var cards = b.team[0].cards;
       if (evoCnt(cards) > 2) continue;
-      if (!gotPop) { if (tally(pop, cards, null)) gotPop = true; }
+      var d = classifyDeck(cards);
+      if (!d) continue;
+      if (!gotPop) { if (tally(pop, d, null)) gotPop = true; }
+      var bt = b.battleTime || '';
+      if (bt && bt > maxT) maxT = bt;
+      if (seenT && bt && bt <= seenT) continue;    // ★前回までに処理済みの試合＝二重カウントしない
       var tc = b.team[0].crowns, oc = b.opponent[0].crowns;
-      if (typeof tc === 'number' && typeof oc === 'number' && tc !== oc) tally(win, cards, tc > oc);
+      if (typeof tc !== 'number' || typeof oc !== 'number' || tc === oc) continue;
+      var oppCards = b.opponent[0].cards || [];
+      var od = (oppCards.length === 8) ? classifyDeck(oppCards) : null;
+      if (od && sameSig_(d.jp, od.jp)) continue;   // ★完全ミラー除外
+      tally(win, d, tc > oc, tc, oc);
+      if (od) {                                     // ★相性（アーキタイプ別）
+        var k = archOf_(d.jp) + '|' + archOf_(od.jp);
+        var mm = muNow[k] || (muNow[k] = [0, 0]);
+        mm[0]++; if (tc > oc) mm[1]++;
+      }
     }
+    if (maxT) newLastT[tag] = maxT;
   }
   function fetchTags(tags) {
     var got = [];
@@ -188,16 +252,19 @@ function updateDecks() {
       });
       var resps = UrlFetchApp.fetchAll(batch);
       resps.forEach(function (res, i) {
-        if (res.getResponseCode() === 200) { got.push(slice[i]); try { processLog(JSON.parse(res.getContentText())); } catch (e) {} }
+        if (res.getResponseCode() === 200) { got.push(slice[i]); try { processLog(JSON.parse(res.getContentText()), slice[i]); } catch (e) {} }
       });
       Utilities.sleep(300);
     }
     return got;
   }
   var allTags = players.map(function (p) { return p.tag; });
+  // 取得に失敗したタグの lastT は引き継ぐ（次回その人の試合を取りこぼさない）
+  allTags.forEach(function (t) { if (lastT[t]) newLastT[t] = newLastT[t] || lastT[t]; });
   var got1 = fetchTags(allTags);
   var miss = allTags.filter(function (t) { return got1.indexOf(t) < 0; });
   if (miss.length) { Utilities.sleep(1200); fetchTags(miss); }
+  Logger.log('typeSeen ' + JSON.stringify(typeSeen));
 
   var aggregated = Object.keys(pop).reduce(function (s, k) { return s + pop[k].count; }, 0);
   var winBattles = Object.keys(win).reduce(function (s, k) { return s + win[k].count; }, 0);
@@ -235,11 +302,10 @@ function updateDecks() {
 
   // ===== 3日ローリング：デッキもカードも3日分の合算で出す =====
   var now = Date.now();
-  var ghPath = prop('GITHUB_PATH', 'decks.json');
-  var histPath = ghSiblingPath_(ghPath, 'cardhist.json');
   var DECK_TOP = 100;   // 使用率・勝率ランキングを100位まで
   var DK_KEEP = 250;    // 1スナップショットに保存するデッキ署名の上限（cardhist.jsonを1MB未満に保つ安全策）
-  var WIN_MIN_3D = parseInt(prop('WIN_MIN_GAMES_3D', '100'), 10); // 勝率は3日合計でこの試合数以上のみ
+  // ★Wilson下限で並べるようになったので最低試合数は30に緩和（まぐれは統計側で抑える）
+  var WIN_MIN_3D = parseInt(prop('WIN_MIN_GAMES_3D', '30'), 10);
 
   // カード単体の素（★形態別：n=ノーマル+チャンピオン / n|e=限界突破 / n|h=ヒーロー。
   //   フォーム不明(both)は e/h に半々で按分。旧スナップショット(形態なしキー)とも共存できる）
@@ -273,15 +339,14 @@ function updateDecks() {
   Object.keys(pop).forEach(function (s) { sigSet[s] = 1; });
   Object.keys(win).forEach(function (s) { sigSet[s] = 1; });
   var dkArr = Object.keys(sigSet).map(function (sig) {
-    return { sig: sig, p: (pop[sig] ? pop[sig].count : 0), g: (win[sig] ? win[sig].count : 0), w: (win[sig] ? win[sig].wins : 0) };
+    var W = win[sig] || {};
+    return { sig: sig, p: (pop[sig] ? pop[sig].count : 0), g: W.count || 0, w: W.wins || 0, c3: W.c3 || 0, cf: W.cf || 0, ca: W.ca || 0 };
   });
   dkArr.sort(function (a, b) { return (b.p + b.g) - (a.p + a.g); });
   var dkNow = {};
-  dkArr.slice(0, DK_KEEP).forEach(function (x) { dkNow[x.sig] = [x.p, x.g, x.w]; });
+  dkArr.slice(0, DK_KEEP).forEach(function (x) { dkNow[x.sig] = [x.p, x.g, x.w, x.c3, x.cf, x.ca]; }); // ★王冠つき6要素（旧3要素とも共存）
 
-  // 履歴へ追加し、3日より古いスナップショットを捨てる
-  var hist = ghReadJson_(histPath) || { snaps: [], dinfo: {} };
-  if (!hist.dinfo) hist.dinfo = {};
+  // 履歴へ追加し、3日より古いスナップショットを捨てる（histは冒頭で読み込み済み）
   hist.snaps.push({ t: now, players: aggregated, use: useNow, bat: batNow, dk: dkNow });
   hist.snaps = hist.snaps.filter(function (s) { return s.t >= now - WINDOW_DAYS * 864e5; });
 
@@ -291,10 +356,19 @@ function updateDecks() {
     players3d += (s.players || 0);
     var dk = s.dk || {};
     Object.keys(dk).forEach(function (sig) {
-      var a = agg[sig] || (agg[sig] = { P: 0, G: 0, W: 0 });
+      var a = agg[sig] || (agg[sig] = { P: 0, G: 0, W: 0, C3: 0, CF: 0, CA: 0 });
       a.P += dk[sig][0] || 0; a.G += dk[sig][1] || 0; a.W += dk[sig][2] || 0;
+      a.C3 += dk[sig][3] || 0; a.CF += dk[sig][4] || 0; a.CA += dk[sig][5] || 0; // ★旧3要素スナップは0扱い
     });
   });
+
+  // ★署名→アーキタイプ（勝ち筋）。署名の前半=ソート済み8枚なのでそこから判定できる
+  function archOfSig_(sig) { return archOf_(sig.split('#')[0].split('|')); }
+  // ★王冠系の表示値：c3=勝利のうち3クラウンだった割合(%) / cd=1試合あたりの平均クラウン差
+  function crownOut_(a) {
+    if (!a.G || (a.CF + a.CA) <= 0) return null;
+    return { c3: a.W ? Math.round(a.C3 / a.W * 1000) / 10 : null, cd: Math.round((a.CF - a.CA) / a.G * 100) / 100 };
+  }
 
   // 表示用の絵柄：今回の集計(pop/win)から確定。無ければ過去に確定した絵柄(dinfo)を使う。
   function renderSig(sig) {
@@ -310,13 +384,29 @@ function updateDecks() {
 
   // 使用率ランキング（3日の延べ使用人数P順・100位）。count=延べ使用人数, games=試合数。
   var popDecks = Object.keys(agg).sort(function (a, b) { return agg[b].P - agg[a].P; })
-    .map(function (sig) { var d = renderSig(sig); if (!d) return null; return { name: d.name, slots: d.slots, forms: d.forms, count: agg[sig].P, games: agg[sig].G }; })
+    .map(function (sig) {
+      var d = renderSig(sig); if (!d) return null;
+      var a = agg[sig], cr = crownOut_(a);
+      var o = { name: d.name, slots: d.slots, forms: d.forms, count: a.P, games: a.G, arch: archOfSig_(sig) };
+      if (a.G > 0) o.winRate = Math.round(a.W / a.G * 1000) / 10;
+      if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
+      return o;
+    })
     .filter(Boolean).slice(0, DECK_TOP);
 
   // 勝率ランキング（3日合計WIN_MIN_3D戦以上・勝率順・100位）。games=試合数, count=延べ使用人数。
+  // ★勝率ランキングは Wilson下限（95%）で並べ替え＝「30戦のまぐれ60%」より「300戦の54%」が上に来る
   var winDecks = Object.keys(agg).filter(function (sig) { return agg[sig].G >= WIN_MIN_3D; })
-    .sort(function (a, b) { var wa = agg[a].W / agg[a].G, wb = agg[b].W / agg[b].G; return (wb - wa) || (agg[b].G - agg[a].G); })
-    .map(function (sig) { var d = renderSig(sig); if (!d) return null; return { name: d.name, slots: d.slots, forms: d.forms, games: agg[sig].G, wins: agg[sig].W, winRate: Math.round(agg[sig].W / agg[sig].G * 1000) / 10, count: agg[sig].P }; })
+    .sort(function (a, b) { return wilson_(agg[b].W, agg[b].G) - wilson_(agg[a].W, agg[a].G) || (agg[b].G - agg[a].G); })
+    .map(function (sig) {
+      var d = renderSig(sig); if (!d) return null;
+      var a = agg[sig], cr = crownOut_(a);
+      var o = { name: d.name, slots: d.slots, forms: d.forms, games: a.G, wins: a.W,
+        winRate: Math.round(a.W / a.G * 1000) / 10, lb: Math.round(wilson_(a.W, a.G) * 1000) / 10,
+        count: a.P, arch: archOfSig_(sig) };
+      if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
+      return o;
+    })
     .filter(Boolean).slice(0, DECK_TOP);
 
   Logger.log('popDecks ' + popDecks.length + ' / winDecks ' + winDecks.length + ' (winMin3d ' + WIN_MIN_3D + ') / sigs ' + Object.keys(agg).length);
@@ -342,6 +432,38 @@ function updateDecks() {
   }
   Logger.log('cards ' + cards.length + ' / trending ' + trending.length + ' / snaps ' + hist.snaps.length);
 
+  // ★メタシェア：アーキタイプ（勝ち筋）ごとの環境占有率と勝率（3日合算・上位デッキ署名ベース）
+  var metaAgg = {};
+  Object.keys(agg).forEach(function (sig) {
+    var k = archOfSig_(sig);
+    var m = metaAgg[k] || (metaAgg[k] = { P: 0, G: 0, W: 0 });
+    m.P += agg[sig].P; m.G += agg[sig].G; m.W += agg[sig].W;
+  });
+  var totalP = Object.keys(metaAgg).reduce(function (t, k) { return t + metaAgg[k].P; }, 0) || 1;
+  var meta = Object.keys(metaAgg).map(function (k) {
+    var m = metaAgg[k];
+    return { k: k, share: Math.round(m.P / totalP * 1000) / 10, win: m.G ? Math.round(m.W / m.G * 1000) / 10 : null, games: m.G };
+  }).sort(function (a, b) { return b.share - a.share; });
+
+  // ★相性（アーキタイプ×アーキタイプ）：matchups.json に月別で累積（3日窓と独立・どんどん貯まる・軽い）
+  //   形式: { months: { "2026-06": { "自分arch|相手arch": [試合数, 勝ち数] } } }
+  if (Object.keys(muNow).length) {
+    var muPath = ghSiblingPath_(ghPath, 'matchups.json');
+    var mu = ghReadJson_(muPath) || { months: {} };
+    if (!mu.months) mu.months = {};
+    var mk = new Date().toISOString().slice(0, 7);
+    var bucket = mu.months[mk] || (mu.months[mk] = {});
+    Object.keys(muNow).forEach(function (k) {
+      var t = bucket[k] || (bucket[k] = [0, 0]);
+      t[0] += muNow[k][0]; t[1] += muNow[k][1];
+    });
+    mu.updated = new Date().toISOString();
+    ghWriteJson_(muPath, mu);
+    Logger.log('matchups +' + Object.keys(muNow).length + ' pairs');
+  }
+
+  hist.lastT = newLastT; // ★対戦の二重カウント防止のしおりを保存
+
   commitToGithub({
     updated: new Date().toISOString(),
     players: players3d,          // 3日間の延べ集計人数（使用率の分母）
@@ -353,7 +475,8 @@ function updateDecks() {
     decks: popDecks,
     winDecks: winDecks,
     trending: trending,
-    cards: cards
+    cards: cards,
+    meta: meta
   });
   ghWriteJson_(histPath, hist); // 履歴を更新（別ファイル）
 }
