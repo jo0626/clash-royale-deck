@@ -325,15 +325,15 @@
 
   // 特典内容ポップ（情報アイコン）＋ 購入タップ時のジェム演出
   var PERKS = {
-    drop:   { title: '¥500 ひとしずく 💧', items: ['あなたの供給で、開発のエリクサーが少し貯まります。', 'その気持ちが本当に励みになります。', 'これからも全員無料で、もっと使いやすく育てていきます。'] },
-    bottle: { title: '¥2,000 ボトル', items: ['たっぷりの供給、心からありがとう！', 'いただいた分はサーバー維持・データ更新・新機能に大切に使います。', 'これからもどうぞよろしくお願いします 🙏'] }
+    drop:   { title: '¥500 ひとしずく 💧', items: ['ひとしずくが、サーバーを守るエリクサーになります。', '供給されたエリクサーは、維持費・データ更新・新機能の開発に直行します。', 'あなたの一滴で、開発が前に進みます。'] },
+    bottle: { title: '¥2,000 ボトル', items: ['ボトル級の供給。開発が一段加速します。', '大型アップデートの背中を押すのは、いつもこのクラスの供給です。', '心強い援軍に感謝を。'] }
   };
   function showPerk(key) {
     var p = PERKS[key]; if (!p) return;
     var ov = document.createElement('div'); ov.className = 'perk-pop';
     ov.innerHTML = '<div class="perk-pop-box"><h3>' + p.title + '</h3><ul>' +
       p.items.map(function (t) { return '<li>' + t + '</li>'; }).join('') +
-      '</ul><div class="perk-pop-note">※ 供給は純粋な応援です。ゲームの機能はすべて無料で使えます。</div>' +
+      '</ul><div class="perk-pop-note">※ 供給は見返りのない純粋な応援です。</div>' +
       '<button class="perk-pop-close" type="button">閉じる</button></div>';
     ov.addEventListener('click', function (e) { if (e.target === ov || e.target.classList.contains('perk-pop-close')) ov.remove(); });
     document.body.appendChild(ov);
