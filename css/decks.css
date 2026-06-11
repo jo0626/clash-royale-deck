@@ -209,3 +209,8 @@
   /* ヘッダー＋アイコンバーをまとめて画面上部に固定 */
   .sitebar { position: sticky; top: 0; z-index: 100; }
   .sitebar header { position: static; }
+
+/* ★形態バッジ（⚡=限界突破 / 👑=ヒーロー）：カードランキングとメタマップ */
+.crank-ico .fbadge { position:absolute; bottom:-3px; right:-5px; font-size:12px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)); z-index:2; }
+.crank-name .fmark { font-size:11px; }
+.mm-pt .fbadge { position:absolute; top:-7px; right:-8px; font-size:10px; line-height:1; filter:drop-shadow(0 1px 2px rgba(0,0,0,.85)); }

@@ -147,12 +147,17 @@ function updateDecks() {
     var special = [];
     d.jp.forEach(function (n, idx) { if (d.fm[idx] !== 'norm') special.push(n); });
     var key = d.jp.slice().sort().join('|') + '#' + special.slice().sort().join('|');
-    var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {} });
+    var e = map[key] || (map[key] = { count: 0, wins: 0, cards: d.jp, votes: {}, vwins: {} });
     e.count++;
     if (won === true) e.wins++;
     d.jp.forEach(function (n, idx) {
       var v = e.votes[n] || (e.votes[n] = { evo: 0, hero: 0, both: 0, champ: 0, norm: 0 });
       v[d.fm[idx]]++;
+      if (won === true) {
+        if (!e.vwins) e.vwins = {};
+        var vw = e.vwins[n] || (e.vwins[n] = { evo: 0, hero: 0, both: 0, champ: 0, norm: 0 });
+        vw[d.fm[idx]]++;
+      }
     });
     return true;
   }
@@ -236,11 +241,32 @@ function updateDecks() {
   var DK_KEEP = 250;    // 1スナップショットに保存するデッキ署名の上限（cardhist.jsonを1MB未満に保つ安全策）
   var WIN_MIN_3D = parseInt(prop('WIN_MIN_GAMES_3D', '100'), 10); // 勝率は3日合計でこの試合数以上のみ
 
-  // カード単体の素（従来どおり）
+  // カード単体の素（★形態別：n=ノーマル+チャンピオン / n|e=限界突破 / n|h=ヒーロー。
+  //   フォーム不明(both)は e/h に半々で按分。旧スナップショット(形態なしキー)とも共存できる）
   var useNow = {};
-  Object.keys(pop).forEach(function (k) { pop[k].cards.forEach(function (n) { useNow[n] = (useNow[n] || 0) + pop[k].count; }); });
+  Object.keys(pop).forEach(function (k) {
+    var r = pop[k];
+    r.cards.forEach(function (n) {
+      var v = r.votes[n] || { norm: r.count };
+      var both = v.both || 0;
+      var nn = (v.norm || 0) + (v.champ || 0), ev = (v.evo || 0) + both / 2, he = (v.hero || 0) + both / 2;
+      if (nn) useNow[n] = (useNow[n] || 0) + nn;
+      if (ev) useNow[n + '|e'] = (useNow[n + '|e'] || 0) + ev;
+      if (he) useNow[n + '|h'] = (useNow[n + '|h'] || 0) + he;
+    });
+  });
   var batNow = {};
-  Object.keys(win).forEach(function (k) { var r = win[k]; r.cards.forEach(function (n) { if (!batNow[n]) batNow[n] = [0, 0]; batNow[n][0] += r.count; batNow[n][1] += r.wins; }); });
+  function addBat_(key, g, w) { if (!g && !w) return; if (!batNow[key]) batNow[key] = [0, 0]; batNow[key][0] += g; batNow[key][1] += w; }
+  Object.keys(win).forEach(function (k) {
+    var r = win[k];
+    r.cards.forEach(function (n) {
+      var v = r.votes[n] || { norm: r.count }, vw = (r.vwins && r.vwins[n]) || {};
+      var vb = v.both || 0, wb = vw.both || 0;
+      addBat_(n, (v.norm || 0) + (v.champ || 0), (vw.norm || 0) + (vw.champ || 0));
+      addBat_(n + '|e', (v.evo || 0) + vb / 2, (vw.evo || 0) + wb / 2);
+      addBat_(n + '|h', (v.hero || 0) + vb / 2, (vw.hero || 0) + wb / 2);
+    });
+  });
 
   // デッキの素：署名→[使用人数p, 試合数g, 勝ち数w]。pop/win両方の署名を統合し上位DK_KEEP件に絞る。
   var sigSet = {};
@@ -363,7 +389,13 @@ function aggregateCards_(snaps) {
       var baseRate = basePlayers > 0 ? (baseUse[name] || 0) / basePlayers : 0;
       rise = Math.round((curRate - baseRate) * 1000) / 10;
     }
-    if (use > 0 || g > 0) out.push({ name: name, use: use, win: winr, games: g, rise: rise });
+    if (use > 0 || g > 0) {
+      var f = '', nm = name, sp = name.lastIndexOf('|');
+      if (sp > 0) { f = name.slice(sp + 1); nm = name.slice(0, sp); }
+      var o = { name: nm, use: use, win: winr, games: Math.round(g), rise: rise };
+      if (f === 'e' || f === 'h') o.f = f; // f無し=ノーマル
+      out.push(o);
+    }
   });
   return out;
 }
