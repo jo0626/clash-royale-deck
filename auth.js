@@ -575,7 +575,7 @@ function buildMenu(user, profile) {
       <button class="cr-mini" id="crTagSave">保存</button>
     </div>
     <div class="cr-hint" id="crTagHint"></div>
-    ${(profile && profile.donatedTotal >= 500) ? `
+    ${(profile && profile.points >= 500) ? `
     <div class="cr-divider"></div>
     <label class="cr-row" style="justify-content:space-between; cursor:pointer">
       <span style="font-size:12px">✨ ドラッグの軌跡</span>

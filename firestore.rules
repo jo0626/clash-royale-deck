@@ -11,7 +11,8 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.tier == 'free'
-                    && request.resource.data.get('donatedTotal', 0) == 0;
+                    && request.resource.data.get('donatedTotal', 0) == 0
+                    && request.resource.data.get('points', 0) == 0;
 
       // 更新時：tier と donatedTotal はクライアントから変更不可
       //   （寄付グレード・累計額はサービスアカウント＝Worker のみが書く。
@@ -20,7 +21,8 @@ service cloud.firestore {
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.tier == resource.data.tier
-                    && request.resource.data.get('donatedTotal', 0) == resource.data.get('donatedTotal', 0);
+                    && request.resource.data.get('donatedTotal', 0) == resource.data.get('donatedTotal', 0)
+                    && request.resource.data.get('points', 0) == resource.data.get('points', 0);
 
       // 削除は不可
       allow delete: if false;

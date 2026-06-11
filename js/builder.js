@@ -1212,7 +1212,10 @@ function openShareDialog(deckArr, deckName) {
   const slugOf = c => { const m = ((c && c.img) || '').match(/cards\/([a-z0-9-]+)\./); return m ? m[1] : ''; };
   const slugs = (deckArr || []).slice(0, 8).map(c => (c ? slugOf(c) : ''));
   while (slugs.length && slugs[slugs.length - 1] === '') slugs.pop();
-  const grade = (window.CRAuth && CRAuth.getProfile && CRAuth.getProfile() && CRAuth.getProfile().tier) || 'free';
+  // 【封印中】寄付tierによる共有グレード枠/SUPPORTERラベルは廃止（Supercellポリシー準拠）。
+  // ポイント制（rea-fi-liaポイント）実装時に活動グレードで復活予定。コードは消さないこと。
+  // const grade = (window.CRAuth && CRAuth.getProfile && CRAuth.getProfile() && CRAuth.getProfile().tier) || 'free';
+  const grade = 'free';
   const url = 'https://crdeckbuilders.com/share?deck=' + slugs.join(',') + '&g=' + grade; // スラッグなのでURLエンコード不要＝短い
   const xText = T('share.xText');
   const lineText = T('share.lineText');
@@ -1443,13 +1446,15 @@ function showToast(msg, ms) {
 
 init();
 
-// ¥500特典：累計500円以上のログインユーザーだけ、デッキ枠が光る（body.perk-drop を付与）
+// 【封印中】特典演出の解放は寄付額(donatedTotal)から points（rea-fi-liaポイント・活動で貯まる予定）に変更。
+// Supercellポリシー準拠のため寄付による解放は廃止。ポイント制実装までは points を持つアカウント（オーナー）のみ解放。
+// 演出コード（updateDeckGlow / スパンコール軌跡 / お気に入りグリント等）は消さずに全部保持すること。
 (function hookPerks() {
   if (!window.CRAuth) { setTimeout(hookPerks, 100); return; }
   CRAuth.onChange((user, profile) => {
-    const total = (profile && profile.donatedTotal) || 0;
-    document.body.classList.toggle('perk-drop', total >= 500);     // ¥500: デッキ枠グロー
-    document.body.classList.toggle('perk-bottle', total >= 2000);  // ¥2,000: デッキ内のお気に入りカードが輝く
+    const pts = (profile && profile.points) || 0;  // 旧: profile.donatedTotal
+    document.body.classList.toggle('perk-drop', pts >= 500);
+    document.body.classList.toggle('perk-bottle', pts >= 2000);
     try { updateDeckGlow(deck.filter(Boolean).length); } catch (e) {} // ログイン状態が変わったらグローを反映
   });
 })();
