@@ -607,6 +607,53 @@ function aggregateMe(battles) {
   battles.forEach(b => { (b.opp || []).forEach(n => { if (!m[n]) m[n] = { a: 0, w: 0 }; m[n].a++; if (b.win) m[n].w++; }); });
   return Object.keys(m).map(n => { const o = m[n]; return { name: n, use: total ? Math.round(o.a / total * 1000) / 10 : 0, win: o.a ? Math.round(o.w / o.a * 1000) / 10 : null, games: o.a, rise: null }; });
 }
+
+// ===== あなたの帯メタ：相手デッキを勝ち筋で分類して「自分のランク帯の環境シェア」を出す =====
+// 相手のデッキはあなたのデッキ構成と無関係（マッチメイクが帯から相手を引く）＝デッキを替えても汚れない正確なサンプル。
+// GASのARCH_WINCONSと同じ優先度順リスト（オーナー監修・36枚）。変更したらGAS側と必ず同期すること。
+const ME_ARCH_WINCONS = ['ラヴァハウンド', 'ゴーレム', 'エレクトロジャイアント', 'エリクサーゴーレム', '三銃士',
+  'ゴブジャイアント', 'ジャイアント', '巨大スケルトン', 'スパーキー', '見習い親衛隊', 'ペッカ', 'メガナイト',
+  'ボスアサシン', 'ロイヤルジャイアント', '巨大クロスボウ', '迫撃砲', 'エアバルーン', 'スケルトンバレル',
+  'ホグライダー', 'ロイヤルホグ', 'ラムライダー', '攻城バーバリアン', 'エリートバーバリアン', 'プリンス',
+  'ゴブリンマシン', 'ゴブリンシュタイン', 'モンク', 'アーチャークイーン', 'ゴールドナイト', 'スケルトンラッシュ',
+  'ゴブリンバレル', 'ゴブリンドリル', 'ウォールブレイカー', 'マイティディガー', 'ディガー', 'ロケット'];
+let ME_ARCH = [];
+function archOfOpp(opp) {
+  // バトルログのoppは形態なしのベース名＝ベース名で判定（⚡👑の区別はしない）
+  const base = (opp || []).map(n => String(n).replace(/[⚡👑]+$/, ''));
+  for (const w of ME_ARCH_WINCONS) if (base.includes(w)) return w;
+  return 'その他';
+}
+function aggregateMeArch(battles) {
+  const total = battles.length, m = {};
+  battles.forEach(b => { const k = archOfOpp(b.opp); if (!m[k]) m[k] = { g: 0, w: 0 }; m[k].g++; if (b.win) m[k].w++; });
+  return Object.keys(m).map(k => ({ k: k, games: m[k].g, share: total ? Math.round(m[k].g / total * 1000) / 10 : 0, win: m[k].g ? Math.round(m[k].w / m[k].g * 100) : null }))
+    .sort((a, b) => b.games - a.games);
+}
+function renderMeMeta() {
+  const el = document.getElementById('meMeta');
+  if (!el) return;
+  if (_cardMode !== 'me' || !ME_ARCH.length) { el.style.display = 'none'; return; }
+  const top = ME_ARCH.slice(0, 12);
+  const maxS = Math.max(1, ...top.map(m => m.share || 0));
+  el.style.display = '';
+  el.innerHTML = '<div class="ms-title">' + _t('me.metaTitle', { n: ME_COUNT }) + '</div>'
+    + '<div class="ms-note">' + _tr('相手デッキの勝ち筋分布＝あなたのランク帯のメタ。使ったデッキに関係なく貯まる正確なサンプルです。勝率は対面3戦未満なら表示しません') + '</div>'
+    + top.map(m => {
+      const base = m.k;
+      const info = (typeof CARD_INFO !== 'undefined') ? CARD_INFO[base] : null;
+      const img = (info && info.i) ? '<img src="' + info.i + '" alt="' + base + '" loading="lazy">' : '';
+      const winTxt = (m.win != null && m.games >= 3) ? _t('decks.winPct', { p: m.win }) : '';
+      return '<div class="ms-row">'
+        + '<span class="ms-ico">' + img + '</span>'
+        + '<span class="ms-name"><span>' + (base === 'その他' ? _tr('その他') : base) + '</span></span>'
+        + '<span class="ms-bar"><i style="width:' + Math.round((m.share || 0) / maxS * 100) + '%"></i></span>'
+        + '<span class="ms-share">' + (m.share || 0) + '%</span>'
+        + '<span class="ms-sep">' + _t('decks.nGames', { n: m.games }) + '</span>'
+        + '<span class="ms-win">' + winTxt + '</span>'
+        + '</div>';
+    }).join('');
+}
 async function loadMeCards(force) {
   const tag = (window.CRAuth && CRAuth.getCrTag && CRAuth.getCrTag()) || '';
   if (!tag) return { ok: false };
@@ -622,6 +669,7 @@ async function loadMeCards(force) {
   } catch (e) { /* 取得失敗時は手元の蓄積を使う */ }
   _saveMeBattles(tag, battles);
   ME_CARDS = aggregateMe(battles); ME_COUNT = battles.length;
+  ME_ARCH = aggregateMeArch(battles); // 帯メタ（勝ち筋分布）
   _syncMeToCloud(battles); // 間引き書込（await しない＝UIを止めない）
   return { ok: true, count: battles.length };
 }
@@ -674,6 +722,10 @@ async function setCardMode(mode, force) {
   if (cn) cn.textContent = (mode === 'me')
     ? _t('decks.meNote', { who: who, n: ME_COUNT })
     : (window.__cardsNoteEnv || '');
+  // 帯メタ：meモードでは「ランク帯の環境シェア」を出し、順位ベースで意味の薄いメタマップは隠す
+  const mmBlock = document.querySelector('.mm-sticky');
+  if (mmBlock) mmBlock.style.display = (mode === 'me') ? 'none' : '';
+  renderMeMeta();
   renderCrank(); renderMetaMap();
 }
 
@@ -712,7 +764,7 @@ function renderAggText() {
 window.addEventListener('crlangchange', () => {
   try { renderAggText(); updateDeckTabDesc(); renderMetaShare(); } catch (e) {}
   try { applyDecks(); } catch (e) {}
-  try { renderCrank(); renderMetaMap(); } catch (e) {}
+  try { renderCrank(); renderMetaMap(); renderMeMeta(); } catch (e) {}
   try { updateMeLabel(); } catch (e) {}
   try {
     if (cardFilter && _cardChip && _cardChip.style.display !== 'none') {

@@ -459,7 +459,26 @@ function injectAccountUI() {
   `;
   header.appendChild(wrap);
 
-  document.getElementById("crLoginBtn").onclick = () => CRAuth.signIn();
+  // ログイン前にプライバシーポリシー同意（初回のみダイアログ。同意の記録はこの端末のlocalStorage）
+  document.getElementById("crLoginBtn").onclick = () => {
+    let ok = false; try { ok = localStorage.getItem("cr_pp_ok") === "1"; } catch (e) {}
+    if (ok) { CRAuth.signIn(); return; }
+    const ov = document.createElement("div");
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px;";
+    ov.innerHTML = `
+      <div style="background:var(--surface,#161920);border:1px solid rgba(255,255,255,.14);border-radius:14px;max-width:340px;padding:18px 18px 14px;color:var(--text,#e8eaf0);font-size:13px;line-height:1.7;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:8px;">ログインの前に</div>
+        <div>続行すると、<a href="privacy.html" target="_blank" style="color:#7db4ff;">プライバシーポリシー</a>（アカウント情報・対戦データの取り扱い、匿名統計への利用）に同意したものとみなされます。</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+          <button id="crPpNo" style="background:none;border:1px solid rgba(255,255,255,.2);color:var(--text,#e8eaf0);border-radius:8px;padding:7px 14px;cursor:pointer;">キャンセル</button>
+          <button id="crPpYes" style="background:#e8a020;border:none;color:#14161c;font-weight:700;border-radius:8px;padding:7px 16px;cursor:pointer;">同意して続行</button>
+        </div>
+      </div>`;
+    ov.addEventListener("click", (e) => { if (e.target === ov) ov.remove(); });
+    ov.querySelector("#crPpNo").onclick = () => ov.remove();
+    ov.querySelector("#crPpYes").onclick = () => { try { localStorage.setItem("cr_pp_ok", "1"); } catch (e) {} ov.remove(); CRAuth.signIn(); };
+    document.body.appendChild(ov);
+  };
   document.getElementById("crAvatarBtn").onclick = (e) => { e.stopPropagation(); toggleMenu(); };
   document.addEventListener("click", (e) => {
     const m = document.getElementById("crMenu");

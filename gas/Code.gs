@@ -729,7 +729,7 @@ function exportTagSheetV2() {
     '凍結・停止':'stop','減速':'slow','ノックバック':'knockback','引き寄せ':'pull',
     '突進':'charge','盾持ち':'shield','回復':'heal','バフ':'buff',
     'デス時生成':'deathSpawn','ダッシュ':'dash','透明':'invisible',
-    '範囲攻撃':'splash','対空':'air','飛行':'flying'
+    '範囲攻撃':'splash','対空':'air','飛行':'flying','ランプ(生存強化)':'ramp'
   };
   var nameCol = head.indexOf('カード名');
   var memoCol = head.indexOf('メモ');
@@ -749,4 +749,33 @@ function exportTagSheetV2() {
   var out = { updated:new Date().toISOString(), source:'タグ表v2', count:Object.keys(cards).length, cards:cards };
   ghWriteJson_('card-tags.json', out);
   Logger.log('card-tags.json exported (v2): ' + out.count + ' cards');
+}
+
+/** =============== ポテンシャル係数 エクスポート（2026-06-12追加） ===============
+ * 「ポテンシャル」タブ（14列）を読んで card-potential.json をdataブランチへ出力。
+ * 分析UIは card-tags.json（タグ表v2）と card-potential.json の両方を読む設計。 */
+function exportPotentialV1() {
+  var id = PropertiesService.getScriptProperties().getProperty('TAG_SHEET_ID') || '1cjX3ptT0g0qjfwhoTBKbzRfXGZUNGLy_jspMSRCDPyU';
+  var sh = SpreadsheetApp.openById(id).getSheetByName('ポテンシャル');
+  if (!sh) throw new Error('シート「ポテンシャル」が見つかりません');
+  var vals = sh.getDataRange().getValues();
+  var head = vals[0].map(function(h){ return String(h).trim(); });
+  function col(name){ for (var i=0;i<head.length;i++){ if (head[i].indexOf(name)===0) return i; } return -1; }
+  var cName=col('カード名'), cHp=col('HP効率'), cDps=col('DPS効率'), cSp=col('呪文ダメ効率'), cCt=col('呪文タワー効率');
+  var c1=col('1倍適性'), c2=col('2倍適性'), c3=col('3倍適性'), cSc=col('スケーリング型'), cPa=col('噛み合う相手'), cSo=col('素出し適性'), cSep=col('セパレート適性'), cMe=col('メモ');
+  function numOf(v){ var n=parseFloat(v); return isFinite(n)?n:null; }
+  function strOf(v){ return String(v==null?'':v).trim(); }
+  var cards={};
+  for (var r=1;r<vals.length;r++){
+    var nm=strOf(vals[r][cName]); if(!nm) continue;
+    cards[nm]={
+      hpEff:numOf(vals[r][cHp]), dpsEff:numOf(vals[r][cDps]), spellEff:numOf(vals[r][cSp]), towerEff:numOf(vals[r][cCt]),
+      phase:[strOf(vals[r][c1]),strOf(vals[r][c2]),strOf(vals[r][c3])],
+      scaling:strOf(vals[r][cSc]), partner:strOf(vals[r][cPa]), solo:strOf(vals[r][cSo]), sep:(cSep>=0?strOf(vals[r][cSep]):'')
+    };
+    var memo=strOf(vals[r][cMe]); if(memo) cards[nm].memo=memo;
+  }
+  var out={ updated:new Date().toISOString(), source:'ポテンシャル', count:Object.keys(cards).length, cards:cards };
+  ghWriteJson_('card-potential.json', out);
+  Logger.log('card-potential.json exported: '+out.count+' cards');
 }
