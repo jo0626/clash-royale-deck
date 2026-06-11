@@ -712,3 +712,41 @@ function exportTagSheet() {
   Logger.log('card-tags.json 書き出し: ' + Object.keys(out).length + '枚');
   return Object.keys(out).length;
 }
+/** =============== タグ表v2 エクスポート（2026-06-12追加） ===============
+ * 「タグ表v2」タブ（日本語ヘッダー40列）を読んで card-tags.json をdataブランチへ出力。
+ * v1の exportTagSheet は旧シート1用にそのまま残置。今後はこちらを実行する。 */
+function exportTagSheetV2() {
+  var id = PropertiesService.getScriptProperties().getProperty('TAG_SHEET_ID') || '1cjX3ptT0g0qjfwhoTBKbzRfXGZUNGLy_jspMSRCDPyU';
+  var sh = SpreadsheetApp.openById(id).getSheetByName('タグ表v2');
+  if (!sh) throw new Error('シート「タグ表v2」が見つかりません');
+  var vals = sh.getDataRange().getValues();
+  var head = vals[0].map(function(h){ return String(h).trim(); });
+  var KEY = {
+    'タゲ取り:高HP':'tgHp','タゲ取り:振り向き':'tgKite','タゲ取り:建物':'tgBuilding',
+    'タンク':'tank','中型タンク':'minitank','橋前スパム':'bridgeSpam','群れ':'swarm',
+    'タンクキラー':'tankKiller','防衛建物':'defBuilding','呪文釣り':'spellBait',
+    'ユニット生成':'spawner','エリクサー生成':'collector','スタン':'stun',
+    '凍結・停止':'stop','減速':'slow','ノックバック':'knockback','引き寄せ':'pull',
+    '突進':'charge','盾持ち':'shield','回復':'heal','バフ':'buff',
+    'デス時生成':'deathSpawn','ダッシュ':'dash','透明':'invisible',
+    '範囲攻撃':'splash','対空':'air','飛行':'flying'
+  };
+  var nameCol = head.indexOf('カード名');
+  var memoCol = head.indexOf('メモ');
+  var tagCols = [];
+  head.forEach(function(h,i){ if (KEY[h]) tagCols.push([i, KEY[h]]); });
+  var cards = {};
+  for (var r=1; r<vals.length; r++) {
+    var nm = String(vals[r][nameCol]||'').trim(); if (!nm) continue;
+    var tags = [];
+    tagCols.forEach(function(tc){
+      var v = String(vals[r][tc[0]]||'').trim();
+      if (v==='○'||v==='◯'||v.toLowerCase()==='o'||v==='1'||v==='true') tags.push(tc[1]);
+    });
+    var memo = memoCol>=0 ? String(vals[r][memoCol]||'').trim() : '';
+    cards[nm] = memo ? {tags:tags, memo:memo} : {tags:tags};
+  }
+  var out = { updated:new Date().toISOString(), source:'タグ表v2', count:Object.keys(cards).length, cards:cards };
+  ghWriteJson_('card-tags.json', out);
+  Logger.log('card-tags.json exported (v2): ' + out.count + ' cards');
+}
