@@ -515,6 +515,7 @@ function removeFromDeck(card) {
 
 let dragSrcIdx = null;
 let dragSrcCard = null;
+let _lastPreviewIdx = null; // ドラッグ中の仮表示：同じ枠での重複再計算を防ぐ
 
 function onDragStart(e) {
   dragSrcIdx = parseInt(this.dataset.idx);
@@ -527,6 +528,7 @@ function onDragEnd(e) {
   document.querySelectorAll('.slot').forEach(s => {
     s.classList.remove('dragging', 'drag-over');
   });
+  _lastPreviewIdx = null;
   clearPreviewStats();
   // カード選択ゾーン上でドロップ終了→キャンセル
   if (dragSrcIdx !== null) {
@@ -556,17 +558,24 @@ function onDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   this.classList.add('drag-over');
-  if (dragSrcCard || dragSrcIdx !== null) previewStats(hypotheticalDeck(parseInt(this.dataset.idx))); // 平均コストを仮表示
+  const destIdx = parseInt(this.dataset.idx);
+  if ((dragSrcCard || dragSrcIdx !== null) && _lastPreviewIdx !== destIdx) {
+    _lastPreviewIdx = destIdx;
+    previewStats(hypotheticalDeck(destIdx)); // 平均コストを仮表示（同じ枠の上では再計算しない）
+  }
 }
 
 function onDragLeave(e) {
+  // 子要素（カード画像・名前等）へカーソルが移っただけでも発火する→無視（“チラつき”の原因だった）
+  if (e.relatedTarget && this.contains(e.relatedTarget)) return;
   this.classList.remove('drag-over');
-  clearPreviewStats();
+  if (_lastPreviewIdx === parseInt(this.dataset.idx)) { _lastPreviewIdx = null; clearPreviewStats(); }
 }
 
 function onDrop(e) {
   e.preventDefault();
   this.classList.remove('drag-over');
+  _lastPreviewIdx = null;
   clearPreviewStats();
   const destIdx = parseInt(this.dataset.idx);
   if (dragSrcCard) {

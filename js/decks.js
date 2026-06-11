@@ -731,6 +731,7 @@ function renderMetaShare() {
   const maxS = Math.max(1, ...top.map(m => m.share || 0));
   el.style.display = '';
   el.innerHTML = '<div class="ms-title">' + _tr('🧭 環境シェア（勝ち筋別・過去3日）') + '</div>'
+    + '<div class="ms-note">' + _tr('％＝過去3日でこの勝ち筋デッキを使った人の割合 ／ 勝率＝その勝ち筋デッキ全体の勝率') + '</div>'
     + top.map(m => {
       const base = String(m.k).replace(/[⚡👑]+$/, '');
       const suf = String(m.k).slice(base.length);

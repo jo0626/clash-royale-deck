@@ -553,7 +553,9 @@
   .evolved-badge { background: rgba(139,92,246,0.3); color: #c4a0ff; }
   .hero-badge { background: rgba(232,160,32,0.3); color: #ffd080; }
   .slot.dragging { opacity: 0.3; border-style: dashed; }
-  .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); transform: scale(1.03); }
+  /* drag-over中にtransformで要素を動かすとカーソル下の当たり判定がズレてenter/leaveが連発する（チラつきの原因）
+     → 当たり判定が変わらないリング光（box-shadow）に変更 */
+  .slot.drag-over { border-color: #3a8ef0; background: rgba(58,142,240,0.12); box-shadow: 0 0 0 2px rgba(58,142,240,.55) inset, 0 0 14px rgba(58,142,240,.35); }
   @media (hover: hover) { .slot.filled:hover { border-color: var(--red); background: rgba(224,80,80,0.06); } }
   .slot-num { display: none; }
   .slot-name {
