@@ -146,7 +146,7 @@ function radarHtml(deck, open) {
   const avg = deck.reduce((s, c) => s + c.info.c, 0) / 8;
   let cyc = Math.max(5, Math.min(100, (4.6 - avg) / 2.0 * 100));
   if (open && open.pct >= 5) cyc = Math.max(5, cyc - 20); // 初手事故率が高いと安定性減点
-  const REF = { atk: 14, defA: 12, defG: 18, swarm: 12, ctrl: 8 };
+  const REF = { atk: 16, defA: 12, defG: 18, swarm: 12, ctrl: 8 }; // β調整中（2.6ホグ=攻撃88が目安になるよう16に）
   const pct = k => Math.max(4, Math.min(100, Math.round(sums[k] / REF[k] * 100)));
   const axes = [
     { l: _tr('攻撃圧'), v: pct('atk') },

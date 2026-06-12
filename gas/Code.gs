@@ -248,7 +248,7 @@ function updateDecks() {
       typeSeen[tk] = (typeSeen[tk] || 0) + 1;
       if (!isRanked_(b)) continue;                 // ★ランク戦のみ
       var cards = b.team[0].cards;
-      if (evoCnt(cards) > 2) continue;
+      if (evoCnt(cards) > 4) continue; // ★進化とヒーローがevolutionLevelを共有＝特殊枠は最大4まで許容（旧2では正規デッキを弾いてpopが約1/3になっていた）
       var d = classifyDeck(cards);
       if (!d) continue;
       if (!gotPop) { if (tally(pop, d, null)) gotPop = true; }
@@ -591,14 +591,13 @@ function ghSiblingPath_(mainPath, name) {
 function ghReadJson_(path) {
   var ghToken = prop('GITHUB_TOKEN'), repo = prop('GITHUB_REPO'), branch = prop('GITHUB_BRANCH', 'data');
   if (!ghToken || !repo) return null;
-  var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
+  // ★rawメディアタイプで取得。旧来のbase64型はファイルが1MBを超えるとcontentが空になり、
+  //   cardhist.jsonの3日履歴が毎回リセットされる事故が起きた（2026-06-12発覚）。rawなら100MBまでOK。
+  var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github.raw' };
   var res = UrlFetchApp.fetch('https://api.github.com/repos/' + repo + '/contents/' + path + '?ref=' + branch,
     { method: 'get', headers: headers, muteHttpExceptions: true });
   if (res.getResponseCode() !== 200) return null;
-  try {
-    var j = JSON.parse(res.getContentText());
-    return JSON.parse(Utilities.newBlob(Utilities.base64Decode(j.content)).getDataAsString('UTF-8'));
-  } catch (e) { return null; }
+  try { return JSON.parse(res.getContentText()); } catch (e) { return null; }
 }
 
 function ghWriteJson_(path, obj) {
@@ -607,7 +606,9 @@ function ghWriteJson_(path, obj) {
   var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
   var api = 'https://api.github.com/repos/' + repo + '/contents/' + path;
   var sha = null;
-  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: headers, muteHttpExceptions: true });
+  // ★objectメディアタイプ＝1MB超ファイルでもshaが取れる（base64型は1MB超でエラーになる）
+  var curHeaders = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github.object' };
+  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: curHeaders, muteHttpExceptions: true });
   if (cur.getResponseCode() === 200) sha = JSON.parse(cur.getContentText()).sha;
   var content = Utilities.base64Encode(Utilities.newBlob(JSON.stringify(obj)).getBytes());
   var body = { message: 'chore: update ' + path, content: content, branch: branch };
@@ -631,7 +632,9 @@ function commitToGithub(payload) {
   var headers = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github+json' };
 
   var sha = null;
-  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: headers, muteHttpExceptions: true });
+  // ★objectメディアタイプ＝1MB超ファイルでもshaが取れる（base64型は1MB超でエラーになる）
+  var curHeaders = { Authorization: 'token ' + ghToken, Accept: 'application/vnd.github.object' };
+  var cur = UrlFetchApp.fetch(api + '?ref=' + branch, { method: 'get', headers: curHeaders, muteHttpExceptions: true });
   if (cur.getResponseCode() === 200) sha = JSON.parse(cur.getContentText()).sha;
 
   var content = Utilities.base64Encode(Utilities.newBlob(JSON.stringify(payload)).getBytes());

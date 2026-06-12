@@ -213,7 +213,7 @@ function renderDecks(decks) {
       headHtml = '<span class="stat-trend"><span class="arrow">▲</span> ' + _tr('急上昇') + '</span>'
         + (d.count != null ? '<span class="stat-sep">' + _t('decks.nUsed', { n: d.count }) + '</span>' : '')
         + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>';
-    } else if (d.winRate != null) {
+    } else if (activeTab === 'win' && d.winRate != null) {
       // 勝率タブ：勝率 ＋ 対戦数（3日合計）＋ 使用人数
       headHtml = '<span class="stat-win">' + _t('decks.winPct', { p: d.winRate }) + '</span>'
         + '<span class="stat-sep">' + _t('decks.nGames', { n: (d.games || 0) }) + '</span>'
@@ -225,12 +225,13 @@ function renderDecks(decks) {
       // 使用率タブ：使用人数（3日延べ）＋ ％ ＋ 対戦数（何回使われたか）
       const pct = (d.count != null && PLAYERS_TOTAL) ? (d.count / PLAYERS_TOTAL * 100).toFixed(1) : null;
       const gamesTxt = (d.games != null) ? '<span class="stat-sep">' + _t('decks.nGames', { n: d.games }) + '</span>' : '';
+      const winTxt = (d.winRate != null) ? '<span class="stat-sep">' + _t('decks.winPct', { p: d.winRate }) + '</span>' : '';
       const useSep = _tr('が使用');
       headHtml = (pct != null)
         ? ('<span class="stat-use">' + _t('decks.nPlayersUse', { n: d.count }) + '</span>'
            + (useSep ? '<span class="stat-sep">' + useSep + '</span>' : '')
            + '<span class="stat-pct">' + pct + '%</span>'
-           + gamesTxt
+           + gamesTxt + winTxt
            + '<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>')
         : ('<span class="stat-avg">' + avgLbl + ' <b>' + avg + '</b></span>'
            + (d.sub ? '<span class="stat-sep">' + d.sub + '</span>' : ''));
