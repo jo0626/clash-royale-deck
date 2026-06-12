@@ -840,64 +840,76 @@ function exportWeightsV1() {
   Logger.log('card-weights.json exported: ' + out.count + ' cards');
 }
 
-/** =============== シート1（旧v1）→タグ表v2 合算（2026-06-12） ===============
- * シート1のオーナー記入（○・メモ）をv2へ取り込む。原則：
- *  - v2の「空セル」にしか書かない（上書きしない）
- *  - 対応が明確な列だけ自動転記：タンクキラー→タンクキラー / 突進・チャージ→突進 / スポーン持続→ユニット生成 / メモ→メモ（[v1]接頭辞）
- *  - 曖昧な列（タゲ取り適性・リセット持ち・スタン凍結減速・回復サポート）は書かずに「v1合算チェック」タブに一覧
- * 取り込み後、オーナーがチェックタブを見て手で反映→シート1削除でOK。 */
+/** =============== シート1（旧v1）→タグ表v2 全量合算（チェックタブ廃止版） ===============
+ * シート1のオーナー記入（○・メモ）を全部v2へ取り込む。v2の「空セル」にしか書かない。
+ * 曖昧だった列は card-stats の属性で機械判別して振り分け：
+ *  - スタン/凍結/減速○ → attrs に Stun/Freeze/Slow があるかで スタン/凍結・停止/減速 へ
+ *  - 回復/サポート○ → attrs に Boost があれば バフ、なければ 回復
+ *  - タゲ取り適性○ → Building→タゲ取り:建物 / hp16≥2400→タゲ取り:高HP / それ以外→タゲ取り:振り向き
+ * 実行後はシート1を完全削除してOK（呪文圏内などの自動タグは card-stats.json 由来＝シート不要）。 */
 function mergeV1IntoV2() {
   var id = prop('TAG_SHEET_ID', '');
   var ss = SpreadsheetApp.openById(id);
   var s1 = ss.getSheetByName('シート1');
   var v2 = ss.getSheetByName('タグ表v2');
   if (!s1 || !v2) throw new Error('シート1またはタグ表v2が見つかりません');
+  var stats = ghReadJson_('card-stats.json');
+  var byJp = {};
+  (stats && stats.cards || []).forEach(function (c) { byJp[c.jp] = c; });
   var a = s1.getDataRange().getValues();
   var b = v2.getDataRange().getValues();
   var h1 = a[0].map(String), h2 = b[0].map(String);
-  function c1(name) { for (var i = 0; i < h1.length; i++) if (h1[i].indexOf(name) >= 0) return i; return -1; }
-  function c2(name) { for (var i = 0; i < h2.length; i++) if (h2[i].indexOf(name) >= 0) return i; return -1; }
+  function c1(n) { for (var i = 0; i < h1.length; i++) if (h1[i].indexOf(n) >= 0) return i; return -1; }
+  function c2(n) { for (var i = 0; i < h2.length; i++) if (h2[i].indexOf(n) >= 0) return i; return -1; }
   var rowV2 = {};
   for (var r = 1; r < b.length; r++) { var nm = String(b[r][0] || '').trim(); if (nm) rowV2[nm] = r; }
-  // 自動転記マップ [v1列, v2列]
-  var DIRECT = [['タンクキラー', 'タンクキラー'], ['突進', '突進'], ['スポーン持続', 'ユニット生成']];
-  // 曖昧（レポートのみ）
-  var AMBIG = ['タゲ取り適性', 'リセット持ち', 'スタン', '回復'];
-  var memo1 = c1('メモ'), memo2 = c2('メモ');
-  var applied = 0, report = [['カード名', 'v1の列', 'v1の値', 'v2の対応列の現状', '提案']];
+  var applied = 0, skipped = [];
+  function setIfEmpty(vr, col, val) {
+    if (col < 0) return;
+    var cur = String(b[vr][col] || '').trim();
+    if (!cur) { v2.getRange(vr + 1, col + 1).setValue(val); applied++; }
+  }
+  function marked(r, col) { return col >= 0 && String(a[r][col] || '').trim() !== ''; }
+  var iTK = c1('タンクキラー'), iCh = c1('突進'), iSp = c1('スポーン持続'), iRe = c1('リセット持ち'),
+      iSt = c1('スタン'), iHe = c1('回復'), iTg = c1('タゲ取り適性'), iMe = c1('メモ');
+  var jTK = c2('タンクキラー'), jCh = c2('突進'), jUn = c2('ユニット生成'), jSt = c2('スタン'),
+      jFr = c2('凍結'), jSl = c2('減速'), jBu = c2('バフ'), jHe = c2('回復'),
+      jTgB = c2('タゲ取り:建物'), jTgH = c2('タゲ取り:高HP'), jTgK = c2('タゲ取り:振り向き'), jMe = c2('メモ');
   for (var r = 1; r < a.length; r++) {
     var nm = String(a[r][0] || '').trim(); if (!nm) continue;
-    var vr = rowV2[nm]; if (vr == null) { report.push([nm, '-', '-', 'v2に行なし', '確認']); continue; }
-    DIRECT.forEach(function (m) {
-      var i1 = c1(m[0]), i2 = c2(m[1]);
-      if (i1 < 0 || i2 < 0) return;
-      var v = String(a[r][i1] || '').trim();
-      if (!v) return;
-      var cur = String(b[vr][i2] || '').trim();
-      if (!cur) { v2.getRange(vr + 1, i2 + 1).setValue('○'); applied++; }
-    });
-    AMBIG.forEach(function (k) {
-      var i1 = c1(k);
-      if (i1 < 0) return;
-      var v = String(a[r][i1] || '').trim();
-      if (!v) return;
-      report.push([nm, h1[i1], v, '（3分割/別名のため自動転記せず）', '手で反映']);
-    });
-    if (memo1 >= 0 && memo2 >= 0) {
-      var mv = String(a[r][memo1] || '').trim();
-      if (mv && mv.indexOf('要確認') < 0) { // 機械生成の「要確認」定型は運ばない
-        var cur2 = String(b[vr][memo2] || '').trim();
+    var vr = rowV2[nm]; if (vr == null) { skipped.push(nm); continue; }
+    var st = byJp[nm] || {};
+    var attrKeys = Object.keys((st.attrs) || {}).join('|');
+    if (marked(r, iTK)) setIfEmpty(vr, jTK, '○');
+    if (marked(r, iCh)) setIfEmpty(vr, jCh, '○');
+    if (marked(r, iSp)) setIfEmpty(vr, jUn, '○');
+    if (marked(r, iRe)) setIfEmpty(vr, jSt, '○');
+    if (marked(r, iSt)) {
+      if (/Stun/i.test(attrKeys)) setIfEmpty(vr, jSt, '○');
+      else if (/Freeze/i.test(attrKeys)) setIfEmpty(vr, jFr, '○');
+      else if (/Slow/i.test(attrKeys)) setIfEmpty(vr, jSl, '○');
+      else setIfEmpty(vr, jSt, '○');
+    }
+    if (marked(r, iHe)) {
+      if (/Boost/i.test(attrKeys)) setIfEmpty(vr, jBu, '○');
+      else setIfEmpty(vr, jHe, '○');
+    }
+    if (marked(r, iTg)) {
+      var typ = (st.n && st.n.type) || '';
+      if (typ === 'Building') setIfEmpty(vr, jTgB, '○');
+      else if ((st.hp16 || 0) >= 2400) setIfEmpty(vr, jTgH, '○');
+      else setIfEmpty(vr, jTgK, '○');
+    }
+    if (iMe >= 0 && jMe >= 0) {
+      var mv = String(a[r][iMe] || '').trim();
+      if (mv && mv.indexOf('要確認') < 0) {
+        var cur2 = String(b[vr][jMe] || '').trim();
         if (cur2.indexOf(mv) < 0) {
-          v2.getRange(vr + 1, memo2 + 1).setValue(cur2 ? (cur2 + ' ／[v1] ' + mv) : ('[v1] ' + mv));
+          v2.getRange(vr + 1, jMe + 1).setValue(cur2 ? (cur2 + ' ／[v1] ' + mv) : ('[v1] ' + mv));
           applied++;
         }
       }
     }
   }
-  var rep = ss.getSheetByName('v1合算チェック') || ss.insertSheet('v1合算チェック');
-  rep.clear();
-  rep.getRange(1, 1, report.length, 5).setValues(report);
-  rep.setFrozenRows(1);
-  rep.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#e8eaf0');
-  Logger.log('自動転記 ' + applied + '件 / 要手動 ' + (report.length - 1) + '件（v1合算チェック タブ参照）');
+  Logger.log('全量合算 ' + applied + '件。v2に行がなかった: [' + skipped.join(',') + ']。シート1は削除してOK');
 }
