@@ -168,7 +168,15 @@ function updateDecks() {
   // ---- 履歴を先に読む（対戦の二重カウント防止用 lastT を使うため） ----
   var ghPath = prop('GITHUB_PATH', 'decks.json');
   var histPath = ghSiblingPath_(ghPath, 'cardhist.json');
-  var hist = ghReadJson_(histPath) || { snaps: [], dinfo: {} };
+  var hist = ghReadJson_(histPath);
+  if (!hist) {
+    // ★上書き事故ガード：ファイルが「存在するのに読めない」場合は履歴を消さないよう実行を中断。
+    //   （存在しない＝初回だけ新規作成を許可。復旧はgitのコミット履歴から前バージョンを書き戻せばよい）
+    var chk = UrlFetchApp.fetch('https://api.github.com/repos/' + prop('GITHUB_REPO') + '/contents/' + histPath + '?ref=' + prop('GITHUB_BRANCH', 'data'),
+      { method: 'get', headers: { Authorization: 'token ' + prop('GITHUB_TOKEN'), Accept: 'application/vnd.github.object' }, muteHttpExceptions: true });
+    if (chk.getResponseCode() === 200) throw new Error('cardhist.json が存在するのに読めない＝上書き防止のため中断（要調査）');
+    hist = { snaps: [], dinfo: {} };
+  }
   if (!hist.dinfo) hist.dinfo = {};
   var lastT = hist.lastT || {};   // tag → 前回処理した最新の battleTime
   var newLastT = {};
