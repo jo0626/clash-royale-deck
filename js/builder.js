@@ -1115,7 +1115,17 @@ function updateActionButtons() {
   const saveBtn = document.getElementById('saveBtn');
   const analyzeBtn = document.getElementById('analyzeBtn');
   if (saveBtn) saveBtn.disabled = false;              // 0枚でも保存OK（空スロットとして保存できる）
-  if (analyzeBtn) analyzeBtn.setAttribute('aria-disabled', n < 8 ? 'true' : 'false'); // 8枚で活性
+  if (analyzeBtn) {
+    analyzeBtn.setAttribute('aria-disabled', n < 8 ? 'true' : 'false'); // 8枚で活性
+    // ★診断ページへデッキ＋形態（n/e/h×8）を渡す
+    if (n === 8) {
+      const names = deck.map(c => c.name).join(',');
+      const fs = deck.map((c, i) => { const m = slotMode(c, i); return m === 'evolved' ? 'e' : m === 'hero' ? 'h' : 'n'; }).join('');
+      analyzeBtn.href = 'strategy.html?deck=' + encodeURIComponent(names) + '&f=' + fs;
+    } else {
+      analyzeBtn.href = 'strategy.html';
+    }
+  }
   const cta = document.getElementById('emptyDeckCta'); // 空(0枚)の時だけ「人気デッキから作る」を表示
   if (cta) cta.classList.toggle('show', n === 0);
 }
