@@ -129,6 +129,7 @@
       "※ 診断はLv16換算の理論値とオーナー監修タグに基づく参考情報です": "※ Based on Lv16-normalized stats and curated tags. For reference.",
       "→ デッキを組みに行く": "→ Build a deck",
       "strat.sub2": "Check your deck composition: anti-air, tank killing, spell durability and cost curve — judged with real Lv16 stats and curated tags.",
+      "strat.beta": "🧪 Beta: scoring logic is being tuned continuously and will keep getting smarter.",
       "strat.empty": "Build 8 cards in the deck builder and<br>tap “Analyze deck →” to get your check-up.", "🧭 環境シェア（勝ち筋別・過去3日）": "🧭 Meta share (by win condition, last 3 days)", "その他": "Other", "decks.winPct": "Win rate {p}%",
       "decks.nGames": "{n} games",
       "decks.nUsed": "{n} players",
