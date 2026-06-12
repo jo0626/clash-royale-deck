@@ -179,7 +179,7 @@
       "対戦データを取得中…": "Fetching battle data…",
       "を表示中": "showing",
       "このカードでデッキ検索": "Find decks with this card",
-      "％＝過去3日でこの勝ち筋デッキを使った人の割合 ／ 勝率＝その勝ち筋デッキ全体の勝率": "% = share of players using this win condition in the last 3 days / Win rate = overall win rate of those decks",
+      "％＝この勝ち筋カードを含むデッキを使った人の割合（複数の勝ち筋を持つデッキは各勝ち筋にカウント）／ 勝率＝そのデッキ全体の勝率": "% = share of players whose deck contains this win condition (decks with multiple win conditions count once for each) / Win rate = overall win rate of those decks",
       "指を離さず左右になぞってデッキ切替": "Slide left/right without lifting your finger to switch decks",
       "mm.medUse": "Median usage {v}%",
       "mm.medWin": "Median win {v}%",

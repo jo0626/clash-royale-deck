@@ -126,6 +126,19 @@ function archOf_(jpArr) {
 }
 // ★形態つき勝ち筋：同じカードでも 通常 / ⚡限界突破 / 👑ヒーロー を別の勝ち筋として返す
 //   （フォーム不明 both はヒーロー扱い＝finalizeDeck と同じタイブレーク）
+// ★複数勝ち筋カウント版：デッキに含まれる勝ち筋を「全部」返す（形態サフィックス付き）。
+//   優先順位は不要＝37枚の正当な順序維持から解放。なければ ['その他']。
+function archsForm_(jpArr, forms) {
+  var out = [];
+  for (var i = 0; i < ARCH_WINCONS.length; i++) {
+    var idx = jpArr.indexOf(ARCH_WINCONS[i]);
+    if (idx >= 0) {
+      var f = forms ? forms[idx] : null;
+      out.push(ARCH_WINCONS[i] + ((f === 'evo') ? '⚡' : (f === 'hero' || f === 'both') ? '👑' : ''));
+    }
+  }
+  return out.length ? out : ['その他'];
+}
 function archForm_(jpArr, forms) {
   for (var i = 0; i < ARCH_WINCONS.length; i++) {
     var idx = jpArr.indexOf(ARCH_WINCONS[i]);
@@ -269,10 +282,13 @@ function updateDecks() {
       var od = (oppCards.length === 8) ? classifyDeck(oppCards) : null;
       if (od && sameSig_(d.jp, od.jp)) continue;   // ★完全ミラー除外
       tally(win, d, tc > oc, tc, oc);
-      if (od) {                                     // ★相性（アーキタイプ別）
-        var k = archForm_(d.jp, d.fm) + '|' + archForm_(od.jp, od.fm);
-        var mm = muNow[k] || (muNow[k] = [0, 0]);
-        mm[0]++; if (tc > oc) mm[1]++;
+      if (od) {                                     // ★相性（勝ち筋は複数あれば全組み合わせにカウント）
+        var aa = archsForm_(d.jp, d.fm), bb = archsForm_(od.jp, od.fm);
+        for (var ai = 0; ai < aa.length; ai++) for (var bi = 0; bi < bb.length; bi++) {
+          var k = aa[ai] + '|' + bb[bi];
+          var mm = muNow[k] || (muNow[k] = [0, 0]);
+          mm[0]++; if (tc > oc) mm[1]++;
+        }
       }
     }
     if (maxT) newLastT[tag] = maxT;
@@ -402,6 +418,15 @@ function updateDecks() {
     if (d && d.slots && d.forms) return archForm_(d.slots, d.forms);
     return archOf_(sig.split('#')[0].split('|'));
   }
+  // ★複数勝ち筋版（メタシェア・デッキのarchs用）
+  function archsOfSig_(sig) {
+    var d = renderSig(sig);
+    if (d && d.slots && d.forms) return archsForm_(d.slots, d.forms);
+    var jp = sig.split('#')[0].split('|');
+    var out = [];
+    for (var i = 0; i < ARCH_WINCONS.length; i++) if (jp.indexOf(ARCH_WINCONS[i]) >= 0) out.push(ARCH_WINCONS[i]);
+    return out.length ? out : ['その他'];
+  }
   // ★王冠系の表示値：c3=勝利のうち3クラウンだった割合(%) / cd=1試合あたりの平均クラウン差
   function crownOut_(a) {
     if (!a.G || (a.CF + a.CA) <= 0) return null;
@@ -425,7 +450,7 @@ function updateDecks() {
     .map(function (sig) {
       var d = renderSig(sig); if (!d) return null;
       var a = agg[sig], cr = crownOut_(a);
-      var o = { name: d.name, slots: d.slots, forms: d.forms, count: a.P, games: a.G, arch: archOfSig_(sig) };
+      var o = { name: d.name, slots: d.slots, forms: d.forms, count: a.P, games: a.G, arch: archOfSig_(sig), archs: archsOfSig_(sig) };
       var ch = cycHvy_(d.slots); o.cyc = ch.cyc; o.hvy = ch.hvy;
       if (a.G > 0) o.winRate = Math.round(a.W / a.G * 1000) / 10;
       if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
@@ -442,7 +467,7 @@ function updateDecks() {
       var a = agg[sig], cr = crownOut_(a);
       var o = { name: d.name, slots: d.slots, forms: d.forms, games: a.G, wins: a.W,
         winRate: Math.round(a.W / a.G * 1000) / 10, lb: Math.round(wilson_(a.W, a.G) * 1000) / 10,
-        count: a.P, arch: archOfSig_(sig) };
+        count: a.P, arch: archOfSig_(sig), archs: archsOfSig_(sig) };
       var ch = cycHvy_(d.slots); o.cyc = ch.cyc; o.hvy = ch.hvy;
       if (cr) { o.c3 = cr.c3; o.cd = cr.cd; }
       return o;
@@ -474,12 +499,15 @@ function updateDecks() {
 
   // ★メタシェア：アーキタイプ（勝ち筋）ごとの環境占有率と勝率（3日合算・上位デッキ署名ベース）
   var metaAgg = {};
+  var sigTotalP = 0;
   Object.keys(agg).forEach(function (sig) {
-    var k = archOfSig_(sig);
-    var m = metaAgg[k] || (metaAgg[k] = { P: 0, G: 0, W: 0 });
-    m.P += agg[sig].P; m.G += agg[sig].G; m.W += agg[sig].W;
+    sigTotalP += agg[sig].P;
+    archsOfSig_(sig).forEach(function (k) {
+      var m = metaAgg[k] || (metaAgg[k] = { P: 0, G: 0, W: 0 });
+      m.P += agg[sig].P; m.G += agg[sig].G; m.W += agg[sig].W;
+    });
   });
-  var totalP = Object.keys(metaAgg).reduce(function (t, k) { return t + metaAgg[k].P; }, 0) || 1;
+  var totalP = sigTotalP || 1; // ★分母＝延べ使用人数（各デッキ1回）→「その勝ち筋を含むデッキの割合」。複数持ちは重複カウント＝合計100%超えは仕様
   var meta = Object.keys(metaAgg).map(function (k) {
     var m = metaAgg[k];
     return { k: k, share: Math.round(m.P / totalP * 1000) / 10, win: m.G ? Math.round(m.W / m.G * 1000) / 10 : null, games: m.G };
