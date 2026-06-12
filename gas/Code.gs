@@ -654,64 +654,8 @@ function createTriggers() {
 }
 
 
-// =============================================================
-//  ★カード属性タグ表（オーナー監修用）
-//  buildTagSheet(): card-stats.json を読んで Googleスプレッドシート「CRDB カード属性タグ表」を作成/更新。
-//    初回実行時に SpreadsheetApp の権限承認が出る。URLは実行ログに出る（TAG_SHEET_ID に保存）。
-//  exportTagSheet(): 監修済みシートを読み取り card-tags.json として data ブランチへ書き出す。
-// =============================================================
-var TAG_MANUAL_COLS = ['タゲ取り適性', 'リセット持ち', 'スタン/凍結/減速', '突進・チャージ', 'スポーン持続', '回復/サポート', 'タンクキラー', 'メモ'];
+// （旧v1のタグ表生成/出力は2026-06-12に削除＝タグ表v2系に一本化。シート1も不要）
 
-function buildTagSheet() {
-  var data = ghReadJson_('card-stats.json');
-  if (!data || !data.cards) throw new Error('card-stats.json が読めない');
-  var head = ['カード名', 'コスト', 'タイプ', 'レア', 'HP16', 'DPS16', '自動タグ（機械生成）', '自動タグ修正（差し替え時のみ記入）'].concat(TAG_MANUAL_COLS);
-  var rows = data.cards.map(function (c) {
-    var base = [c.jp, (c.n && c.n.cost != null) ? c.n.cost : '', (c.n && c.n.type) || '', (c.n && c.n.rarity) || '',
-      c.hp16 || '', c.dps16 || '', (c.tags || []).join('、'), ''];
-    return base.concat(TAG_MANUAL_COLS.map(function () { return ''; }));
-  });
-  var ss = null, id = prop('TAG_SHEET_ID', '');
-  if (id) { try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } }
-  if (!ss) {
-    ss = SpreadsheetApp.create('CRDB カード属性タグ表');
-    PropertiesService.getScriptProperties().setProperty('TAG_SHEET_ID', ss.getId());
-  }
-  var sh = ss.getSheets()[0];
-  sh.clear();
-  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
-  sh.getRange(2, 1, rows.length, head.length).setValues(rows);
-  sh.setFrozenRows(1);
-  sh.setFrozenColumns(1);
-  sh.autoResizeColumns(1, 7);
-  Logger.log('タグ表URL: ' + ss.getUrl());
-  return ss.getUrl();
-}
-
-function exportTagSheet() {
-  var id = prop('TAG_SHEET_ID', '');
-  if (!id) throw new Error('TAG_SHEET_ID なし（先に buildTagSheet を実行）');
-  var sh = SpreadsheetApp.openById(id).getSheets()[0];
-  var vals = sh.getDataRange().getValues();
-  var head = vals[0];
-  var out = {};
-  for (var i = 1; i < vals.length; i++) {
-    var row = vals[i], jp = String(row[0] || '').trim();
-    if (!jp) continue;
-    var auto = String(row[7] || '').trim() || String(row[6] || '').trim(); // 修正列が空なら機械生成列
-    var tags = auto ? auto.split(/[、,]/).map(function (t) { return t.trim(); }).filter(Boolean) : [];
-    for (var m = 0; m < TAG_MANUAL_COLS.length - 1; m++) { // 最後のメモ列はタグにしない
-      var v = String(row[8 + m] || '').trim();
-      if (v && v !== '-') tags.push(TAG_MANUAL_COLS[m]);
-    }
-    var memo = String(row[8 + TAG_MANUAL_COLS.length - 1] || '').trim();
-    out[jp] = { tags: tags };
-    if (memo) out[jp].memo = memo;
-  }
-  ghWriteJson_('card-tags.json', { updated: new Date().toISOString(), source: 'CRDB カード属性タグ表（オーナー監修）', cards: out });
-  Logger.log('card-tags.json 書き出し: ' + Object.keys(out).length + '枚');
-  return Object.keys(out).length;
-}
 /** =============== タグ表v2 エクスポート（2026-06-12追加） ===============
  * 「タグ表v2」タブ（日本語ヘッダー40列）を読んで card-tags.json をdataブランチへ出力。
  * v1の exportTagSheet は旧シート1用にそのまま残置。今後はこちらを実行する。 */
@@ -789,7 +733,7 @@ function formatTagSheets() {
   var ss = SpreadsheetApp.openById(id);
   ss.getSheets().forEach(function (sh) {
     var name = sh.getName();
-    if (name !== 'タグ表v2' && name !== 'ポテンシャル') return;
+    if (name !== 'タグ表v2' && name !== 'ポテンシャル' && name !== 'ウェイト') return;
     var rng = sh.getDataRange();
     try { sh.getBandings().forEach(function (b) { b.remove(); }); } catch (e) {}
     try { rng.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false); } catch (e) {}
@@ -894,4 +838,66 @@ function exportWeightsV1() {
   var out = { updated: new Date().toISOString(), source: 'ウェイト（軸別1〜5・オーナー監修）', count: Object.keys(cards).length, cards: cards };
   ghWriteJson_('card-weights.json', out);
   Logger.log('card-weights.json exported: ' + out.count + ' cards');
+}
+
+/** =============== シート1（旧v1）→タグ表v2 合算（2026-06-12） ===============
+ * シート1のオーナー記入（○・メモ）をv2へ取り込む。原則：
+ *  - v2の「空セル」にしか書かない（上書きしない）
+ *  - 対応が明確な列だけ自動転記：タンクキラー→タンクキラー / 突進・チャージ→突進 / スポーン持続→ユニット生成 / メモ→メモ（[v1]接頭辞）
+ *  - 曖昧な列（タゲ取り適性・リセット持ち・スタン凍結減速・回復サポート）は書かずに「v1合算チェック」タブに一覧
+ * 取り込み後、オーナーがチェックタブを見て手で反映→シート1削除でOK。 */
+function mergeV1IntoV2() {
+  var id = prop('TAG_SHEET_ID', '');
+  var ss = SpreadsheetApp.openById(id);
+  var s1 = ss.getSheetByName('シート1');
+  var v2 = ss.getSheetByName('タグ表v2');
+  if (!s1 || !v2) throw new Error('シート1またはタグ表v2が見つかりません');
+  var a = s1.getDataRange().getValues();
+  var b = v2.getDataRange().getValues();
+  var h1 = a[0].map(String), h2 = b[0].map(String);
+  function c1(name) { for (var i = 0; i < h1.length; i++) if (h1[i].indexOf(name) >= 0) return i; return -1; }
+  function c2(name) { for (var i = 0; i < h2.length; i++) if (h2[i].indexOf(name) >= 0) return i; return -1; }
+  var rowV2 = {};
+  for (var r = 1; r < b.length; r++) { var nm = String(b[r][0] || '').trim(); if (nm) rowV2[nm] = r; }
+  // 自動転記マップ [v1列, v2列]
+  var DIRECT = [['タンクキラー', 'タンクキラー'], ['突進', '突進'], ['スポーン持続', 'ユニット生成']];
+  // 曖昧（レポートのみ）
+  var AMBIG = ['タゲ取り適性', 'リセット持ち', 'スタン', '回復'];
+  var memo1 = c1('メモ'), memo2 = c2('メモ');
+  var applied = 0, report = [['カード名', 'v1の列', 'v1の値', 'v2の対応列の現状', '提案']];
+  for (var r = 1; r < a.length; r++) {
+    var nm = String(a[r][0] || '').trim(); if (!nm) continue;
+    var vr = rowV2[nm]; if (vr == null) { report.push([nm, '-', '-', 'v2に行なし', '確認']); continue; }
+    DIRECT.forEach(function (m) {
+      var i1 = c1(m[0]), i2 = c2(m[1]);
+      if (i1 < 0 || i2 < 0) return;
+      var v = String(a[r][i1] || '').trim();
+      if (!v) return;
+      var cur = String(b[vr][i2] || '').trim();
+      if (!cur) { v2.getRange(vr + 1, i2 + 1).setValue('○'); applied++; }
+    });
+    AMBIG.forEach(function (k) {
+      var i1 = c1(k);
+      if (i1 < 0) return;
+      var v = String(a[r][i1] || '').trim();
+      if (!v) return;
+      report.push([nm, h1[i1], v, '（3分割/別名のため自動転記せず）', '手で反映']);
+    });
+    if (memo1 >= 0 && memo2 >= 0) {
+      var mv = String(a[r][memo1] || '').trim();
+      if (mv && mv.indexOf('要確認') < 0) { // 機械生成の「要確認」定型は運ばない
+        var cur2 = String(b[vr][memo2] || '').trim();
+        if (cur2.indexOf(mv) < 0) {
+          v2.getRange(vr + 1, memo2 + 1).setValue(cur2 ? (cur2 + ' ／[v1] ' + mv) : ('[v1] ' + mv));
+          applied++;
+        }
+      }
+    }
+  }
+  var rep = ss.getSheetByName('v1合算チェック') || ss.insertSheet('v1合算チェック');
+  rep.clear();
+  rep.getRange(1, 1, report.length, 5).setValues(report);
+  rep.setFrozenRows(1);
+  rep.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#e8eaf0');
+  Logger.log('自動転記 ' + applied + '件 / 要手動 ' + (report.length - 1) + '件（v1合算チェック タブ参照）');
 }
