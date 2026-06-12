@@ -544,7 +544,8 @@ function updateDecks() {
     winDecks: winDecks,
     trending: trending,
     cards: cards,
-    meta: meta
+    meta: meta,
+    winMin: WIN_MIN_3D
   });
   ghWriteJson_(histPath, hist); // 履歴を更新（別ファイル）
 }
