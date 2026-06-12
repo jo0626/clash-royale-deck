@@ -807,3 +807,91 @@ function formatTagSheets() {
   });
   Logger.log('formatted: タグ表v2 / ポテンシャル');
 }
+
+/** =============== ウェイト（軸別1〜5）ドラフト生成＋エクスポート（2026-06-12追加） ===============
+ * buildWeightSheet(): card-stats/card-tagsから攻撃圧・地上防衛・対空・小物処理・妨害（各0〜5）を
+ *   ヒューリスティックで自動ドラフト→シート「ウェイト」タブに書き出し→そのまま exportWeightsV1() も実行。
+ *   ⚡/👑行はベース値のコピー（要赤入れ）。赤入れ後は exportWeightsV1 だけ再実行すればチャートに即反映。
+ * 診断ページのレーダーチャートは card-weights.json を読む。 */
+function buildWeightSheet() {
+  var stats = ghReadJson_('card-stats.json');
+  var tagsJ = ghReadJson_('card-tags.json') || { cards: {} };
+  if (!stats || !stats.cards) throw new Error('card-stats.json が読めない');
+  var byJp = {};
+  stats.cards.forEach(function (c) { byJp[c.jp] = c; });
+  function tagsOf(nm) { var e = tagsJ.cards[nm]; return (e && e.tags) || []; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, Math.round(v))); }
+  function draft(nm) {
+    var base = nm.replace(/[⚡👑]+$/, '');
+    var c = byJp[base]; if (!c) return null;
+    var n = c.n || {}, t = tagsOf(nm).concat(tagsOf(base));
+    function ht(k) { return t.indexOf(k) >= 0; }
+    var isSp = n.type === 'Spell', isBld = n.type === 'Building';
+    var dps = c.dps16 || 0;
+    var autoT = (c.tags || []);
+    var atk = 0, dg = 0, da = 0, sw = 0, ct = 0;
+    if (ARCH_WINCONS.indexOf(base) >= 0) atk = (n.cost >= 6 ? 5 : n.cost >= 4 ? 4 : 3);
+    else if (ht('bridgeSpam')) atk = 3;
+    else if (isSp) atk = (autoT.indexOf('大呪文') >= 0 ? 3 : autoT.indexOf('中呪文') >= 0 ? 2 : 1);
+    else if (dps >= 300 && !isBld) atk = 2;
+    else atk = 1;
+    if (isSp) dg = (autoT.indexOf('小呪文') >= 0 || autoT.indexOf('中呪文') >= 0) ? 2 : 1;
+    else if (ht('defBuilding')) dg = 4;
+    else if (isBld) dg = 2;
+    else {
+      dg = clamp(dps / 130, 1, 4);
+      if (ht('tank') || ht('minitank') || ht('shield')) dg += 1;
+      if (ht('swarm')) dg += 1;
+      if (n.bld) dg = 1;
+      dg = clamp(dg, 0, 5);
+    }
+    var hitsAir = ht('air') || n.air;
+    if (!hitsAir) da = 0;
+    else if (isSp) da = 2;
+    else { da = clamp(dps / 110, 1, 4); if (n.splash || ht('splash')) da += 1; da = clamp(da, 1, 5); }
+    if (isSp) sw = (autoT.indexOf('小呪文') >= 0 ? 4 : autoT.indexOf('中呪文') >= 0 ? 3 : 2);
+    else if (n.splash || ht('splash')) sw = clamp(dps / 90, 2, 5);
+    else if (ht('swarm')) sw = 2;
+    else sw = 0;
+    ct = (ht('stun') ? 2 : 0) + (ht('stop') ? 2 : 0) + (ht('knockback') ? 1 : 0)
+       + (ht('pull') ? 2 : 0) + (ht('slow') ? 1 : 0) + (ht('heal') ? 1 : 0) + (ht('buff') ? 1 : 0);
+    ct = clamp(ct, 0, 5);
+    return [atk, dg, da, sw, ct];
+  }
+  var names = Object.keys(tagsJ.cards || {});
+  if (!names.length) names = stats.cards.map(function (c) { return c.jp; });
+  var head = ['カード名', 'コスト', '攻撃圧', '地上防衛', '対空', '小物処理', '妨害', 'メモ'];
+  var rows = [];
+  names.forEach(function (nm) {
+    var d = draft(nm); if (!d) return;
+    var base = nm.replace(/[⚡👑]+$/, '');
+    var cost = byJp[base] && byJp[base].n ? byJp[base].n.cost : '';
+    var memo = (nm === base) ? '自動ドラフト・要赤入れ' : '形態行：ベースのコピー・要赤入れ';
+    rows.push([nm, cost, d[0], d[1], d[2], d[3], d[4], memo]);
+  });
+  var id = prop('TAG_SHEET_ID', '');
+  var ss = SpreadsheetApp.openById(id);
+  var sh = ss.getSheetByName('ウェイト') || ss.insertSheet('ウェイト');
+  sh.clear();
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#e8eaf0');
+  sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+  sh.setFrozenRows(1); sh.setFrozenColumns(1);
+  Logger.log('ウェイト ' + rows.length + '行を生成。続けてエクスポートします');
+  exportWeightsV1();
+}
+
+function exportWeightsV1() {
+  var id = prop('TAG_SHEET_ID', '');
+  var sh = SpreadsheetApp.openById(id).getSheetByName('ウェイト');
+  if (!sh) throw new Error('シート「ウェイト」がありません（先に buildWeightSheet）');
+  var vals = sh.getDataRange().getValues();
+  var cards = {};
+  for (var r = 1; r < vals.length; r++) {
+    var nm = String(vals[r][0] || '').trim(); if (!nm) continue;
+    var a = parseFloat(vals[r][2]), g = parseFloat(vals[r][3]), v = parseFloat(vals[r][4]), w = parseFloat(vals[r][5]), k = parseFloat(vals[r][6]);
+    cards[nm] = { atk: isFinite(a) ? a : 0, defG: isFinite(g) ? g : 0, defA: isFinite(v) ? v : 0, swarm: isFinite(w) ? w : 0, ctrl: isFinite(k) ? k : 0 };
+  }
+  var out = { updated: new Date().toISOString(), source: 'ウェイト（軸別1〜5・オーナー監修）', count: Object.keys(cards).length, cards: cards };
+  ghWriteJson_('card-weights.json', out);
+  Logger.log('card-weights.json exported: ' + out.count + ' cards');
+}

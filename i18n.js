@@ -128,6 +128,8 @@
       "専任なし。建物釣り＋集中砲火で凌ぐ型です": "No dedicated killer — kite with your building and focus fire.",
       "ジャイアント級に苦戦しやすい構成です": "Likely to struggle against Giant-class tanks.",
       "詳細チェックを見る": "Show detailed checks",
+      "攻撃圧": "Offense", "地上防衛": "Ground def.", "小物処理": "Swarm clear", "妨害": "Control", "回転・安定": "Cycle & stability",
+      "β：ウェイト監修中。タグ表の精度が上がるほどチャートも正確になります": "Beta: weights under review — the chart gets more accurate as curation improves.",
       "デッキ診断": "Deck Check", "勝ち筋": "Win condition", "対空": "Anti-air", "群れ対策": "Swarm control", "タンク処理": "Tank killing",
       "防衛建物": "Defensive building", "呪文構成": "Spell set", "リセット・妨害": "Reset & control", "コストカーブ": "Cost curve",
       "タワーへの明確なダメージ源がありません": "No clear tower damage source.",
