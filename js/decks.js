@@ -672,6 +672,7 @@ async function loadMeCards(force) {
   ME_CARDS = aggregateMe(battles); ME_COUNT = battles.length;
   ME_ARCH = aggregateMeArch(battles); // 帯メタ（勝ち筋分布）
   _syncMeToCloud(battles); // 間引き書込（await しない＝UIを止めない）
+  _updateMeMonthly(battles); // ★月次集計（await しない）
   return { ok: true, count: battles.length };
 }
 // クラウドへ間引き書込：クラウドの最新時刻を“しおり”に、それより新しい対戦が何件たまったかで判断。
@@ -691,6 +692,36 @@ function _syncMeToCloud(merged) {
   try { localStorage.setItem('cr_me_syncAt', String(Date.now())); } catch (e) {}
   CRAuth.saveMeBattles(merged);
 }
+// ★対面ログの月次集計：生ログは7日で消えるので、勝ち筋別の集計を月別に永続保存。
+//   しおり（mark=集計済み最新battleTime）方式で新規対戦だけ加算＝何度呼んでも二重計上しない。
+//   形式: users/{uid}/meMonthly/{YYYY-MM} = { mark, total:[対面数,勝数], arch:{勝ち筋:[対面数,勝数]}, upd }
+async function _updateMeMonthly(battles) {
+  if (!(window.CRAuth && CRAuth.getUser && CRAuth.getUser() && CRAuth.getMeMonthly)) return;
+  try {
+    const byMonth = {};
+    (battles || []).forEach(b => {
+      const m = String(b.t || '').slice(0, 6); // battleTime "YYYYMMDDT..." → YYYYMM
+      if (!/^\d{6}$/.test(m)) return;
+      (byMonth[m] = byMonth[m] || []).push(b);
+    });
+    for (const m of Object.keys(byMonth)) {
+      const key = m.slice(0, 4) + '-' + m.slice(4);
+      const doc = (await CRAuth.getMeMonthly(key)) || { mark: '', total: [0, 0], arch: {} };
+      const fresh = byMonth[m].filter(b => b.t && b.t > (doc.mark || '')).sort((a, b) => (a.t < b.t ? -1 : 1));
+      if (!fresh.length) continue;
+      fresh.forEach(b => {
+        const a = archOfOpp(b.opp || []);
+        const e = doc.arch[a] || (doc.arch[a] = [0, 0]);
+        e[0]++; if (b.win) e[1]++;
+        doc.total[0]++; if (b.win) doc.total[1]++;
+        if (b.t > doc.mark) doc.mark = b.t;
+      });
+      doc.upd = Date.now();
+      await CRAuth.saveMeMonthly(key, doc);
+    }
+  } catch (e) {}
+}
+
 // モード切替（環境 ⇄ あなたの対面）
 async function setCardMode(mode, force) {
   if (mode === 'me') {

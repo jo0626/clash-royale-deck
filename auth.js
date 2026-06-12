@@ -255,6 +255,19 @@ const CRAuth = {
     try { await FB.updateDoc(FB.doc(db, "users", currentUser.uid), { meBattles: a, meSyncAt: FB.serverTimestamp() }); } catch (e) {}
   },
 
+  // ★対面ログの月次集計（users/{uid}/meMonthly/{YYYY-MM}）。生ログは貯めず勝ち筋別の集計だけ＝月2KB程度。
+  async getMeMonthly(month) {
+    if (!currentUser || !FB) return null;
+    try {
+      const snap = await FB.getDoc(FB.doc(db, "users", currentUser.uid, "meMonthly", month));
+      return snap.exists() ? snap.data() : null;
+    } catch (e) { return null; }
+  },
+  async saveMeMonthly(month, data) {
+    if (!currentUser || !FB) return;
+    try { await FB.setDoc(FB.doc(db, "users", currentUser.uid, "meMonthly", month), data); } catch (e) {}
+  },
+
   // メタマップの開閉状態（アカウントに保存。既定=開く）
   getMapOpen() { return !(currentProfile && currentProfile.mapOpen === false); },
   async setMapOpen(open) {
