@@ -779,3 +779,31 @@ function exportPotentialV1() {
   ghWriteJson_('card-potential.json', out);
   Logger.log('card-potential.json exported: '+out.count+' cards');
 }
+
+
+// ★タグ表v2/ポテンシャルの視認性整形（1回実行用・何度実行してもOK）
+//   交互の縞・先頭行/列固定・フィルタ・記号の色分け（◎緑/○黄/△橙/要確認赤）
+function formatTagSheets() {
+  var id = prop('TAG_SHEET_ID', '');
+  if (!id) throw new Error('TAG_SHEET_ID なし');
+  var ss = SpreadsheetApp.openById(id);
+  ss.getSheets().forEach(function (sh) {
+    var name = sh.getName();
+    if (name !== 'タグ表v2' && name !== 'ポテンシャル') return;
+    var rng = sh.getDataRange();
+    try { sh.getBandings().forEach(function (b) { b.remove(); }); } catch (e) {}
+    try { rng.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, true, false); } catch (e) {}
+    sh.setFrozenRows(1);
+    sh.setFrozenColumns(1);
+    function rule(text, color) {
+      return SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(text).setBackground(color).setRanges([rng]).build();
+    }
+    var rules = [rule('◎', '#b7e1cd'), rule('○', '#fce8b2'), rule('△', '#f7c8a0'),
+      SpreadsheetApp.newConditionalFormatRule().whenTextContains('要確認').setBackground('#f4c7c3').setRanges([rng]).build()];
+    sh.setConditionalFormatRules(rules);
+    try { var f = sh.getFilter(); if (f) f.remove(); } catch (e) {}
+    try { rng.createFilter(); } catch (e) {}
+    sh.getRange(1, 1, 1, rng.getNumColumns()).setFontWeight('bold').setBackground('#e8eaf0');
+  });
+  Logger.log('formatted: タグ表v2 / ポテンシャル');
+}
