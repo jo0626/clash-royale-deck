@@ -953,3 +953,218 @@ function mergeV1IntoV2() {
   }
   Logger.log('全量合算 ' + applied + '件。v2に行がなかった: [' + skipped.join(',') + ']。シート1は削除してOK');
 }
+/** =============== カード評価マトリクス（2026-06-12追加・多段評価の土台①） ===============
+ * オーナー設計：①カード単位の多項目評価（理論側＝タグ×ウェイト×ポテンシャル×実数値）
+ *   → ②環境実績と掛けてデッキ構築 → ③デッキ自体の評価、の積み上げ。
+ * シート「カード評価」＝A列に評価項目、1行目にカード名（タグ表v2と同じ並び・176枚）。
+ * セルは0〜10のグラデーション（実数値ベースの自動ドラフト。オーナー赤入れ前提）。
+ *
+ * 使い方：
+ *   buildCardEvalSheet()  … 自動ドラフト生成＋整形（★再実行すると赤入れが消える。ウェイトと同じ運用）
+ *   exportCardEvalV1()    … シート → card-eval.json をdataブランチへ（赤入れ後はこれだけ再実行）
+ * 式は全部この中の EVAL_ITEMS に閉じている＝しきい値の調整はここを直すだけ。
+ */
+function buildCardEvalSheet() {
+  var stats = ghReadJson_('card-stats.json');
+  var tagsJ = ghReadJson_('card-tags.json') || { cards: {} };
+  var potJ = ghReadJson_('card-potential.json') || { cards: {} };
+  if (!stats || !stats.cards) throw new Error('card-stats.json が読めない');
+  var byJp = {};
+  stats.cards.forEach(function (c) { byJp[c.jp] = c; });
+
+  var id = prop('TAG_SHEET_ID', '1cjX3ptT0g0qjfwhoTBKbzRfXGZUNGLy_jspMSRCDPyU');
+  var ss = SpreadsheetApp.openById(id);
+  var v2 = ss.getSheetByName('タグ表v2');
+  if (!v2) throw new Error('タグ表v2 がない');
+  var names = v2.getRange(2, 1, v2.getLastRow() - 1, 1).getValues()
+    .map(function (r) { return String(r[0] || '').trim(); }).filter(String);
+
+  function baseOf(nm) { return nm.replace(/[⚡👑]+$/, ''); }
+  function tagsOf(nm) {
+    var e = tagsJ.cards[nm], b = tagsJ.cards[baseOf(nm)];
+    return ((e && e.tags) || []).concat((b && b.tags) || []);
+  }
+  function potOf(nm) { return potJ.cards[nm] || potJ.cards[baseOf(nm)] || {}; }
+  function statOf(nm) { return byJp[baseOf(nm)] || null; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, Math.round(v))); }
+  function band(v, steps) { for (var i = 0; i < steps.length; i++) if (v >= steps[i][0]) return steps[i][1]; return 0; }
+  function mk(s) { return s === '◎' ? 3 : s === '○' ? 2 : s === '△' ? 1 : 0; }
+  function hitDmg(s) { // 単発ダメ16（"x5"系はper値）
+    var keys = ['Damage', 'Area Damage', 'Damage per hit'];
+    for (var i = 0; i < keys.length; i++) {
+      var d = s.s16 && s.s16[keys[i]];
+      if (d != null) return (typeof d === 'object' && d) ? (d.per || d.total || 0) : d;
+    }
+    return null;
+  }
+  function ctx(nm) {
+    var s = statOf(nm);
+    return {
+      s: s, n: (s && s.n) || {}, t: tagsOf(nm), autoT: (s && s.tags) || [], p: potOf(nm),
+      isSp: s && s.n && s.n.type === 'Spell', isBld: s && s.n && s.n.type === 'Building',
+      dpsT: s ? (s.dps16 || 0) * ((s.n && s.n.count) || 1) : 0
+    };
+  }
+  function ht(c, k) { return c.t.indexOf(k) >= 0; }
+
+  // ---- 評価項目（A列）。fn(nm, c) → 0〜10 or '' ----
+  var EVAL_ITEMS = [
+    ['コスト(参考)', function (nm, c) { return c.n.cost != null && isFinite(parseFloat(c.n.cost)) ? c.n.cost : ''; }],
+    ['タンク処理', function (nm, c) {
+      if (!c.s) return '';
+      if (c.isSp) return c.autoT.indexOf('大呪文') >= 0 ? 3 : c.autoT.indexOf('中呪文') >= 0 ? 2 : 1;
+      var sc = band(c.dpsT, [[1500, 9], [1000, 8], [700, 7], [500, 6], [400, 5], [300, 4], [200, 2], [1, 1]]);
+      if (ht(c, 'tankKiller')) sc = Math.max(sc + 2, 6);
+      if (ht(c, 'ramp')) sc += 1;       // 生存強化（インフェ系）
+      if (ht(c, 'pull')) sc += 1;       // 引き寄せで処理位置を作れる
+      return clamp(sc, 0, 10);
+    }],
+    ['対空処理', function (nm, c) {
+      if (!c.s) return '';
+      if (!(ht(c, 'air') || c.n.air)) return 0;
+      if (c.isSp) return c.autoT.indexOf('大呪文') >= 0 ? 4 : c.autoT.indexOf('中呪文') >= 0 ? 3 : 2;
+      var sc = band(c.dpsT, [[1200, 9], [700, 7], [500, 6], [350, 5], [250, 4], [150, 3], [1, 2]]);
+      if (c.n.splash || ht(c, 'splash')) sc += 1;
+      return clamp(sc, 0, 10);
+    }],
+    ['小物処理(対群れ)', function (nm, c) {
+      if (!c.s) return '';
+      var dm = hitDmg(c.s) || 0;
+      if (c.isSp) return band(dm, [[400, 7], [280, 5], [120, 3], [1, 1]]);
+      if (c.n.splash || ht(c, 'splash')) return band(dm, [[450, 8], [330, 7], [180, 5], [120, 4], [1, 3]]);
+      var hs = parseFloat(c.n.hitSpeed) || 2;
+      return (c.n.count || 1) >= 3 ? 4 : (hs <= 1.1 ? 3 : 1);   // 群れ・手数で掃除
+    }],
+    ['地上受け・壁', function (nm, c) {
+      if (!c.s || c.isSp) return c.isSp ? 0 : '';
+      var sc = band(c.s.hp16 || 0, [[6000, 9], [4000, 8], [3000, 7], [2400, 6], [1500, 4], [800, 3], [300, 2], [1, 1]]);
+      if (ht(c, 'tgHp') || ht(c, 'tgKite') || ht(c, 'tgBuilding')) sc += 1;
+      if (ht(c, 'defBuilding')) sc += 2;
+      if (ht(c, 'deathSpawn') || ht(c, 'shield')) sc += 1;
+      if ((c.n.count || 1) >= 3) sc += 1;   // 取り囲み・分散受け
+      return clamp(sc, 0, 10);
+    }],
+    ['攻撃圧(タワー脅威)', function (nm, c) {
+      if (!c.s) return '';
+      if (c.isSp) {
+        var cost = parseFloat(c.n.cost);
+        var tD = (c.p.towerEff != null && isFinite(cost)) ? c.p.towerEff * cost : 0;  // 呪文タワーダメ16
+        return band(tD, [[500, 7], [400, 6], [280, 5], [140, 3], [1, 1]]);
+      }
+      var sc;
+      if (ARCH_WINCONS.indexOf(baseOf(nm)) >= 0) sc = c.n.cost >= 7 ? 9 : c.n.cost >= 5 ? 8 : 7;
+      else if (ht(c, 'bridgeSpam')) sc = 6;
+      else if (c.n.bld) sc = 5;
+      else sc = band(c.dpsT, [[700, 4], [400, 3], [1, 2]]);
+      return clamp(sc, 0, 10);
+    }],
+    ['妨害・リセット', function (nm, c) {
+      if (!c.s) return '';
+      var sc = (ht(c, 'stop') ? 4 : 0) + (ht(c, 'stun') ? 3 : 0) + (ht(c, 'pull') ? 3 : 0)
+             + (ht(c, 'knockback') ? 2 : 0) + (ht(c, 'slow') ? 2 : 0);
+      return clamp(sc, 0, 10);
+    }],
+    ['呪文耐性', function (nm, c) {
+      if (!c.s || c.isSp) return '';
+      var sc = band(c.s.hp16 || 0, [[2400, 10], [1700, 8], [1180, 7], [1110, 6], [600, 5], [430, 4], [310, 3], [1, 1]]);
+      if ((c.n.count || 1) >= 3) sc -= 2;   // まとめて消える
+      if (ht(c, 'deathSpawn')) sc += 1;
+      return clamp(sc, 1, 10);
+    }],
+    ['回転(軽さ)', function (nm, c) {
+      var m = { 1: 10, 2: 9, 3: 7, 4: 6, 5: 4, 6: 3, 7: 2, 8: 1, 9: 1 };
+      var cost = parseFloat(c.n.cost);
+      return isFinite(cost) && m[cost] != null ? m[cost] : '';
+    }],
+    ['素出し安全度', function (nm, c) {
+      var so = c.p.solo || '';
+      if (so === '—' || so === '-') return '';
+      var sc = so === '◎' ? 9 : so === '○' ? 6 : so === '△' ? 3 : '';
+      if (sc === '') return '';
+      if (c.p.sep === '◎' || c.p.sep === '○') sc += 1;   // 左右分割で素出し価値UP
+      return clamp(sc, 0, 10);
+    }],
+    ['序盤適性(1倍)', function (nm, c) { var v = mk((c.p.phase || [])[0]); return v ? v * 3 : ''; }],
+    ['終盤適性(2倍3倍)', function (nm, c) {
+      var p = c.p.phase || []; var v = mk(p[1]) + mk(p[2]);
+      return v ? Math.round(v * 1.5) : '';
+    }],
+    ['支援・強化', function (nm, c) {
+      if (!c.s) return '';
+      var sc = (ht(c, 'heal') ? 3 : 0) + (ht(c, 'buff') ? 3 : 0) + (ht(c, 'collector') ? 5 : 0)
+             + (ht(c, 'spawner') ? 2 : 0) + (c.p.scaling ? 2 : 0);
+      return clamp(sc, 0, 10);
+    }],
+    ['呪文釣り', function (nm, c) {
+      if (!c.s) return '';
+      if (!ht(c, 'spellBait')) return 0;
+      var sc = 6 + (parseFloat(c.n.cost) <= 3 ? 1 : 0) + ((c.n.count || 1) >= 3 ? 1 : 0);
+      return clamp(sc, 0, 10);
+    }]
+  ];
+
+  // ---- マトリクス生成（行=項目、列=カード） ----
+  var header = ['項目＼カード'].concat(names);
+  var matrix = [header];
+  EVAL_ITEMS.forEach(function (item) {
+    var row = [item[0]];
+    names.forEach(function (nm) {
+      var c = ctx(nm);
+      var v; try { v = item[1](nm, c); } catch (e) { v = ''; }
+      row.push(v);
+    });
+    matrix.push(row);
+  });
+  var memoRow = ['備考'].concat(names.map(function (nm) {
+    return nm === baseOf(nm) ? '自動ドラフト・要赤入れ' : '形態行：ベース準拠・要赤入れ';
+  }));
+  matrix.push(memoRow);
+
+  var sh = ss.getSheetByName('カード評価') || ss.insertSheet('カード評価');
+  sh.clear();
+  try { sh.getConditionalFormatRules().length && sh.setConditionalFormatRules([]); } catch (e) {}
+  sh.getRange(1, 1, matrix.length, header.length).setValues(matrix);
+  sh.getRange(1, 1, 1, header.length).setFontWeight('bold').setBackground('#e8eaf0');
+  sh.getRange(1, 1, matrix.length, 1).setFontWeight('bold');
+  sh.setFrozenRows(1); sh.setFrozenColumns(1);
+  // 0〜10のヒートマップ（コスト行・備考行は除外＝2行目〜項目最終行）
+  var dataRange = sh.getRange(3, 2, EVAL_ITEMS.length - 1, names.length);
+  var rule = SpreadsheetApp.newConditionalFormatRule()
+    .setGradientMinpointWithValue('#ffffff', SpreadsheetApp.InterpolationType.NUMBER, '0')
+    .setGradientMidpointWithValue('#fce8b2', SpreadsheetApp.InterpolationType.NUMBER, '5')
+    .setGradientMaxpointWithValue('#57bb8a', SpreadsheetApp.InterpolationType.NUMBER, '10')
+    .setRanges([dataRange]).build();
+  sh.setConditionalFormatRules([rule]);
+  Logger.log('カード評価: ' + (EVAL_ITEMS.length) + '項目 × ' + names.length + 'カードを生成。続けてエクスポートします');
+  exportCardEvalV1();
+}
+
+/** カード評価シート → card-eval.json（dataブランチ）。行ラベルは前方一致で拾う＝ラベル微修正に強い */
+function exportCardEvalV1() {
+  var id = prop('TAG_SHEET_ID', '1cjX3ptT0g0qjfwhoTBKbzRfXGZUNGLy_jspMSRCDPyU');
+  var sh = SpreadsheetApp.openById(id).getSheetByName('カード評価');
+  if (!sh) throw new Error('シート「カード評価」がありません（先に buildCardEvalSheet）');
+  var vals = sh.getDataRange().getValues();
+  var names = vals[0].slice(1).map(function (v) { return String(v || '').trim(); });
+  var KEY = [
+    ['タンク処理', 'tank'], ['対空処理', 'air'], ['小物処理', 'swarm'], ['地上受け', 'wall'],
+    ['攻撃圧', 'atk'], ['妨害', 'ctrl'], ['呪文耐性', 'spellRes'], ['回転', 'cycle'],
+    ['素出し', 'solo'], ['序盤適性', 'early'], ['終盤適性', 'late'], ['支援', 'support'], ['呪文釣り', 'bait']
+  ];
+  var cards = {};
+  names.forEach(function (nm) { if (nm) cards[nm] = {}; });
+  for (var r = 1; r < vals.length; r++) {
+    var label = String(vals[r][0] || '').trim();
+    var key = null;
+    KEY.forEach(function (k) { if (!key && label.indexOf(k[0]) === 0) key = k[1]; });
+    if (!key) continue;
+    for (var cIdx = 0; cIdx < names.length; cIdx++) {
+      var nm = names[cIdx]; if (!nm) continue;
+      var v = parseFloat(vals[r][cIdx + 1]);
+      cards[nm][key] = isFinite(v) ? v : null;
+    }
+  }
+  var out = { updated: new Date().toISOString(), source: 'カード評価（項目×カード・オーナー監修）', scale: '0-10', count: Object.keys(cards).length, cards: cards };
+  ghWriteJson_('card-eval.json', out);
+  Logger.log('card-eval.json exported: ' + out.count + ' cards');
+}
